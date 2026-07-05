@@ -1,0 +1,129 @@
+# =============================================================================
+# Domain: Banking
+# Entities: Bank (master) + BankAccount
+# Description: The catalogue of banks and the company's accounts at them. A
+# BankAccount carries TWO logical GL account refs: `gl_account_id` (the real Bank
+# account) and `clearing_account_id` (the undeposited-funds / clearing account a
+# payment settles to). Banking clears value from clearing → bank on statement
+# match. Region-neutral; Indonesian bank seed + Virtual Account is an overlay.
+# =============================================================================
+
+models:
+  - name: Bank
+    collection: banks
+    description: "A bank the company holds accounts at"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique bank id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      name:
+        type: string
+        attributes: ["@required", "@max(140)"]
+        description: "Bank name (e.g. Bank Central Asia)"
+      swift_bic:
+        type: string?
+        attributes: ["@max(11)"]
+        description: "SWIFT/BIC code"
+      country:
+        type: string
+        attributes: ["@default(\"ID\")", "@max(2)"]
+        description: "ISO country code"
+      is_active:
+        type: bool
+        attributes: ["@default(true)"]
+        description: "Available for selection"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    indexes:
+      - type: index
+        fields: [company_id, is_active]
+
+  - name: BankAccount
+    collection: bank_accounts
+    description: "A company account at a bank; links the real bank GL account + its clearing account"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique account id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      branch_id:
+        type: uuid?
+        attributes: ["@exclude_from_foreign_key_check"]
+        description: "Branch # logical FK to organization.Branch.id"
+      bank_id:
+        type: uuid
+        attributes: ["@required", "@foreign_key(Bank.id)"]
+        description: "Owning bank"
+      account_name:
+        type: string
+        attributes: ["@required", "@max(140)"]
+        description: "Account holder / label"
+      account_number:
+        type: string
+        attributes: ["@required", "@max(60)"]
+        description: "Account number / IBAN"
+      gl_account_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "The real Bank GL account # logical FK to accounting.Account.id"
+      clearing_account_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Undeposited-funds / clearing GL account # logical FK to accounting.Account.id"
+      currency:
+        type: string
+        attributes: ["@default(\"IDR\")", "@max(3)"]
+        description: "ISO currency code"
+      account_type:
+        type: BankAccountType
+        attributes: ["@default(checking)"]
+        description: "Kind of account"
+      is_default:
+        type: bool
+        attributes: ["@default(false)"]
+        description: "Company default for this currency"
+      is_active:
+        type: bool
+        attributes: ["@default(true)"]
+        description: "Available for selection"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    indexes:
+      - type: unique
+        fields: [company_id, bank_id, account_number]
+        where: "deleted_at IS NULL"
+      - type: index
+        fields: [company_id, is_active]
+
+enums:
+  - name: BankAccountType
+    description: "Kind of bank account"
+    variants:
+      - name: checking
+        description: "Current/checking account"
+        default: true
+      - name: savings
+        description: "Savings account"
+      - name: virtual_account
+        description: "Bank virtual account (Indonesian collection)"
+      - name: wallet
+        description: "E-wallet float account"
+      - name: escrow
+        description: "Escrow account"

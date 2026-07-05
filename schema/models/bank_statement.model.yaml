@@ -1,0 +1,192 @@
+# =============================================================================
+# Domain: Banking
+# Entities: BankStatementImport (header) + BankTransaction (statement line)
+# Description: An imported bank statement and its lines. A BankTransaction is one
+# statement line (a deposit OR a withdrawal); it is matched to a
+# payment/settlement and cleared through the GL. `allocated_amount` tracks how
+# much of the line has been reconciled (a line may split across documents).
+# =============================================================================
+
+models:
+  - name: BankStatementImport
+    collection: bank_statement_imports
+    description: "An imported bank statement (a period of lines)"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique import id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      bank_account_id:
+        type: uuid
+        attributes: ["@required", "@foreign_key(BankAccount.id)"]
+        description: "The account this statement is for"
+      source_format:
+        type: SourceFormat
+        attributes: ["@default(manual)"]
+        description: "How the statement was ingested"
+      statement_period_start:
+        type: date
+        attributes: ["@required"]
+        description: "Period start"
+      statement_period_end:
+        type: date
+        attributes: ["@required"]
+        description: "Period end"
+      opening_balance:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)"]
+        description: "Statement opening balance"
+      closing_balance:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)"]
+        description: "Statement closing balance"
+      file_ref:
+        type: string?
+        attributes: ["@max(300)"]
+        description: "Source file reference"
+      status:
+        type: ImportStatus
+        attributes: ["@default(draft)"]
+        description: "Import lifecycle"
+      row_count:
+        type: int
+        attributes: ["@default(0)"]
+        description: "Number of statement lines"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    relations:
+      lines:
+        type: BankTransaction[]
+        attributes: ["@one_to_many"]
+        description: "Statement lines"
+        inverse: import
+
+    indexes:
+      - type: index
+        fields: [company_id, bank_account_id, status]
+
+  - name: BankTransaction
+    collection: bank_transactions
+    description: "One statement line (a deposit or a withdrawal)"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique line id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      bank_account_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "The account # logical FK to BankAccount.id"
+      import_id:
+        type: uuid
+        attributes: ["@required", "@foreign_key(BankStatementImport.id)"]
+        description: "Owning import"
+      txn_date:
+        type: date
+        attributes: ["@required"]
+        description: "Transaction date"
+      value_date:
+        type: date?
+        description: "Value date (if different)"
+      description:
+        type: string?
+        attributes: ["@max(300)"]
+        description: "Bank narrative"
+      reference_no:
+        type: string?
+        attributes: ["@max(140)"]
+        description: "Bank reference (VA number, cheque no, …) — a match key"
+      deposit:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)", "@non_negative"]
+        description: "Money in (0 for a withdrawal)"
+      withdrawal:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)", "@non_negative"]
+        description: "Money out (0 for a deposit)"
+      currency:
+        type: string
+        attributes: ["@default(\"IDR\")", "@max(3)"]
+        description: "ISO currency code"
+      status:
+        type: TxnStatus
+        attributes: ["@default(unreconciled)"]
+        description: "Reconciliation state"
+      allocated_amount:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)", "@non_negative"]
+        description: "Amount reconciled so far (Σ clearances)"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    relations:
+      import:
+        type: BankStatementImport
+        attributes: ["@one", "@foreign_key(import_id)"]
+        description: "Owning import"
+        inverse: lines
+
+    indexes:
+      - type: index
+        fields: [company_id, bank_account_id, status]
+      - type: index
+        fields: [import_id]
+
+enums:
+  - name: SourceFormat
+    description: "How a statement was ingested"
+    variants:
+      - name: manual
+        description: "Hand-entered"
+        default: true
+      - name: csv
+        description: "CSV upload via a mapping template"
+      - name: mt940
+        description: "SWIFT MT940"
+      - name: camt053
+        description: "ISO 20022 CAMT.053"
+      - name: api
+        description: "Bank API (deferred)"
+
+  - name: ImportStatus
+    description: "Statement import lifecycle"
+    variants:
+      - name: draft
+        description: "Being prepared"
+        default: true
+      - name: imported
+        description: "Lines loaded, balance continuity checked"
+      - name: reconciling
+        description: "Matching in progress"
+      - name: completed
+        description: "Fully reconciled"
+      - name: failed
+        description: "Balance/parse failure"
+
+  - name: TxnStatus
+    description: "Statement-line reconciliation state"
+    variants:
+      - name: unreconciled
+        description: "Not yet matched"
+        default: true
+      - name: partly_reconciled
+        description: "Partially allocated"
+      - name: reconciled
+        description: "Fully matched + cleared"
+      - name: ignored
+        description: "Excluded from reconciliation"

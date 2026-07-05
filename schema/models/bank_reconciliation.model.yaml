@@ -1,0 +1,161 @@
+# =============================================================================
+# Domain: Banking
+# Entities: BankClearance (match link) + BankReconciliation (session)
+# Description: BankClearance links a statement line to what it settles (a
+# payment/settlement/invoice/charge) and records the emitted clearing post.
+# BankReconciliation is a session over an account+period that closes when the
+# statement closing balance equals the ledger balance (difference 0).
+# =============================================================================
+
+models:
+  - name: BankClearance
+    collection: bank_clearances
+    description: "A match of a statement line to a settled document + its clearing post"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique clearance id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      bank_transaction_id:
+        type: uuid
+        attributes: ["@required", "@foreign_key(BankTransaction.id)"]
+        description: "The matched statement line"
+      matched_source_type:
+        type: MatchedSourceType
+        attributes: ["@required"]
+        description: "What kind of document this line settles"
+      matched_source_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "The settled document id (logical — payment/invoice/…)"
+      matched_amount:
+        type: decimal
+        attributes: ["@required", "@precision(18,2)", "@non_negative"]
+        description: "Amount of this line cleared against that document"
+      match_method:
+        type: MatchMethod
+        attributes: ["@default(manual)"]
+        description: "How the match was made"
+      clearance_date:
+        type: date
+        attributes: ["@required"]
+        description: "When the clear posted"
+      accounting_post_id:
+        type: uuid?
+        attributes: ["@exclude_from_foreign_key_check"]
+        description: "The emitted clearing AccountingPost # logical FK to accounting.AccountingPost.id"
+      journal_id:
+        type: uuid?
+        attributes: ["@exclude_from_foreign_key_check"]
+        description: "Resulting journal # logical FK to accounting.Journal.id"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    indexes:
+      - type: index
+        fields: [bank_transaction_id]
+      - type: index
+        fields: [matched_source_type, matched_source_id]
+
+  - name: BankReconciliation
+    collection: bank_reconciliations
+    description: "A reconciliation session over an account + period"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique session id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id"
+      bank_account_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "The account # logical FK to BankAccount.id"
+      from_date:
+        type: date
+        attributes: ["@required"]
+        description: "Period start"
+      to_date:
+        type: date
+        attributes: ["@required"]
+        description: "Period end"
+      statement_closing_balance:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)"]
+        description: "The bank's closing balance"
+      ledger_balance:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)"]
+        description: "Our GL bank-account balance"
+      computed_difference:
+        type: decimal
+        attributes: ["@default(0)", "@precision(18,2)"]
+        description: "statement_closing_balance − ledger_balance (0 when balanced)"
+      unreconciled_count:
+        type: int
+        attributes: ["@default(0)"]
+        description: "Open lines (unreconciled/partly_reconciled) in the period at sign-off — the exception snapshot; a session can only close when this is 0"
+      status:
+        type: ReconStatus
+        attributes: ["@default(open)"]
+        description: "Session state — open (numbers disagree) | balanced (numbers agree, exceptions outstanding) | closed (agree + zero exceptions)"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    indexes:
+      - type: index
+        fields: [company_id, bank_account_id, status]
+
+enums:
+  - name: MatchedSourceType
+    description: "Kind of document a statement line settles"
+    variants:
+      - name: payment
+        description: "A payment.PaymentEntry"
+        default: true
+      - name: settlement
+        description: "A settlement record"
+      - name: invoice
+        description: "A billing invoice (direct match)"
+      - name: journal
+        description: "A manual journal"
+      - name: charge
+        description: "A bank charge / fee"
+      - name: fx_adjustment
+        description: "An FX difference"
+
+  - name: MatchMethod
+    description: "How a match was produced"
+    variants:
+      - name: manual
+        description: "User-confirmed"
+        default: true
+      - name: exact
+        description: "Exact amount + reference"
+      - name: fuzzy
+        description: "Amount + date window heuristic"
+      - name: auto_rule
+        description: "A custom match rule"
+
+  - name: ReconStatus
+    description: "Reconciliation session state"
+    variants:
+      - name: open
+        description: "In progress"
+        default: true
+      - name: balanced
+        description: "Difference is 0"
+      - name: closed
+        description: "Finalised"
