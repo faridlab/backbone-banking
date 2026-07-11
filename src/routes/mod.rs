@@ -12,11 +12,17 @@ use std::sync::Arc;
 // Import handlers
 use crate::presentation::http::{
     create_bank_routes,
+    create_bank_read_routes,
     create_bank_account_routes,
+    create_bank_account_read_routes,
     create_bank_clearance_routes,
+    create_bank_clearance_read_routes,
     create_bank_reconciliation_routes,
+    create_bank_reconciliation_read_routes,
     create_bank_statement_import_routes,
-    create_bank_transaction_routes
+    create_bank_statement_import_read_routes,
+    create_bank_transaction_routes,
+    create_bank_transaction_read_routes
 };
 
 // Import AppState for stateful routes
@@ -46,6 +52,21 @@ pub fn create_stateless_routes(module: &crate::BankingModule) -> Router<()> {
         .merge(create_bank_reconciliation_routes(module.bank_reconciliation_service.clone()))
         .merge(create_bank_statement_import_routes(module.bank_statement_import_service.clone()))
         .merge(create_bank_transaction_routes(module.bank_transaction_service.clone()))
+}
+
+/// Read-only routes for the Banking module — every entity mounted READ-ONLY (the guarded base).
+///
+/// The generic `create_stateless_routes` exposes full mutable CRUD with no domain
+/// validation; this exposes only reads, so generic mutation can't bypass a write
+/// service's invariants. Extend it: `create_readonly_banking_routes(m).merge(my_validated_writes)`.
+pub fn create_readonly_banking_routes(module: &crate::BankingModule) -> Router<()> {
+    Router::new()
+        .merge(create_bank_read_routes(module.bank_service.clone()))
+        .merge(create_bank_account_read_routes(module.bank_account_service.clone()))
+        .merge(create_bank_clearance_read_routes(module.bank_clearance_service.clone()))
+        .merge(create_bank_reconciliation_read_routes(module.bank_reconciliation_service.clone()))
+        .merge(create_bank_statement_import_read_routes(module.bank_statement_import_service.clone()))
+        .merge(create_bank_transaction_read_routes(module.bank_transaction_service.clone()))
 }
 
 /// Get all routes (stateless) for the Banking module.
