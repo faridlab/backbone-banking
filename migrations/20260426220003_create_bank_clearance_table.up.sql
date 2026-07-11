@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS banking.bank_clearances (
     bank_transaction_id UUID NOT NULL,
     matched_source_type matched_source_type NOT NULL,
     matched_source_id UUID NOT NULL,
-    matched_amount NUMERIC NOT NULL,
+    matched_amount NUMERIC(18, 2) NOT NULL CHECK (matched_amount >= 0),
     match_method match_method NOT NULL DEFAULT 'manual',
     clearance_date DATE NOT NULL,
     accounting_post_id UUID,
