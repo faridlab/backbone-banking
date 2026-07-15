@@ -43,6 +43,7 @@ green — including `banking_golden_cases`, `integrity_probes`, and `clearing_se
 the **guarded** router for anything real:
 
 ```rust
+use backbone_auth::tenant::TenantVerifier;
 use backbone_banking::BankingModule;
 use backbone_banking::presentation::http::create_guarded_banking_routes;
 
@@ -51,7 +52,10 @@ let banking = BankingModule::builder()
     .build()?;
 
 // RECOMMENDED: read routes + validated statement import. Generic mutation is NOT mounted.
-let router = create_guarded_banking_routes(&banking, pool.clone());
+// The import requires a signed Bearer token and takes its `company_id` from the token's claims —
+// build one verifier from the service's JWT secret and hand it to the composer.
+let verifier = TenantVerifier::hs256(jwt_secret.as_bytes());
+let router = create_guarded_banking_routes(&banking, pool.clone(), verifier);
 
 // Trusted/admin/seeding ONLY — all 12 CRUD endpoints per entity, no domain validation:
 // let router = banking.all_crud_routes();

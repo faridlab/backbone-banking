@@ -22,9 +22,11 @@ company/branch→organization.
   `BankTransactionCleared`, `BankChargeRecognized`, `BankReconciliationClosed`} + `BankingEventSink`.
 
 ## HTTP surface (presentation/http/guarded_routes.rs)
-`create_guarded_banking_routes(&BankingModule, pool)` — read documents + validated `POST
-/bank-statements/import` (balance continuity checked). No generic mutation. Matching / clearing /
-reconciliation need a `GlPostSink` + supplied candidates, so they are service/job-driven.
+`create_guarded_banking_routes(&BankingModule, pool, TenantVerifier)` — read documents + validated
+`POST /bank-statements/import` (balance continuity checked). The import is tenant-guarded: it requires
+a signed Bearer token and derives `company_id` from the token's claims, never from the request body.
+No generic mutation. Matching / clearing / reconciliation need a `GlPostSink` + supplied candidates,
+so they are service/job-driven.
 
 ## State machines
 - Import (`ImportStatus`): `draft → imported → reconciling → completed` / `failed`.
