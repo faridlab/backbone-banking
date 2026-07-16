@@ -3,7 +3,7 @@
 //! Hand-authored (user-owned). Read documents + **validated import** (a statement with balance
 //! continuity checked); generic create/update/delete CRUD is NOT mounted, so a caller cannot write a
 //! statement whose lines don't reconcile or bypass the clearing path. The import derives its tenant
-//! from a signed Bearer token (`TenantContext`) rather than the request body. Matching + clearing +
+//! from a signed Bearer token (`CompanyContext`) rather than the request body. Matching + clearing +
 //! reconciliation need a `GlPostSink` / supplied candidates (a composition layer), so they are
 //! service/job-driven, not HTTP routes.
 
@@ -13,7 +13,7 @@ use axum::{
     extract::State, http::StatusCode, middleware::from_fn_with_state, response::IntoResponse,
     routing::post, Json, Router,
 };
-use backbone_auth::tenant::{tenant_auth, TenantContext, TenantVerifier};
+use backbone_auth::company::{company_auth, CompanyContext, CompanyVerifier};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -56,7 +56,7 @@ impl From<LineBody> for NewStatementLine {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportBody {
-    // No `company_id`: the tenant is derived from the signed token via `TenantContext`, never from the
+    // No `company_id`: the tenant is derived from the signed token via `CompanyContext`, never from the
     // request body — a client must not be able to name the company whose bank statement it imports.
     bank_account_id: Uuid,
     #[serde(default)] source_format: Option<String>,
@@ -69,7 +69,7 @@ struct ImportBody {
 }
 async fn import_statement(
     State(svc): State<Arc<BankingWriteService>>,
-    tenant: TenantContext,
+    tenant: CompanyContext,
     Json(b): Json<ImportBody>,
 ) -> axum::response::Response {
     let imp = NewStatementImport {
@@ -84,17 +84,17 @@ async fn import_statement(
     }
 }
 
-fn write_routes(svc: Arc<BankingWriteService>, verifier: TenantVerifier) -> Router {
+fn write_routes(svc: Arc<BankingWriteService>, verifier: CompanyVerifier) -> Router {
     Router::new()
         .route("/bank-statements/import", post(import_statement))
-        // The import is tenant-scoped: `tenant_auth` rejects a request whose token is absent, invalid,
+        // The import is tenant-scoped: `company_auth` rejects a request whose token is absent, invalid,
         // or carries no `company_id`, so the writer only ever runs with a proven tenant.
         //
         // `route_layer`, not `layer`: `layer` would also wrap this router's fallback, so once merged
         // every *unmatched* path (e.g. the generic CRUD paths this surface deliberately does not mount)
         // would answer 401 instead of 404 — leaking "auth required" for routes that do not exist, and
         // masking the CRUD-bypass probes.
-        .route_layer(from_fn_with_state(verifier, tenant_auth))
+        .route_layer(from_fn_with_state(verifier, company_auth))
         .with_state(svc)
 }
 
@@ -102,12 +102,12 @@ fn write_routes(svc: Arc<BankingWriteService>, verifier: TenantVerifier) -> Rout
 /// mutation is not mounted; matching/clearing/reconciliation are service/job-driven.
 /// **Prefer this over `BankingModule::all_crud_routes()` for any real deployment.**
 ///
-/// The composing service builds one [`TenantVerifier`] from its JWT secret and passes it here; the
+/// The composing service builds one [`CompanyVerifier`] from its JWT secret and passes it here; the
 /// import derives `company_id` from the token, so no tenant crosses the wire in a body.
 pub fn create_guarded_banking_routes(
     m: &BankingModule,
     pool: PgPool,
-    verifier: TenantVerifier,
+    verifier: CompanyVerifier,
 ) -> Router {
     let write = Arc::new(BankingWriteService::new(pool));
     Router::new()
