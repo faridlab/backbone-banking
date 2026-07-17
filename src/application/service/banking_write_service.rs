@@ -8,6 +8,7 @@
 //! The clearing account nets to zero once a payment's settlement (which debited/credited clearing) is
 //! confirmed by the statement. Balanced-or-refuse; IDR-only for now; clearing is bounded per line.
 
+use backbone_orm::company_scope;
 use rust_decimal::{Decimal, RoundingStrategy};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -201,29 +202,42 @@ impl BankingWriteService {
     // ---- masters ------------------------------------------------------------
 
     pub async fn create_bank(&self, b: NewBank) -> Result<Uuid, BankingError> {
-        let id = Uuid::new_v4();
-        sqlx::query(
-            r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, is_active)
-               VALUES ($1,$2,$3,$4,$5,true)"#,
-        )
-        .bind(id).bind(b.company_id).bind(&b.name).bind(&b.swift_bic).bind(b.country.unwrap_or_else(|| "ID".into()))
-        .execute(&self.db_pool).await?;
-        Ok(id)
+        // RLS scope (ADR-0008): company is on the DTO — bind it so the insert's WITH CHECK passes
+        // under the non-superuser app role.
+        let company = b.company_id;
+        company_scope::with_company_scope(Some(company), async move {
+            let id = Uuid::new_v4();
+            company_scope::execute_scoped(
+                &self.db_pool,
+                sqlx::query(
+                    r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, is_active)
+                       VALUES ($1,$2,$3,$4,$5,true)"#,
+                )
+                .bind(id).bind(b.company_id).bind(&b.name).bind(&b.swift_bic).bind(b.country.unwrap_or_else(|| "ID".into())),
+            ).await?;
+            Ok(id)
+        }).await
     }
 
     pub async fn create_bank_account(&self, a: NewBankAccount) -> Result<Uuid, BankingError> {
-        let id = Uuid::new_v4();
-        sqlx::query(
-            r#"INSERT INTO banking.bank_accounts
-                (id, company_id, branch_id, bank_id, account_name, account_number, gl_account_id,
-                 clearing_account_id, currency, account_type, is_default, is_active)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,true)"#,
-        )
-        .bind(id).bind(a.company_id).bind(a.branch_id).bind(a.bank_id).bind(&a.account_name)
-        .bind(&a.account_number).bind(a.gl_account_id).bind(a.clearing_account_id)
-        .bind(a.currency.unwrap_or_else(|| "IDR".into())).bind(a.account_type.unwrap_or_else(|| "checking".into()))
-        .execute(&self.db_pool).await?;
-        Ok(id)
+        // RLS scope (ADR-0008): company is on the DTO — same pattern as `create_bank`.
+        let company = a.company_id;
+        company_scope::with_company_scope(Some(company), async move {
+            let id = Uuid::new_v4();
+            company_scope::execute_scoped(
+                &self.db_pool,
+                sqlx::query(
+                    r#"INSERT INTO banking.bank_accounts
+                        (id, company_id, branch_id, bank_id, account_name, account_number, gl_account_id,
+                         clearing_account_id, currency, account_type, is_default, is_active)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,true)"#,
+                )
+                .bind(id).bind(a.company_id).bind(a.branch_id).bind(a.bank_id).bind(&a.account_name)
+                .bind(&a.account_number).bind(a.gl_account_id).bind(a.clearing_account_id)
+                .bind(a.currency.unwrap_or_else(|| "IDR".into())).bind(a.account_type.unwrap_or_else(|| "checking".into())),
+            ).await?;
+            Ok(id)
+        }).await
     }
 
     // ---- import -------------------------------------------------------------
@@ -248,7 +262,10 @@ impl BankingWriteService {
         }
         let id = Uuid::new_v4();
         let fmt = imp.source_format.clone().unwrap_or_else(|| "manual".into());
+        // RLS scope (ADR-0008): company is on the DTO — bind it explicitly onto the transaction we own,
+        // so both the import header and every line insert pass their WITH CHECK.
         let mut tx = self.db_pool.begin().await?;
+        company_scope::bind_company_on(&mut tx, imp.company_id).await?;
         sqlx::query(
             r#"INSERT INTO banking.bank_statement_imports
                 (id, company_id, bank_account_id, source_format, statement_period_start, statement_period_end,
@@ -281,8 +298,14 @@ impl BankingWriteService {
     /// Propose a match for a statement line from supplied candidates: prefer an exact amount + exact
     /// reference (`exact`), else an exact amount (`fuzzy`). Pure selection — persists nothing.
     pub async fn propose_match(&self, bank_transaction_id: Uuid, candidates: &[MatchCandidate]) -> Result<Option<MatchCandidate>, BankingError> {
-        let row = sqlx::query("SELECT deposit, withdrawal, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL")
-            .bind(bank_transaction_id).fetch_optional(&self.db_pool).await?
+        // RLS scope (ADR-0008), ID-only pattern: identified by the line id alone — no company arg. This
+        // rides the request-dedicated connection carrying the caller's `app.company_id`, so RLS fences
+        // the lookup and another company's line is simply not found.
+        let row = company_scope::fetch_optional_row_scoped(
+            &self.db_pool,
+            sqlx::query("SELECT deposit, withdrawal, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL")
+                .bind(bank_transaction_id),
+        ).await?
             .ok_or(BankingError::TransactionNotFound(bank_transaction_id))?;
         let net = row.get::<Decimal, _>("deposit") + row.get::<Decimal, _>("withdrawal");
         let txn_ref: Option<String> = row.get("reference_no");
@@ -303,13 +326,18 @@ impl BankingWriteService {
         if c.matched_amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
         let matched = money(c.matched_amount);
         // Load the line + its account's GL/clearing accounts.
-        let row = sqlx::query(
-            r#"SELECT t.company_id, t.bank_account_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency,
-                      a.gl_account_id, a.clearing_account_id
-               FROM banking.bank_transactions t
-               JOIN banking.bank_accounts a ON a.id = t.bank_account_id
-               WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
-        ).bind(c.bank_transaction_id).fetch_optional(&self.db_pool).await?
+        // RLS scope (ADR-0008), ID-only pattern — see `propose_match`. Having read the line we bind its
+        // OWN company onto the clearing transaction below.
+        let row = company_scope::fetch_optional_row_scoped(
+            &self.db_pool,
+            sqlx::query(
+                r#"SELECT t.company_id, t.bank_account_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency,
+                          a.gl_account_id, a.clearing_account_id
+                   FROM banking.bank_transactions t
+                   JOIN banking.bank_accounts a ON a.id = t.bank_account_id
+                   WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
+            ).bind(c.bank_transaction_id),
+        ).await?
             .ok_or(BankingError::TransactionNotFound(c.bank_transaction_id))?;
         let currency: String = row.get("currency");
         if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
@@ -352,6 +380,9 @@ impl BankingWriteService {
         // account. Serialize per settlement with an advisory lock so concurrent first-clears can't race
         // the phantom-insert, and hold the tx across the post so the check + write are one unit.
         let mut tx = self.db_pool.begin().await?;
+        // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction, so the
+        // already-cleared SUM sees the tenant's clearances and the clearance insert passes WITH CHECK.
+        company_scope::bind_company_on(&mut tx, company_id).await?;
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")
             .bind(c.matched_source_id).execute(&mut *tx).await?;
         let already_cleared: Decimal = sqlx::query_scalar(
@@ -401,11 +432,16 @@ impl BankingWriteService {
     pub async fn recognize_bank_charge(&self, ch: NewCharge, sink: &dyn GlPostSink) -> Result<ClearOutcome, BankingError> {
         if ch.amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
         let amount = money(ch.amount);
-        let row = sqlx::query(
-            r#"SELECT t.company_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency, a.gl_account_id
-               FROM banking.bank_transactions t JOIN banking.bank_accounts a ON a.id=t.bank_account_id
-               WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
-        ).bind(ch.bank_transaction_id).fetch_optional(&self.db_pool).await?
+        // RLS scope (ADR-0008), ID-only pattern — see `propose_match`; the charge tx below binds the
+        // line's own company.
+        let row = company_scope::fetch_optional_row_scoped(
+            &self.db_pool,
+            sqlx::query(
+                r#"SELECT t.company_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency, a.gl_account_id
+                   FROM banking.bank_transactions t JOIN banking.bank_accounts a ON a.id=t.bank_account_id
+                   WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
+            ).bind(ch.bank_transaction_id),
+        ).await?
             .ok_or(BankingError::TransactionNotFound(ch.bank_transaction_id))?;
         let currency: String = row.get("currency");
         if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
@@ -432,6 +468,8 @@ impl BankingWriteService {
         match sink.post(&env).await {
             Ok(ack) => {
                 let mut tx = self.db_pool.begin().await?;
+                // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction.
+                company_scope::bind_company_on(&mut tx, company_id).await?;
                 sqlx::query(
                     r#"INSERT INTO banking.bank_clearances
                         (id, company_id, bank_transaction_id, matched_source_type, matched_source_id,
@@ -469,24 +507,36 @@ impl BankingWriteService {
     /// Note: period-scoped by `txn_date ∈ [from_date, to_date]`. `ledger_balance` is still supplied
     /// (recompute is parked — see ADR-001); the line-count is `reconcile`'s real assertion.
     pub async fn reconcile(&self, r: NewReconciliation) -> Result<ReconcileOutcome, BankingError> {
+        // RLS scope (ADR-0008): company is on the DTO — bind it for the whole body. The exception COUNT
+        // is the close-gate's assertion, so it MUST be fenced: an unscoped count would read 0 rows and
+        // wrongly close a session with open lines. The explicit `company_id=$1` filter stays as
+        // defense-in-depth.
+        let company = r.company_id;
+        company_scope::with_company_scope(Some(company), async move {
         let diff = money(r.statement_closing_balance - r.ledger_balance);
         let id = Uuid::new_v4();
-        let unreconciled: i64 = sqlx::query_scalar(
-            r#"SELECT count(*) FROM banking.bank_transactions
-               WHERE company_id=$1 AND bank_account_id=$2 AND txn_date BETWEEN $3 AND $4
-                 AND status IN ('unreconciled'::txn_status,'partly_reconciled'::txn_status)
-                 AND (metadata->>'deleted_at') IS NULL"#,
-        ).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date).fetch_one(&self.db_pool).await?;
+        let unreconciled: i64 = company_scope::fetch_one_scalar_scoped(
+            &self.db_pool,
+            sqlx::query_scalar(
+                r#"SELECT count(*) FROM banking.bank_transactions
+                   WHERE company_id=$1 AND bank_account_id=$2 AND txn_date BETWEEN $3 AND $4
+                     AND status IN ('unreconciled'::txn_status,'partly_reconciled'::txn_status)
+                     AND (metadata->>'deleted_at') IS NULL"#,
+            ).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date),
+        ).await?;
         let status = if !diff.is_zero() { "open" } else if unreconciled > 0 { "balanced" } else { "closed" };
-        sqlx::query(
-            r#"INSERT INTO banking.bank_reconciliations
-                (id, company_id, bank_account_id, from_date, to_date, statement_closing_balance,
-                 ledger_balance, computed_difference, unreconciled_count, status)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::recon_status)"#,
-        )
-        .bind(id).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date)
-        .bind(money(r.statement_closing_balance)).bind(money(r.ledger_balance)).bind(diff)
-        .bind(unreconciled as i32).bind(status).execute(&self.db_pool).await?;
+        company_scope::execute_scoped(
+            &self.db_pool,
+            sqlx::query(
+                r#"INSERT INTO banking.bank_reconciliations
+                    (id, company_id, bank_account_id, from_date, to_date, statement_closing_balance,
+                     ledger_balance, computed_difference, unreconciled_count, status)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::recon_status)"#,
+            )
+            .bind(id).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date)
+            .bind(money(r.statement_closing_balance)).bind(money(r.ledger_balance)).bind(diff)
+            .bind(unreconciled as i32).bind(status),
+        ).await?;
         // Attest "the bank agrees with our books" ONLY when the session actually closes.
         if status == "closed" {
             self.sink.publish(BankingEvent::BankReconciliationClosed(BankReconciliationClosed {
@@ -494,5 +544,6 @@ impl BankingWriteService {
             }));
         }
         Ok(ReconcileOutcome { id, difference: diff, unreconciled_count: unreconciled, status: status.to_string() })
+        }).await
     }
 }
