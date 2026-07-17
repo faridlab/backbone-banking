@@ -10,9 +10,16 @@
 
 use backbone_orm::company_scope;
 use rust_decimal::{Decimal, RoundingStrategy};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
+
+use crate::infrastructure::persistence::{
+    BankAccountRepository, BankClearanceRepository, BankReconciliationRepository, BankRepository,
+    BankStatementImportRepository, BankTransactionRepository, NewBankAccountRow,
+    NewBankTransactionRow, NewBankRow, NewChargeClearanceRow, NewClearanceRow,
+    NewReconciliationRow, NewStatementImportRow,
+};
 
 use super::banking_events::{
     BankChargeRecognized, BankReconciliationClosed, BankStatementImported, BankTransactionCleared,
@@ -185,18 +192,44 @@ impl From<sqlx::Error> for BankingError {
     fn from(e: sqlx::Error) -> Self { BankingError::Db(e) }
 }
 
+/// The repositories this service orchestrates. Bundled behind one `Arc` so the service stays cheap
+/// to `Clone` (it is cloned per request) without requiring the repository newtypes to be `Clone`.
+struct Repos {
+    banks: BankRepository,
+    bank_accounts: BankAccountRepository,
+    imports: BankStatementImportRepository,
+    transactions: BankTransactionRepository,
+    clearances: BankClearanceRepository,
+    reconciliations: BankReconciliationRepository,
+}
+
+impl Repos {
+    fn new(db_pool: &PgPool) -> Self {
+        Self {
+            banks: BankRepository::new(db_pool.clone()),
+            bank_accounts: BankAccountRepository::new(db_pool.clone()),
+            imports: BankStatementImportRepository::new(db_pool.clone()),
+            transactions: BankTransactionRepository::new(db_pool.clone()),
+            clearances: BankClearanceRepository::new(db_pool.clone()),
+            reconciliations: BankReconciliationRepository::new(db_pool.clone()),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct BankingWriteService {
     db_pool: PgPool,
+    repos: Arc<Repos>,
     sink: Arc<dyn BankingEventSink>,
 }
 
 impl BankingWriteService {
     pub fn new(db_pool: PgPool) -> Self {
-        Self { db_pool, sink: Arc::new(LoggingSink) }
+        Self::with_sink(db_pool, Arc::new(LoggingSink))
     }
     pub fn with_sink(db_pool: PgPool, sink: Arc<dyn BankingEventSink>) -> Self {
-        Self { db_pool, sink }
+        let repos = Arc::new(Repos::new(&db_pool));
+        Self { db_pool, repos, sink }
     }
 
     // ---- masters ------------------------------------------------------------
@@ -207,14 +240,14 @@ impl BankingWriteService {
         let company = b.company_id;
         company_scope::with_company_scope(Some(company), async move {
             let id = Uuid::new_v4();
-            company_scope::execute_scoped(
-                &self.db_pool,
-                sqlx::query(
-                    r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, is_active)
-                       VALUES ($1,$2,$3,$4,$5,true)"#,
-                )
-                .bind(id).bind(b.company_id).bind(&b.name).bind(&b.swift_bic).bind(b.country.unwrap_or_else(|| "ID".into())),
-            ).await?;
+            let country = b.country.unwrap_or_else(|| "ID".into());
+            self.repos.banks.insert_bank(&self.db_pool, &NewBankRow {
+                id,
+                company_id: b.company_id,
+                name: &b.name,
+                swift_bic: b.swift_bic.as_deref(),
+                country: &country,
+            }).await?;
             Ok(id)
         }).await
     }
@@ -224,18 +257,20 @@ impl BankingWriteService {
         let company = a.company_id;
         company_scope::with_company_scope(Some(company), async move {
             let id = Uuid::new_v4();
-            company_scope::execute_scoped(
-                &self.db_pool,
-                sqlx::query(
-                    r#"INSERT INTO banking.bank_accounts
-                        (id, company_id, branch_id, bank_id, account_name, account_number, gl_account_id,
-                         clearing_account_id, currency, account_type, is_default, is_active)
-                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,true)"#,
-                )
-                .bind(id).bind(a.company_id).bind(a.branch_id).bind(a.bank_id).bind(&a.account_name)
-                .bind(&a.account_number).bind(a.gl_account_id).bind(a.clearing_account_id)
-                .bind(a.currency.unwrap_or_else(|| "IDR".into())).bind(a.account_type.unwrap_or_else(|| "checking".into())),
-            ).await?;
+            let currency = a.currency.unwrap_or_else(|| "IDR".into());
+            let account_type = a.account_type.unwrap_or_else(|| "checking".into());
+            self.repos.bank_accounts.insert_bank_account(&self.db_pool, &NewBankAccountRow {
+                id,
+                company_id: a.company_id,
+                branch_id: a.branch_id,
+                bank_id: a.bank_id,
+                account_name: &a.account_name,
+                account_number: &a.account_number,
+                gl_account_id: a.gl_account_id,
+                clearing_account_id: a.clearing_account_id,
+                currency: &currency,
+                account_type: &account_type,
+            }).await?;
             Ok(id)
         }).await
     }
@@ -266,25 +301,30 @@ impl BankingWriteService {
         // so both the import header and every line insert pass their WITH CHECK.
         let mut tx = self.db_pool.begin().await?;
         company_scope::bind_company_on(&mut tx, imp.company_id).await?;
-        sqlx::query(
-            r#"INSERT INTO banking.bank_statement_imports
-                (id, company_id, bank_account_id, source_format, statement_period_start, statement_period_end,
-                 opening_balance, closing_balance, file_ref, status, row_count)
-               VALUES ($1,$2,$3,$4::source_format,$5,$6,$7,$8,$9,'imported'::import_status,$10)"#,
-        )
-        .bind(id).bind(imp.company_id).bind(imp.bank_account_id).bind(&fmt).bind(imp.period_start)
-        .bind(imp.period_end).bind(money(imp.opening_balance)).bind(closing).bind(&imp.file_ref)
-        .bind(imp.lines.len() as i32).execute(&mut *tx).await?;
+        self.repos.imports.insert_import(&mut tx, &NewStatementImportRow {
+            id,
+            company_id: imp.company_id,
+            bank_account_id: imp.bank_account_id,
+            source_format: &fmt,
+            statement_period_start: imp.period_start,
+            statement_period_end: imp.period_end,
+            opening_balance: money(imp.opening_balance),
+            closing_balance: closing,
+            file_ref: imp.file_ref.as_deref(),
+            row_count: imp.lines.len() as i32,
+        }).await?;
         for l in &imp.lines {
-            sqlx::query(
-                r#"INSERT INTO banking.bank_transactions
-                    (id, company_id, bank_account_id, import_id, txn_date, description, reference_no,
-                     deposit, withdrawal, currency, status, allocated_amount)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'IDR','unreconciled'::txn_status,0)"#,
-            )
-            .bind(Uuid::new_v4()).bind(imp.company_id).bind(imp.bank_account_id).bind(id).bind(l.txn_date)
-            .bind(&l.description).bind(&l.reference_no).bind(money(l.deposit)).bind(money(l.withdrawal))
-            .execute(&mut *tx).await?;
+            self.repos.transactions.insert_transaction(&mut tx, &NewBankTransactionRow {
+                id: Uuid::new_v4(),
+                company_id: imp.company_id,
+                bank_account_id: imp.bank_account_id,
+                import_id: id,
+                txn_date: l.txn_date,
+                description: l.description.as_deref(),
+                reference_no: l.reference_no.as_deref(),
+                deposit: money(l.deposit),
+                withdrawal: money(l.withdrawal),
+            }).await?;
         }
         tx.commit().await?;
         self.sink.publish(BankingEvent::BankStatementImported(BankStatementImported {
@@ -301,14 +341,10 @@ impl BankingWriteService {
         // RLS scope (ADR-0008), ID-only pattern: identified by the line id alone — no company arg. This
         // rides the request-dedicated connection carrying the caller's `app.company_id`, so RLS fences
         // the lookup and another company's line is simply not found.
-        let row = company_scope::fetch_optional_row_scoped(
-            &self.db_pool,
-            sqlx::query("SELECT deposit, withdrawal, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL")
-                .bind(bank_transaction_id),
-        ).await?
+        let row = self.repos.transactions.fetch_match_basis(&self.db_pool, bank_transaction_id).await?
             .ok_or(BankingError::TransactionNotFound(bank_transaction_id))?;
-        let net = row.get::<Decimal, _>("deposit") + row.get::<Decimal, _>("withdrawal");
-        let txn_ref: Option<String> = row.get("reference_no");
+        let net = row.deposit + row.withdrawal;
+        let txn_ref: Option<String> = row.reference_no;
         // exact amount + reference first
         if let Some(c) = candidates.iter().find(|c| c.amount == net && c.reference.is_some() && c.reference == txn_ref) {
             return Ok(Some(c.clone()));
@@ -328,25 +364,16 @@ impl BankingWriteService {
         // Load the line + its account's GL/clearing accounts.
         // RLS scope (ADR-0008), ID-only pattern — see `propose_match`. Having read the line we bind its
         // OWN company onto the clearing transaction below.
-        let row = company_scope::fetch_optional_row_scoped(
-            &self.db_pool,
-            sqlx::query(
-                r#"SELECT t.company_id, t.bank_account_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency,
-                          a.gl_account_id, a.clearing_account_id
-                   FROM banking.bank_transactions t
-                   JOIN banking.bank_accounts a ON a.id = t.bank_account_id
-                   WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
-            ).bind(c.bank_transaction_id),
-        ).await?
+        let row = self.repos.transactions.fetch_clearing_line(&self.db_pool, c.bank_transaction_id).await?
             .ok_or(BankingError::TransactionNotFound(c.bank_transaction_id))?;
-        let currency: String = row.get("currency");
+        let currency: String = row.currency;
         if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
-        let company_id: Uuid = row.get("company_id");
-        let deposit: Decimal = row.get("deposit");
-        let withdrawal: Decimal = row.get("withdrawal");
-        let allocated: Decimal = row.get("allocated_amount");
-        let bank_acct: Uuid = row.get("gl_account_id");
-        let clearing: Uuid = row.get("clearing_account_id");
+        let company_id = row.company_id;
+        let deposit = row.deposit;
+        let withdrawal = row.withdrawal;
+        let allocated = row.allocated_amount;
+        let bank_acct = row.gl_account_id;
+        let clearing = row.clearing_account_id;
         let line_net = deposit + withdrawal;
         if matched > line_net - allocated {
             return Err(BankingError::OverAllocated { line_net, already: allocated, attempted: matched });
@@ -383,31 +410,33 @@ impl BankingWriteService {
         // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction, so the
         // already-cleared SUM sees the tenant's clearances and the clearance insert passes WITH CHECK.
         company_scope::bind_company_on(&mut tx, company_id).await?;
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")
-            .bind(c.matched_source_id).execute(&mut *tx).await?;
-        let already_cleared: Decimal = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(matched_amount),0) FROM banking.bank_clearances WHERE matched_source_type=$1::matched_source_type AND matched_source_id=$2 AND (metadata->>'deleted_at') IS NULL",
-        ).bind(&c.matched_source_type).bind(c.matched_source_id).fetch_one(&mut *tx).await?;
+        self.repos.clearances.lock_settlement(&mut tx, c.matched_source_id).await?;
+        let already_cleared = self.repos.clearances
+            .sum_cleared_against_settlement(&mut tx, &c.matched_source_type, c.matched_source_id).await?;
         if already_cleared + matched > money(c.matched_source_amount) {
             return Err(BankingError::SettlementOverCleared { settlement_amount: money(c.matched_source_amount), already_cleared, attempted: matched });
         }
 
         match sink.post(&env).await {
             Ok(ack) => {
-                sqlx::query(
-                    r#"INSERT INTO banking.bank_clearances
-                        (id, company_id, bank_transaction_id, matched_source_type, matched_source_id,
-                         matched_amount, match_method, clearance_date, accounting_post_id, journal_id)
-                       VALUES ($1,$2,$3,$4::matched_source_type,$5,$6,$7::match_method,$8,$9,$10)"#,
-                )
-                .bind(clearance_id).bind(company_id).bind(c.bank_transaction_id).bind(&c.matched_source_type)
-                .bind(c.matched_source_id).bind(matched).bind(c.match_method.clone().unwrap_or_else(|| "manual".into()))
-                .bind(c.clearance_date).bind(ack.post_id).bind(ack.journal_id).execute(&mut *tx).await?;
+                let match_method = c.match_method.clone().unwrap_or_else(|| "manual".into());
+                self.repos.clearances.insert_clearance(&mut tx, &NewClearanceRow {
+                    id: clearance_id,
+                    company_id,
+                    bank_transaction_id: c.bank_transaction_id,
+                    matched_source_type: &c.matched_source_type,
+                    matched_source_id: c.matched_source_id,
+                    matched_amount: matched,
+                    match_method: &match_method,
+                    clearance_date: c.clearance_date,
+                    accounting_post_id: ack.post_id,
+                    journal_id: ack.journal_id,
+                }).await?;
                 let new_alloc = allocated + matched;
                 let fully = new_alloc >= line_net;
                 let status = if fully { "reconciled" } else { "partly_reconciled" };
-                sqlx::query("UPDATE banking.bank_transactions SET allocated_amount=$2, status=$3::txn_status WHERE id=$1")
-                    .bind(c.bank_transaction_id).bind(new_alloc).bind(status).execute(&mut *tx).await?;
+                self.repos.transactions
+                    .set_allocation(&mut tx, c.bank_transaction_id, new_alloc, status).await?;
                 tx.commit().await?;
 
                 self.sink.publish(BankingEvent::BankTransactionMatched(BankTransactionMatched {
@@ -434,21 +463,14 @@ impl BankingWriteService {
         let amount = money(ch.amount);
         // RLS scope (ADR-0008), ID-only pattern — see `propose_match`; the charge tx below binds the
         // line's own company.
-        let row = company_scope::fetch_optional_row_scoped(
-            &self.db_pool,
-            sqlx::query(
-                r#"SELECT t.company_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency, a.gl_account_id
-                   FROM banking.bank_transactions t JOIN banking.bank_accounts a ON a.id=t.bank_account_id
-                   WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
-            ).bind(ch.bank_transaction_id),
-        ).await?
+        let row = self.repos.transactions.fetch_charge_line(&self.db_pool, ch.bank_transaction_id).await?
             .ok_or(BankingError::TransactionNotFound(ch.bank_transaction_id))?;
-        let currency: String = row.get("currency");
+        let currency: String = row.currency;
         if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
-        let company_id: Uuid = row.get("company_id");
-        let allocated: Decimal = row.get("allocated_amount");
-        let line_net = row.get::<Decimal, _>("deposit") + row.get::<Decimal, _>("withdrawal");
-        let bank_acct: Uuid = row.get("gl_account_id");
+        let company_id = row.company_id;
+        let allocated = row.allocated_amount;
+        let line_net = row.deposit + row.withdrawal;
+        let bank_acct = row.gl_account_id;
         if amount > line_net - allocated {
             return Err(BankingError::OverAllocated { line_net, already: allocated, attempted: amount });
         }
@@ -470,19 +492,22 @@ impl BankingWriteService {
                 let mut tx = self.db_pool.begin().await?;
                 // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction.
                 company_scope::bind_company_on(&mut tx, company_id).await?;
-                sqlx::query(
-                    r#"INSERT INTO banking.bank_clearances
-                        (id, company_id, bank_transaction_id, matched_source_type, matched_source_id,
-                         matched_amount, match_method, clearance_date, accounting_post_id, journal_id)
-                       VALUES ($1,$2,$3,'charge'::matched_source_type,$4,$5,'manual'::match_method,$6,$7,$8)"#,
-                )
-                .bind(clearance_id).bind(company_id).bind(ch.bank_transaction_id).bind(ch.charge_account_id)
-                .bind(amount).bind(ch.clearance_date).bind(ack.post_id).bind(ack.journal_id).execute(&mut *tx).await?;
+                self.repos.clearances.insert_charge_clearance(&mut tx, &NewChargeClearanceRow {
+                    id: clearance_id,
+                    company_id,
+                    bank_transaction_id: ch.bank_transaction_id,
+                    charge_account_id: ch.charge_account_id,
+                    matched_amount: amount,
+                    clearance_date: ch.clearance_date,
+                    accounting_post_id: ack.post_id,
+                    journal_id: ack.journal_id,
+                }).await?;
                 let new_alloc = allocated + amount;
                 let fully = new_alloc >= line_net;
-                sqlx::query("UPDATE banking.bank_transactions SET allocated_amount=$2, status=$3::txn_status WHERE id=$1")
-                    .bind(ch.bank_transaction_id).bind(new_alloc).bind(if fully { "reconciled" } else { "partly_reconciled" })
-                    .execute(&mut *tx).await?;
+                self.repos.transactions.set_allocation(
+                    &mut tx, ch.bank_transaction_id, new_alloc,
+                    if fully { "reconciled" } else { "partly_reconciled" },
+                ).await?;
                 tx.commit().await?;
                 self.sink.publish(BankingEvent::BankChargeRecognized(BankChargeRecognized {
                     bank_transaction_id: ch.bank_transaction_id, company_id, amount,
@@ -515,28 +540,22 @@ impl BankingWriteService {
         company_scope::with_company_scope(Some(company), async move {
         let diff = money(r.statement_closing_balance - r.ledger_balance);
         let id = Uuid::new_v4();
-        let unreconciled: i64 = company_scope::fetch_one_scalar_scoped(
-            &self.db_pool,
-            sqlx::query_scalar(
-                r#"SELECT count(*) FROM banking.bank_transactions
-                   WHERE company_id=$1 AND bank_account_id=$2 AND txn_date BETWEEN $3 AND $4
-                     AND status IN ('unreconciled'::txn_status,'partly_reconciled'::txn_status)
-                     AND (metadata->>'deleted_at') IS NULL"#,
-            ).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date),
+        let unreconciled: i64 = self.repos.transactions.count_open_in_period(
+            &self.db_pool, r.company_id, r.bank_account_id, r.from_date, r.to_date,
         ).await?;
         let status = if !diff.is_zero() { "open" } else if unreconciled > 0 { "balanced" } else { "closed" };
-        company_scope::execute_scoped(
-            &self.db_pool,
-            sqlx::query(
-                r#"INSERT INTO banking.bank_reconciliations
-                    (id, company_id, bank_account_id, from_date, to_date, statement_closing_balance,
-                     ledger_balance, computed_difference, unreconciled_count, status)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::recon_status)"#,
-            )
-            .bind(id).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date)
-            .bind(money(r.statement_closing_balance)).bind(money(r.ledger_balance)).bind(diff)
-            .bind(unreconciled as i32).bind(status),
-        ).await?;
+        self.repos.reconciliations.insert_reconciliation(&self.db_pool, &NewReconciliationRow {
+            id,
+            company_id: r.company_id,
+            bank_account_id: r.bank_account_id,
+            from_date: r.from_date,
+            to_date: r.to_date,
+            statement_closing_balance: money(r.statement_closing_balance),
+            ledger_balance: money(r.ledger_balance),
+            computed_difference: diff,
+            unreconciled_count: unreconciled as i32,
+            status,
+        }).await?;
         // Attest "the bank agrees with our books" ONLY when the session actually closes.
         if status == "closed" {
             self.sink.publish(BankingEvent::BankReconciliationClosed(BankReconciliationClosed {
