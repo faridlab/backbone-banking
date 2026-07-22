@@ -84,13 +84,19 @@ impl BankClearanceRepository {
     ///
     /// Takes the CALLER'S connection: an xact lock is released at commit, so it MUST be taken on the
     /// same transaction that runs the SUM and writes the clearance.
+    ///
+    /// `company_id` is folded into the lock key (ADR-0010 defense-in-depth) so the lock is
+    /// tenant-isolated: two operators in different companies clearing the same settlement id cannot
+    /// serialize against each other (a settlement id is unique per tenant, but this survives a
+    /// misconfigured/disabled RLS fence and any future cross-tenant id reuse).
     pub async fn lock_settlement(
         &self,
         conn: &mut sqlx::PgConnection,
+        company_id: Uuid,
         matched_source_id: Uuid,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")
-            .bind(matched_source_id)
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 0))")
+            .bind(company_id).bind(matched_source_id)
             .execute(conn)
             .await?;
         Ok(())
@@ -102,17 +108,23 @@ impl BankClearanceRepository {
     ///
     /// Takes the CALLER'S connection: it must read under the same transaction (and the same
     /// [`Self::lock_settlement`] lock) as the clearance it guards. The caller MUST have bound the
-    /// company on that tx first, so this SUM sees the tenant's clearances — don't re-bind here.
+    /// company on that tx first, so this SUM sees the tenant's clearances via RLS.
+    ///
+    /// The explicit `company_id=$1` filter is ADR-0010 defense-in-depth: the bound must hold even if
+    /// the RLS fence is misconfigured/disabled or this connection is invoked from an unscoped path
+    /// (jobs, replays). Without it, an unscoped SUM reads all tenants' clearances and the bound
+    /// silently over-tightens for the wrong tenant.
     pub async fn sum_cleared_against_settlement(
         &self,
         conn: &mut sqlx::PgConnection,
+        company_id: Uuid,
         matched_source_type: &str,
         matched_source_id: Uuid,
     ) -> Result<Decimal, sqlx::Error> {
         sqlx::query_scalar(
-            "SELECT COALESCE(SUM(matched_amount),0) FROM banking.bank_clearances WHERE matched_source_type=$1::matched_source_type AND matched_source_id=$2 AND (metadata->>'deleted_at') IS NULL",
+            "SELECT COALESCE(SUM(matched_amount),0) FROM banking.bank_clearances WHERE company_id=$1 AND matched_source_type=$2::matched_source_type AND matched_source_id=$3 AND (metadata->>'deleted_at') IS NULL",
         )
-        .bind(matched_source_type).bind(matched_source_id)
+        .bind(company_id).bind(matched_source_type).bind(matched_source_id)
         .fetch_one(conn)
         .await
     }

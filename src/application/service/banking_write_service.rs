@@ -14,6 +14,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::domain::entity::TxnStatus;
 use crate::infrastructure::persistence::{
     BankAccountRepository, BankClearanceRepository, BankReconciliationRepository, BankRepository,
     BankStatementImportRepository, BankTransactionRepository, NewBankAccountRow,
@@ -410,9 +411,9 @@ impl BankingWriteService {
         // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction, so the
         // already-cleared SUM sees the tenant's clearances and the clearance insert passes WITH CHECK.
         company_scope::bind_company_on(&mut tx, company_id).await?;
-        self.repos.clearances.lock_settlement(&mut tx, c.matched_source_id).await?;
+        self.repos.clearances.lock_settlement(&mut tx, company_id, c.matched_source_id).await?;
         let already_cleared = self.repos.clearances
-            .sum_cleared_against_settlement(&mut tx, &c.matched_source_type, c.matched_source_id).await?;
+            .sum_cleared_against_settlement(&mut tx, company_id, &c.matched_source_type, c.matched_source_id).await?;
         if already_cleared + matched > money(c.matched_source_amount) {
             return Err(BankingError::SettlementOverCleared { settlement_amount: money(c.matched_source_amount), already_cleared, attempted: matched });
         }
@@ -434,7 +435,7 @@ impl BankingWriteService {
                 }).await?;
                 let new_alloc = allocated + matched;
                 let fully = new_alloc >= line_net;
-                let status = if fully { "reconciled" } else { "partly_reconciled" };
+                let status = if fully { TxnStatus::Reconciled } else { TxnStatus::PartlyReconciled };
                 self.repos.transactions
                     .set_allocation(&mut tx, c.bank_transaction_id, new_alloc, status).await?;
                 tx.commit().await?;
@@ -506,7 +507,7 @@ impl BankingWriteService {
                 let fully = new_alloc >= line_net;
                 self.repos.transactions.set_allocation(
                     &mut tx, ch.bank_transaction_id, new_alloc,
-                    if fully { "reconciled" } else { "partly_reconciled" },
+                    if fully { TxnStatus::Reconciled } else { TxnStatus::PartlyReconciled },
                 ).await?;
                 tx.commit().await?;
                 self.sink.publish(BankingEvent::BankChargeRecognized(BankChargeRecognized {

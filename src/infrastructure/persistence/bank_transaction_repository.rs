@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use backbone_orm::company_scope;
 
-use crate::domain::entity::BankTransaction;
+use crate::domain::entity::{BankTransaction, TxnStatus};
 
 /// Table name for BankTransaction entities
 pub const TABLE_NAME: &str = "banking.bank_transactions";
@@ -201,18 +201,25 @@ impl BankTransactionRepository {
 
     /// Advance a line's allocation watermark + status after a clearance.
     ///
-    /// `status` binds as `&str` and is cast at the DB (`$3::txn_status`). Takes the CALLER'S
-    /// connection so it commits with the clearance that justifies it — the watermark and the clearance
-    /// row must never disagree. The caller has already bound the company on it — don't re-bind here.
+    /// `status` is the typed [`TxnStatus`] enum (ADR-0010 defense-in-depth): binding the enum — not a
+    /// `&str` cast at the DB — means an invalid status is a compile-time error at the caller, not a
+    /// runtime DB error after the watermark has already moved. Of the four `TxnStatus` variants, only
+    /// `Reconciled` and `PartlyReconciled` are valid post-clearance states (`Unreconciled` is the
+    /// import default and is advanced away from, never back to; `Ignored` is set by the ignore path,
+    /// not the allocation path) — the caller is expected to pick one of those two.
+    ///
+    /// Takes the CALLER'S connection so it commits with the clearance that justifies it — the
+    /// watermark and the clearance row must never disagree. The caller has already bound the company
+    /// on it — don't re-bind here.
     pub async fn set_allocation(
         &self,
         conn: &mut sqlx::PgConnection,
         bank_transaction_id: Uuid,
         allocated_amount: Decimal,
-        status: &str,
+        status: TxnStatus,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE banking.bank_transactions SET allocated_amount=$2, status=$3::txn_status WHERE id=$1",
+            "UPDATE banking.bank_transactions SET allocated_amount=$2, status=$3 WHERE id=$1",
         )
         .bind(bank_transaction_id).bind(allocated_amount).bind(status)
         .execute(conn)
