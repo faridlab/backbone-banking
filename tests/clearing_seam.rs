@@ -29,6 +29,7 @@ use backbone_payment::application::service::payment_gl::{
 use backbone_payment::application::service::payment_write_service::{NewPayment, PaymentWriteService};
 
 use backbone_accounting::application::service::posting_service::{PostingLine, PostingRequest, PostingService};
+use backbone_accounting::infrastructure::persistence::SqlxPostingRepository;
 
 /// ACL: either producer's serialized envelope → accounting's PostingRequest against the REAL ledger.
 struct GlAdapter { svc: PostingService }
@@ -117,7 +118,7 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
     let payment = PaymentWriteService::new(pool.clone());
     let recorder = RecordingBankSink::default();
     let banking = BankingWriteService::with_sink(pool.clone(), Arc::new(recorder.clone()));
-    let gl = GlAdapter { svc: PostingService::new(pool.clone()) };
+    let gl = GlAdapter { svc: PostingService::new(Arc::new(SqlxPostingRepository::new(pool.clone()))) };
 
     // 1) payment: a receive settles to the CLEARING account (undeposited funds) — Dr Clearing · Cr A/R.
     let va_ref = uq("VA");
@@ -125,7 +126,7 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
         payment_number: uq("PE"), company_id: company, branch_id: None, payment_type: "receive".into(),
         party_type: Some("customer".into()), party_id: Some(customer), posting_date: day(5), currency: None,
         mode_of_payment_id: None, bank_account_id: coa["1190"], party_account_id: coa["1200"], paid_amount: d("750000"),
-        reference_no: Some(va_ref.clone()), allocations: vec![],
+        reference_no: Some(va_ref.clone()), allocations: vec![], withholding_amount: Decimal::ZERO, withholding_account_id: None, withholding_tax_type: "none".into(),
     }).await.unwrap();
     let pp = payment.post_payment(pay, &gl).await.unwrap();
     assert_eq!(journal_totals(&pool, pp.journal_id).await, (d("750000"), d("750000")));
@@ -204,13 +205,13 @@ async fn a_settlement_cannot_be_cleared_twice() {
     let customer = Uuid::new_v4();
     let payment = PaymentWriteService::new(pool.clone());
     let banking = BankingWriteService::new(pool.clone());
-    let gl = GlAdapter { svc: PostingService::new(pool.clone()) };
+    let gl = GlAdapter { svc: PostingService::new(Arc::new(SqlxPostingRepository::new(pool.clone()))) };
 
     let pay = payment.create_payment(NewPayment {
         payment_number: uq("PE"), company_id: company, branch_id: None, payment_type: "receive".into(),
         party_type: Some("customer".into()), party_id: Some(customer), posting_date: day(5), currency: None,
         mode_of_payment_id: None, bank_account_id: coa["1190"], party_account_id: coa["1200"], paid_amount: d("500000"),
-        reference_no: None, allocations: vec![],
+        reference_no: None, allocations: vec![], withholding_amount: Decimal::ZERO, withholding_account_id: None, withholding_tax_type: "none".into(),
     }).await.unwrap();
     payment.post_payment(pay, &gl).await.unwrap();
 
@@ -244,13 +245,13 @@ async fn one_settlement_splits_across_two_lines() {
     let customer = Uuid::new_v4();
     let payment = PaymentWriteService::new(pool.clone());
     let banking = BankingWriteService::new(pool.clone());
-    let gl = GlAdapter { svc: PostingService::new(pool.clone()) };
+    let gl = GlAdapter { svc: PostingService::new(Arc::new(SqlxPostingRepository::new(pool.clone()))) };
 
     let pay = payment.create_payment(NewPayment {
         payment_number: uq("PE"), company_id: company, branch_id: None, payment_type: "receive".into(),
         party_type: Some("customer".into()), party_id: Some(customer), posting_date: day(5), currency: None,
         mode_of_payment_id: None, bank_account_id: coa["1190"], party_account_id: coa["1200"], paid_amount: d("750000"),
-        reference_no: None, allocations: vec![],
+        reference_no: None, allocations: vec![], withholding_amount: Decimal::ZERO, withholding_account_id: None, withholding_tax_type: "none".into(),
     }).await.unwrap();
     payment.post_payment(pay, &gl).await.unwrap();
 
