@@ -10,8 +10,12 @@
 use backbone_orm::company_scope;
 use chrono::NaiveDate;
 use rust_decimal::{Decimal, RoundingStrategy};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use uuid::Uuid;
+
+use crate::infrastructure::persistence::{
+    ExchangeRateRepository, FxGainLossRepository, NewExchangeRateRow, NewFxGainLossRow,
+};
 
 // --- the read port (zero cargo edge — billing/payment use this via the composition ACL) --------
 
@@ -77,17 +81,10 @@ impl FxService {
         let mut tx = self.db_pool.begin().await?;
         company_scope::bind_company_on(&mut tx, company_id).await?;
         let id = Uuid::new_v4();
-        sqlx::query(
-            r#"INSERT INTO banking.exchange_rates
-                 (id, company_id, from_currency, to_currency, rate, effective_at, rate_type, source)
-               VALUES ($1, $2, $3, $4, $5, $6, $7::rate_type, $8)
-               ON CONFLICT (company_id, from_currency, to_currency, effective_at, rate_type)
-               WHERE (metadata->>'deleted_at') IS NULL
-               DO NOTHING"#,
-        )
-        .bind(id).bind(company_id).bind(from_currency).bind(to_currency)
-        .bind(rate).bind(effective_at).bind(rate_type).bind(source)
-        .execute(&mut *tx).await?;
+        let rates = ExchangeRateRepository::new(self.db_pool.clone());
+        rates.insert_rate(&mut *tx, &NewExchangeRateRow {
+            id, company_id, from_currency, to_currency, rate, effective_at, rate_type, source,
+        }).await?;
         tx.commit().await?;
         Ok(id)
     }
@@ -109,16 +106,11 @@ impl FxService {
         let mut tx = self.db_pool.begin().await?;
         company_scope::bind_company_on(&mut tx, company_id).await?;
         let id = Uuid::new_v4();
-        sqlx::query(
-            r#"INSERT INTO banking.fx_gain_losses
-                 (id, company_id, bank_clearance_id, matched_source_id, currency,
-                  original_rate, realised_rate, base_amount_delta, direction, fx_account_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::fx_direction, $10)"#,
-        )
-        .bind(id).bind(company_id).bind(bank_clearance_id).bind(matched_source_id)
-        .bind(currency).bind(original_rate).bind(realised_rate).bind(delta)
-        .bind(direction).bind(fx_account_id)
-        .execute(&mut *tx).await?;
+        let gain_losses = FxGainLossRepository::new(self.db_pool.clone());
+        gain_losses.insert_gain_loss(&mut *tx, &NewFxGainLossRow {
+            id, company_id, bank_clearance_id, matched_source_id, currency,
+            original_rate, realised_rate, base_amount_delta: delta, direction, fx_account_id,
+        }).await?;
         tx.commit().await?;
 
         Ok(FxResult { gain_loss_id: id, base_amount_delta: delta, direction: direction.into() })
@@ -132,19 +124,20 @@ impl ExchangeRateProvider for FxService {
     async fn spot(
         &self, company_id: Uuid, from_currency: &str, to_currency: &str, date: NaiveDate,
     ) -> Result<ExchangeRateSnapshot, String> {
-        let row = sqlx::query(
-            r#"SELECT id, rate, effective_at FROM banking.exchange_rates
-               WHERE company_id = $1 AND from_currency = $2 AND to_currency = $3
-                 AND effective_at <= $4 AND rate_type = 'spot'
-                 AND (metadata->>'deleted_at') IS NULL
-               ORDER BY effective_at DESC LIMIT 1"#,
-        )
-        .bind(company_id).bind(from_currency).bind(to_currency).bind(date)
-        .fetch_optional(&self.db_pool).await
+        let pool = self.db_pool.clone();
+        let rates = ExchangeRateRepository::new(pool.clone());
+        let from_owned = from_currency.to_string();
+        let to_owned = to_currency.to_string();
+        // Fence the read to company_id via the scoped helper (not just the WHERE clause), so under
+        // the non-super app role the ADR-0008 RLS fence admits the row instead of failing closed.
+        let row = company_scope::with_company_scope(Some(company_id), async move {
+            rates.find_spot(&pool, company_id, &from_owned, &to_owned, date).await
+        })
+        .await
         .map_err(|e| e.to_string())?;
         match row {
             Some(r) => Ok(ExchangeRateSnapshot {
-                rate: r.get("rate"), rate_id: r.get("id"), effective_at: r.get("effective_at"),
+                rate: r.rate, rate_id: r.rate_id, effective_at: r.effective_at,
             }),
             None => Err(format!("no spot rate for {from_currency}→{to_currency} on/before {date}")),
         }

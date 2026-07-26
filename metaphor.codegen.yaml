@@ -25,6 +25,9 @@ user_owned:
   - "src/infrastructure/persistence/bank_reconciliation_repository.rs"
   - "src/infrastructure/persistence/bank_statement_import_repository.rs"
   - "src/infrastructure/persistence/bank_transaction_repository.rs"
+  # FX engine's rate + gain/loss SQL, orchestrated by fx_service.rs.
+  - "src/infrastructure/persistence/exchange_rate_repository.rs"
+  - "src/infrastructure/persistence/fx_gain_loss_repository.rs"
   - "src/presentation/http/guarded_routes.rs"
   - "tests/banking_golden_cases.rs"
   - "tests/integrity_probes.rs"

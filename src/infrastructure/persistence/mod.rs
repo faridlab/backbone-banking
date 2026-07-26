@@ -48,4 +48,6 @@ pub use bank_statement_import_repository::NewStatementImportRow;
 pub use bank_transaction_repository::{
     ChargeLineRow, ClearingLineRow, MatchBasisRow, NewBankTransactionRow,
 };
+pub use exchange_rate_repository::{ExchangeRateSpotRow, NewExchangeRateRow};
+pub use fx_gain_loss_repository::NewFxGainLossRow;
 // END CUSTOM
