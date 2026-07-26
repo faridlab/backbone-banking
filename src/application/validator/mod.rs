@@ -11,6 +11,9 @@ pub mod bank_clearance_validator;
 pub mod bank_reconciliation_validator;
 pub mod bank_statement_import_validator;
 pub mod bank_transaction_validator;
+pub mod currency_validator;
+pub mod exchange_rate_validator;
+pub mod fx_gain_loss_validator;
 
 pub use bank_validator::{BankValidator, bank_validator};
 pub use bank_account_validator::{BankAccountValidator, bank_account_validator};
@@ -18,6 +21,9 @@ pub use bank_clearance_validator::{BankClearanceValidator, bank_clearance_valida
 pub use bank_reconciliation_validator::{BankReconciliationValidator, bank_reconciliation_validator};
 pub use bank_statement_import_validator::{BankStatementImportValidator, bank_statement_import_validator};
 pub use bank_transaction_validator::{BankTransactionValidator, bank_transaction_validator};
+pub use currency_validator::{CurrencyValidator, currency_validator};
+pub use exchange_rate_validator::{ExchangeRateValidator, exchange_rate_validator};
+pub use fx_gain_loss_validator::{FxGainLossValidator, fx_gain_loss_validator};
 
 // <<< CUSTOM
 // END CUSTOM

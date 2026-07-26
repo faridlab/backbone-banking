@@ -17,3 +17,6 @@ pub use handlers::BankClearanceEventSubscriber;
 pub use handlers::BankReconciliationEventSubscriber;
 pub use handlers::BankStatementImportEventSubscriber;
 pub use handlers::BankTransactionEventSubscriber;
+pub use handlers::CurrencyEventSubscriber;
+pub use handlers::ExchangeRateEventSubscriber;
+pub use handlers::FxGainLossEventSubscriber;

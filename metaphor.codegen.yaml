@@ -41,3 +41,5 @@ user_owned:
 
   # Hand-authored module documentation.
   - "docs/**"
+  - "src/application/service/fx_service.rs"
+  - "tests/fx_seam.rs"

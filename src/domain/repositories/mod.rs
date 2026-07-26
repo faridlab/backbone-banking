@@ -12,6 +12,9 @@ pub mod bank_clearance_repository;
 pub mod bank_reconciliation_repository;
 pub mod bank_statement_import_repository;
 pub mod bank_transaction_repository;
+pub mod currency_repository;
+pub mod exchange_rate_repository;
+pub mod fx_gain_loss_repository;
 
 // Re-exports
 pub use bank_repository::{
@@ -49,4 +52,22 @@ pub use bank_transaction_repository::{
     BankTransactionPaginationParams,
     BankTransactionPaginatedResult,
     BankTransactionFilter,
+};
+pub use currency_repository::{
+    CurrencyRepository,
+    CurrencyPaginationParams,
+    CurrencyPaginatedResult,
+    CurrencyFilter,
+};
+pub use exchange_rate_repository::{
+    ExchangeRateRepository,
+    ExchangeRatePaginationParams,
+    ExchangeRatePaginatedResult,
+    ExchangeRateFilter,
+};
+pub use fx_gain_loss_repository::{
+    FxGainLossRepository,
+    FxGainLossPaginationParams,
+    FxGainLossPaginatedResult,
+    FxGainLossFilter,
 };

@@ -8,6 +8,9 @@ pub mod bank_clearance;
 pub mod bank_reconciliation;
 pub mod bank_statement_import;
 pub mod bank_transaction;
+pub mod currency;
+pub mod exchange_rate;
+pub mod fx_gain_loss;
 pub mod bank_account_type;
 pub mod matched_source_type;
 pub mod match_method;
@@ -15,6 +18,8 @@ pub mod recon_status;
 pub mod source_format;
 pub mod import_status;
 pub mod txn_status;
+pub mod rate_type;
+pub mod fx_direction;
 
 // Re-exports
 pub use bank::Bank;
@@ -35,6 +40,15 @@ pub use bank_statement_import::BankStatementImportId;
 pub use bank_transaction::BankTransaction;
 pub use bank_transaction::BankTransactionBuilder;
 pub use bank_transaction::BankTransactionId;
+pub use currency::Currency;
+pub use currency::CurrencyBuilder;
+pub use currency::CurrencyId;
+pub use exchange_rate::ExchangeRate;
+pub use exchange_rate::ExchangeRateBuilder;
+pub use exchange_rate::ExchangeRateId;
+pub use fx_gain_loss::FxGainLoss;
+pub use fx_gain_loss::FxGainLossBuilder;
+pub use fx_gain_loss::FxGainLossId;
 pub use bank_account_type::BankAccountType;
 pub use matched_source_type::MatchedSourceType;
 pub use match_method::MatchMethod;
@@ -42,6 +56,8 @@ pub use recon_status::ReconStatus;
 pub use source_format::SourceFormat;
 pub use import_status::ImportStatus;
 pub use txn_status::TxnStatus;
+pub use rate_type::RateType;
+pub use fx_direction::FxDirection;
 
 // ==========================================================================
 // Entity Trait

@@ -173,6 +173,87 @@ pub struct BankTransactionDeletedEvent {
 }
 
 // ============================================================================
+// CURRENCY EVENTS
+// ============================================================================
+
+/// Event published when a Currency is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyCreatedEvent {
+    pub id: CurrencyId,
+    pub data: CurrencyDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a Currency is updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyUpdatedEvent {
+    pub id: CurrencyId,
+    pub data: CurrencyDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a Currency is deleted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyDeletedEvent {
+    pub id: CurrencyId,
+    pub occurred_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// EXCHANGERATE EVENTS
+// ============================================================================
+
+/// Event published when a ExchangeRate is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateCreatedEvent {
+    pub id: ExchangeRateId,
+    pub data: ExchangeRateDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a ExchangeRate is updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateUpdatedEvent {
+    pub id: ExchangeRateId,
+    pub data: ExchangeRateDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a ExchangeRate is deleted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateDeletedEvent {
+    pub id: ExchangeRateId,
+    pub occurred_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// FXGAINLOSS EVENTS
+// ============================================================================
+
+/// Event published when a FxGainLoss is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossCreatedEvent {
+    pub id: FxGainLossId,
+    pub data: FxGainLossDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a FxGainLoss is updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossUpdatedEvent {
+    pub id: FxGainLossId,
+    pub data: FxGainLossDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a FxGainLoss is deleted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossDeletedEvent {
+    pub id: FxGainLossId,
+    pub occurred_at: DateTime<Utc>,
+}
+
+// ============================================================================
 // MODULE EVENT ENUM
 // ============================================================================
 
@@ -198,6 +279,15 @@ pub enum BankingEvent {
     BankTransactionCreated(BankTransactionCreatedEvent),
     BankTransactionUpdated(BankTransactionUpdatedEvent),
     BankTransactionDeleted(BankTransactionDeletedEvent),
+    CurrencyCreated(CurrencyCreatedEvent),
+    CurrencyUpdated(CurrencyUpdatedEvent),
+    CurrencyDeleted(CurrencyDeletedEvent),
+    ExchangeRateCreated(ExchangeRateCreatedEvent),
+    ExchangeRateUpdated(ExchangeRateUpdatedEvent),
+    ExchangeRateDeleted(ExchangeRateDeletedEvent),
+    FxGainLossCreated(FxGainLossCreatedEvent),
+    FxGainLossUpdated(FxGainLossUpdatedEvent),
+    FxGainLossDeleted(FxGainLossDeletedEvent),
 }
 
 /// Metadata for module events

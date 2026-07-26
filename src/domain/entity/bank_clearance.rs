@@ -257,6 +257,9 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
     fn search_fields() -> &'static [&'static str] {
         &[]
     }
+    fn company_field() -> Option<&'static str> {
+        Some("company_id")
+    }
 }
 
 /// Builder for BankClearance entity

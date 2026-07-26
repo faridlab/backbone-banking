@@ -45,6 +45,15 @@ pub use events::*;
 /// - `BankTransactionDto` - Data transfer object for BankTransaction
 /// - `BankTransactionSummary` - Summary view of BankTransaction
 /// - `BankTransactionId` - Type-safe ID wrapper
+/// - `CurrencyDto` - Data transfer object for Currency
+/// - `CurrencySummary` - Summary view of Currency
+/// - `CurrencyId` - Type-safe ID wrapper
+/// - `ExchangeRateDto` - Data transfer object for ExchangeRate
+/// - `ExchangeRateSummary` - Summary view of ExchangeRate
+/// - `ExchangeRateId` - Type-safe ID wrapper
+/// - `FxGainLossDto` - Data transfer object for FxGainLoss
+/// - `FxGainLossSummary` - Summary view of FxGainLoss
+/// - `FxGainLossId` - Type-safe ID wrapper
 ///
 /// ## Public Services
 /// - `BankingQueryService` - Read-only queries
@@ -68,4 +77,13 @@ pub use events::*;
 /// - `BankTransactionCreatedEvent` - Published when BankTransaction is created
 /// - `BankTransactionUpdatedEvent` - Published when BankTransaction is updated
 /// - `BankTransactionDeletedEvent` - Published when BankTransaction is deleted
+/// - `CurrencyCreatedEvent` - Published when Currency is created
+/// - `CurrencyUpdatedEvent` - Published when Currency is updated
+/// - `CurrencyDeletedEvent` - Published when Currency is deleted
+/// - `ExchangeRateCreatedEvent` - Published when ExchangeRate is created
+/// - `ExchangeRateUpdatedEvent` - Published when ExchangeRate is updated
+/// - `ExchangeRateDeletedEvent` - Published when ExchangeRate is deleted
+/// - `FxGainLossCreatedEvent` - Published when FxGainLoss is created
+/// - `FxGainLossUpdatedEvent` - Published when FxGainLoss is updated
+/// - `FxGainLossDeletedEvent` - Published when FxGainLoss is deleted
 pub struct ExportSummary;

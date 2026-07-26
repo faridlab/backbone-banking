@@ -13,11 +13,18 @@ pub mod bank_clearance_service;
 pub mod bank_reconciliation_service;
 pub mod bank_statement_import_service;
 pub mod bank_transaction_service;
-
 // <<< CUSTOM
 pub mod banking_events;
 pub mod banking_gl;
 pub mod banking_write_service;
+pub mod fx_service;
+pub use fx_service::{ExchangeRateProvider, ExchangeRateSnapshot, FxError, FxResult, FxService};
+// END CUSTOM
+pub mod currency_service;
+pub mod exchange_rate_service;
+pub mod fx_gain_loss_service;
+
+// <<< CUSTOM
 // END CUSTOM
 
 pub use bank_service::BankService;
@@ -38,4 +45,9 @@ pub use banking_write_service::{
     BankingError, BankingWriteService, ClearOutcome, MatchCandidate, NewBank, NewBankAccount,
     NewCharge, NewClearance, NewReconciliation, NewStatementImport, NewStatementLine, ReconcileOutcome,
 };
+// END CUSTOM
+pub use currency_service::CurrencyService;
+pub use exchange_rate_service::ExchangeRateService;
+pub use fx_gain_loss_service::FxGainLossService;
+// <<< CUSTOM
 // END CUSTOM

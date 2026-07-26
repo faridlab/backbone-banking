@@ -1,0 +1,82 @@
+# =============================================================================
+# Domain: Banking — FX / Multi-Currency
+# Entities: Currency, ExchangeRate, FxGainLoss
+# Description: The FX bounded context. Banking owns the currency catalogue,
+#   the immutable dated exchange-rate table, and the realised FX gain/loss
+#   recognised on bank clearance. The ExchangeRateProvider port (read by
+#   billing/payment via the composition ACL) resolves spot rates. Zero cargo
+#   edges — billing/payment never import banking.
+# =============================================================================
+
+models:
+  - name: Currency
+    collection: currencies
+    description: "An ISO 4217 currency the company transacts in"
+    fields:
+      id: { type: uuid, attributes: ["@id", "@default(uuid)"] }
+      company_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"], description: "Books owner # logical FK organization.Company.id" }
+      code: { type: string, attributes: ["@required", "@max(3)"], description: "ISO 4217 code (IDR, USD, EUR, …)" }
+      name: { type: string, attributes: ["@required", "@max(60)"] }
+      symbol: { type: string?, attributes: ["@max(8)"] }
+      scale: { type: int, attributes: ["@required", "@non_negative"], description: "Decimal places (IDR=0, USD=2)" }
+      is_base: { type: bool, attributes: ["@default(false)"], description: "The ledger base (IDR). Exactly one per company." }
+      is_active: { type: bool, attributes: ["@default(true)"] }
+      metadata: { type: Metadata, attributes: ["@audit_metadata"] }
+    indexes:
+      - type: unique
+        fields: [company_id, code]
+        where: "deleted_at IS NULL"
+
+  - name: ExchangeRate
+    collection: exchange_rates
+    description: "An immutable, dated FX rate between two currencies"
+    fields:
+      id: { type: uuid, attributes: ["@id", "@default(uuid)"] }
+      company_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"] }
+      from_currency: { type: string, attributes: ["@required", "@max(3)"], description: "ISO code converted FROM" }
+      to_currency: { type: string, attributes: ["@required", "@max(3)"], description: "ISO code converted TO (the company base for spot)" }
+      rate: { type: decimal, attributes: ["@required", "@precision(20,8)", "@positive"], description: "Amount of to_currency per 1 unit of from_currency" }
+      effective_at: { type: date, attributes: ["@required"], description: "The date this rate is valid for" }
+      rate_type: { type: RateType, attributes: ["@default(spot)"] }
+      source: { type: string?, attributes: ["@max(140)"], description: "Where the rate came from (bank_statement, manual, daily_feed)" }
+      metadata: { type: Metadata, attributes: ["@audit_metadata"] }
+    indexes:
+      - type: unique
+        fields: [company_id, from_currency, to_currency, effective_at, rate_type]
+        where: "deleted_at IS NULL"
+        description: "immutable: one rate per (company, pair, date, type)"
+      - type: index
+        fields: [company_id, to_currency, effective_at]
+
+  - name: FxGainLoss
+    collection: fx_gain_losses
+    description: "A realised FX gain/loss recognised on bank clearance of a foreign-currency settlement"
+    fields:
+      id: { type: uuid, attributes: ["@id", "@default(uuid)"] }
+      company_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"] }
+      bank_clearance_id: { type: uuid?, attributes: ["@exclude_from_foreign_key_check"], description: "The clearance that triggered the realisation # logical FK" }
+      matched_source_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"], description: "The settled document id" }
+      currency: { type: string, attributes: ["@required", "@max(3)"], description: "The foreign currency" }
+      original_rate: { type: decimal, attributes: ["@required", "@precision(20,8)", "@positive"], description: "Rate at the original post" }
+      realised_rate: { type: decimal, attributes: ["@required", "@precision(20,8)", "@positive"], description: "Rate at the bank statement" }
+      base_amount_delta: { type: decimal, attributes: ["@required", "@precision(18,2)"], description: "realised_base − original_base. Positive = gain; negative = loss." }
+      direction: { type: FxDirection, attributes: ["@required"] }
+      fx_account_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"], description: "FX Gain or FX Loss GL account" }
+      metadata: { type: Metadata, attributes: ["@audit_metadata"] }
+    indexes:
+      - type: index
+        fields: [company_id, matched_source_id]
+
+enums:
+  - name: RateType
+    description: "Kind of FX rate"
+    variants:
+      - { name: spot, description: "Transactional rate on a specific date", default: true }
+      - { name: avg_period, description: "Period-average rate (P&L revaluation)" }
+      - { name: period_end, description: "Period-end rate (balance-sheet revaluation)" }
+
+  - name: FxDirection
+    description: "Sign of an FX realisation"
+    variants:
+      - { name: gain, description: "Favourable (cash cleared higher than booked)", default: true }
+      - { name: loss, description: "Unfavourable" }

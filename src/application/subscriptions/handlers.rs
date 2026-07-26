@@ -10,6 +10,9 @@ use crate::domain::event::BankClearanceEvent;
 use crate::domain::event::BankReconciliationEvent;
 use crate::domain::event::BankStatementImportEvent;
 use crate::domain::event::BankTransactionEvent;
+use crate::domain::event::CurrencyEvent;
+use crate::domain::event::ExchangeRateEvent;
+use crate::domain::event::FxGainLossEvent;
 
 /// Subscriber for Bank events.
 ///
@@ -40,6 +43,21 @@ pub type BankStatementImportEventSubscriber = GenericEventSubscriber<BankStateme
 ///
 /// Register handlers via `GenericEventSubscriber::new(topics, handlers)`.
 pub type BankTransactionEventSubscriber = GenericEventSubscriber<BankTransactionEvent>;
+
+/// Subscriber for Currency events.
+///
+/// Register handlers via `GenericEventSubscriber::new(topics, handlers)`.
+pub type CurrencyEventSubscriber = GenericEventSubscriber<CurrencyEvent>;
+
+/// Subscriber for ExchangeRate events.
+///
+/// Register handlers via `GenericEventSubscriber::new(topics, handlers)`.
+pub type ExchangeRateEventSubscriber = GenericEventSubscriber<ExchangeRateEvent>;
+
+/// Subscriber for FxGainLoss events.
+///
+/// Register handlers via `GenericEventSubscriber::new(topics, handlers)`.
+pub type FxGainLossEventSubscriber = GenericEventSubscriber<FxGainLossEvent>;
 
 // <<< CUSTOM
 // END CUSTOM

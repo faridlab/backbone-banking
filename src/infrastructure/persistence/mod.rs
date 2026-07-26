@@ -10,6 +10,9 @@ mod bank_clearance_repository;
 mod bank_reconciliation_repository;
 mod bank_statement_import_repository;
 mod bank_transaction_repository;
+mod currency_repository;
+mod exchange_rate_repository;
+mod fx_gain_loss_repository;
 
 // Custom persistence modules
 // <<< CUSTOM
@@ -22,6 +25,9 @@ pub use bank_clearance_repository::BankClearanceRepository;
 pub use bank_reconciliation_repository::BankReconciliationRepository;
 pub use bank_statement_import_repository::BankStatementImportRepository;
 pub use bank_transaction_repository::BankTransactionRepository;
+pub use currency_repository::CurrencyRepository;
+pub use exchange_rate_repository::ExchangeRateRepository;
+pub use fx_gain_loss_repository::FxGainLossRepository;
 
 // Re-export backbone-orm types
 pub use backbone_orm::repository::{

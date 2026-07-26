@@ -37,6 +37,9 @@ pub use application::service::BankClearanceService;
 pub use application::service::BankReconciliationService;
 pub use application::service::BankStatementImportService;
 pub use application::service::BankTransactionService;
+pub use application::service::CurrencyService;
+pub use application::service::ExchangeRateService;
+pub use application::service::FxGainLossService;
 
 // Re-exports - Workflows
 pub use application::workflows::*;
@@ -64,6 +67,9 @@ pub struct BankingModule {
     pub bank_reconciliation_service: Arc<BankReconciliationService>,
     pub bank_statement_import_service: Arc<BankStatementImportService>,
     pub bank_transaction_service: Arc<BankTransactionService>,
+    pub currency_service: Arc<CurrencyService>,
+    pub exchange_rate_service: Arc<ExchangeRateService>,
+    pub fx_gain_loss_service: Arc<FxGainLossService>,
 }
 
 impl BankingModule {
@@ -85,6 +91,9 @@ impl BankingModule {
             create_bank_reconciliation_routes,
             create_bank_statement_import_routes,
             create_bank_transaction_routes,
+            create_currency_routes,
+            create_exchange_rate_routes,
+            create_fx_gain_loss_routes,
         };
 
         Router::new()
@@ -94,6 +103,9 @@ impl BankingModule {
             .merge(create_bank_reconciliation_routes(self.bank_reconciliation_service.clone()))
             .merge(create_bank_statement_import_routes(self.bank_statement_import_service.clone()))
             .merge(create_bank_transaction_routes(self.bank_transaction_service.clone()))
+            .merge(create_currency_routes(self.currency_service.clone()))
+            .merge(create_exchange_rate_routes(self.exchange_rate_service.clone()))
+            .merge(create_fx_gain_loss_routes(self.fx_gain_loss_service.clone()))
     }
 
     /// Deprecated alias for [`Self::all_crud_routes`]. `routes()` reads like
@@ -158,6 +170,18 @@ impl BankingModuleBuilder {
         let bank_transaction_repository = Arc::new(BankTransactionRepository::new(db_pool.clone()));
         let bank_transaction_service = Arc::new(BankTransactionService::with_repository(bank_transaction_repository.clone()));
 
+        // Currency service
+        let currency_repository = Arc::new(CurrencyRepository::new(db_pool.clone()));
+        let currency_service = Arc::new(CurrencyService::with_repository(currency_repository.clone()));
+
+        // ExchangeRate service
+        let exchange_rate_repository = Arc::new(ExchangeRateRepository::new(db_pool.clone()));
+        let exchange_rate_service = Arc::new(ExchangeRateService::with_repository(exchange_rate_repository.clone()));
+
+        // FxGainLoss service
+        let fx_gain_loss_repository = Arc::new(FxGainLossRepository::new(db_pool.clone()));
+        let fx_gain_loss_service = Arc::new(FxGainLossService::with_repository(fx_gain_loss_repository.clone()));
+
         // <<< CUSTOM
         // END CUSTOM
 
@@ -168,6 +192,9 @@ impl BankingModuleBuilder {
             bank_reconciliation_service,
             bank_statement_import_service,
             bank_transaction_service,
+            currency_service,
+            exchange_rate_service,
+            fx_gain_loss_service,
             // <<< CUSTOM
             // END CUSTOM
         })

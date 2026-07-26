@@ -14,6 +14,12 @@ pub mod bank_statement_import_events;
 pub mod bank_statement_import_event_handlers;
 pub mod bank_transaction_events;
 pub mod bank_transaction_event_handlers;
+pub mod currency_events;
+pub mod currency_event_handlers;
+pub mod exchange_rate_events;
+pub mod exchange_rate_event_handlers;
+pub mod fx_gain_loss_events;
+pub mod fx_gain_loss_event_handlers;
 
 pub use bank_events::{BankEvent, BankEventPublisher, NoopBankEventPublisher};
 pub use bank_event_handlers::BankEventHandler;
@@ -27,6 +33,12 @@ pub use bank_statement_import_events::{BankStatementImportEvent, BankStatementIm
 pub use bank_statement_import_event_handlers::BankStatementImportEventHandler;
 pub use bank_transaction_events::{BankTransactionEvent, BankTransactionEventPublisher, NoopBankTransactionEventPublisher};
 pub use bank_transaction_event_handlers::BankTransactionEventHandler;
+pub use currency_events::{CurrencyEvent, CurrencyEventPublisher, NoopCurrencyEventPublisher};
+pub use currency_event_handlers::CurrencyEventHandler;
+pub use exchange_rate_events::{ExchangeRateEvent, ExchangeRateEventPublisher, NoopExchangeRateEventPublisher};
+pub use exchange_rate_event_handlers::ExchangeRateEventHandler;
+pub use fx_gain_loss_events::{FxGainLossEvent, FxGainLossEventPublisher, NoopFxGainLossEventPublisher};
+pub use fx_gain_loss_event_handlers::FxGainLossEventHandler;
 
 // <<< CUSTOM
 // END CUSTOM

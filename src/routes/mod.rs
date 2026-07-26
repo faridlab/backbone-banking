@@ -22,7 +22,13 @@ use crate::presentation::http::{
     create_bank_statement_import_routes,
     create_bank_statement_import_read_routes,
     create_bank_transaction_routes,
-    create_bank_transaction_read_routes
+    create_bank_transaction_read_routes,
+    create_currency_routes,
+    create_currency_read_routes,
+    create_exchange_rate_routes,
+    create_exchange_rate_read_routes,
+    create_fx_gain_loss_routes,
+    create_fx_gain_loss_read_routes
 };
 
 // Import AppState for stateful routes
@@ -52,6 +58,9 @@ pub fn create_stateless_routes(module: &crate::BankingModule) -> Router<()> {
         .merge(create_bank_reconciliation_routes(module.bank_reconciliation_service.clone()))
         .merge(create_bank_statement_import_routes(module.bank_statement_import_service.clone()))
         .merge(create_bank_transaction_routes(module.bank_transaction_service.clone()))
+        .merge(create_currency_routes(module.currency_service.clone()))
+        .merge(create_exchange_rate_routes(module.exchange_rate_service.clone()))
+        .merge(create_fx_gain_loss_routes(module.fx_gain_loss_service.clone()))
 }
 
 /// Read-only routes for the Banking module — every entity mounted READ-ONLY (the guarded base).
@@ -67,6 +76,9 @@ pub fn create_readonly_banking_routes(module: &crate::BankingModule) -> Router<(
         .merge(create_bank_reconciliation_read_routes(module.bank_reconciliation_service.clone()))
         .merge(create_bank_statement_import_read_routes(module.bank_statement_import_service.clone()))
         .merge(create_bank_transaction_read_routes(module.bank_transaction_service.clone()))
+        .merge(create_currency_read_routes(module.currency_service.clone()))
+        .merge(create_exchange_rate_read_routes(module.exchange_rate_service.clone()))
+        .merge(create_fx_gain_loss_read_routes(module.fx_gain_loss_service.clone()))
 }
 
 /// Get all routes (stateless) for the Banking module.

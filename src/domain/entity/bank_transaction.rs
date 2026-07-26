@@ -279,6 +279,9 @@ impl backbone_orm::EntityRepoMeta for BankTransaction {
     fn search_fields() -> &'static [&'static str] {
         &["currency"]
     }
+    fn company_field() -> Option<&'static str> {
+        Some("company_id")
+    }
     fn relations() -> &'static [(&'static str, &'static str, &'static str)] {
         &[("import", "bank_statement_imports", "importId")]
     }

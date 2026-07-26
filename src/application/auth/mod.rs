@@ -8,6 +8,9 @@ pub mod bank_clearance_auth;
 pub mod bank_reconciliation_auth;
 pub mod bank_statement_import_auth;
 pub mod bank_transaction_auth;
+pub mod currency_auth;
+pub mod exchange_rate_auth;
+pub mod fx_gain_loss_auth;
 
 pub use bank_auth::{BankPolicy, BankGuard, BankServiceGuard};
 pub use bank_account_auth::{BankAccountPolicy, BankAccountGuard, BankAccountServiceGuard};
@@ -15,6 +18,9 @@ pub use bank_clearance_auth::{BankClearancePolicy, BankClearanceGuard, BankClear
 pub use bank_reconciliation_auth::{BankReconciliationPolicy, BankReconciliationGuard, BankReconciliationServiceGuard};
 pub use bank_statement_import_auth::{BankStatementImportPolicy, BankStatementImportGuard, BankStatementImportServiceGuard};
 pub use bank_transaction_auth::{BankTransactionPolicy, BankTransactionGuard, BankTransactionServiceGuard};
+pub use currency_auth::{CurrencyPolicy, CurrencyGuard, CurrencyServiceGuard};
+pub use exchange_rate_auth::{ExchangeRatePolicy, ExchangeRateGuard, ExchangeRateServiceGuard};
+pub use fx_gain_loss_auth::{FxGainLossPolicy, FxGainLossGuard, FxGainLossServiceGuard};
 
 // <<< CUSTOM
 // END CUSTOM

@@ -77,6 +77,33 @@ pub trait BankingQueryService: Send + Sync {
     /// Check if BankTransaction exists
     async fn bank_transaction_exists(&self, id: BankTransactionId) -> Result<bool>;
 
+    /// Get Currency by ID
+    async fn get_currency(&self, id: CurrencyId) -> Result<Option<CurrencyDto>>;
+
+    /// Get Currency summary by ID
+    async fn get_currency_summary(&self, id: CurrencyId) -> Result<Option<CurrencySummary>>;
+
+    /// Check if Currency exists
+    async fn currency_exists(&self, id: CurrencyId) -> Result<bool>;
+
+    /// Get ExchangeRate by ID
+    async fn get_exchange_rate(&self, id: ExchangeRateId) -> Result<Option<ExchangeRateDto>>;
+
+    /// Get ExchangeRate summary by ID
+    async fn get_exchange_rate_summary(&self, id: ExchangeRateId) -> Result<Option<ExchangeRateSummary>>;
+
+    /// Check if ExchangeRate exists
+    async fn exchange_rate_exists(&self, id: ExchangeRateId) -> Result<bool>;
+
+    /// Get FxGainLoss by ID
+    async fn get_fx_gain_loss(&self, id: FxGainLossId) -> Result<Option<FxGainLossDto>>;
+
+    /// Get FxGainLoss summary by ID
+    async fn get_fx_gain_loss_summary(&self, id: FxGainLossId) -> Result<Option<FxGainLossSummary>>;
+
+    /// Check if FxGainLoss exists
+    async fn fx_gain_loss_exists(&self, id: FxGainLossId) -> Result<bool>;
+
 }
 
 // ============================================================================

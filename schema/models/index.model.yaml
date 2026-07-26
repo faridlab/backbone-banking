@@ -66,3 +66,4 @@ imports:
   - bank_account.model.yaml
   - bank_statement.model.yaml
   - bank_reconciliation.model.yaml
+  - fx.model.yaml

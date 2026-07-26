@@ -30,3 +30,18 @@ DROP POLICY IF EXISTS bank_transactions_company_isolation ON banking.bank_transa
 ALTER TABLE banking.bank_transactions NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE banking.bank_transactions DISABLE ROW LEVEL SECURITY;
 
+-- Reverse the company RLS fence for banking.currencies
+DROP POLICY IF EXISTS currencies_company_isolation ON banking.currencies;
+ALTER TABLE banking.currencies NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE banking.currencies DISABLE ROW LEVEL SECURITY;
+
+-- Reverse the company RLS fence for banking.exchange_rates
+DROP POLICY IF EXISTS exchange_rates_company_isolation ON banking.exchange_rates;
+ALTER TABLE banking.exchange_rates NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE banking.exchange_rates DISABLE ROW LEVEL SECURITY;
+
+-- Reverse the company RLS fence for banking.fx_gain_losses
+DROP POLICY IF EXISTS fx_gain_losses_company_isolation ON banking.fx_gain_losses;
+ALTER TABLE banking.fx_gain_losses NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE banking.fx_gain_losses DISABLE ROW LEVEL SECURITY;
+

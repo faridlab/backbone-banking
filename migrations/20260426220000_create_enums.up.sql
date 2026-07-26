@@ -64,3 +64,21 @@ BEGIN
 END
 $$;
 
+-- Create rate_type enum type
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'rate_type') THEN
+        CREATE TYPE rate_type AS ENUM ('spot', 'avg_period', 'period_end');
+    END IF;
+END
+$$;
+
+-- Create fx_direction enum type
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fx_direction') THEN
+        CREATE TYPE fx_direction AS ENUM ('gain', 'loss');
+    END IF;
+END
+$$;
+

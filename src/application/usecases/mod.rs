@@ -13,6 +13,9 @@ pub mod bank_clearance_usecases;
 pub mod bank_reconciliation_usecases;
 pub mod bank_statement_import_usecases;
 pub mod bank_transaction_usecases;
+pub mod currency_usecases;
+pub mod exchange_rate_usecases;
+pub mod fx_gain_loss_usecases;
 
 pub use bank_usecases::{
     CreateBankUseCase, UpdateBankUseCase, GetBankUseCase,
@@ -37,6 +40,18 @@ pub use bank_statement_import_usecases::{
 pub use bank_transaction_usecases::{
     CreateBankTransactionUseCase, UpdateBankTransactionUseCase, GetBankTransactionUseCase,
     DeleteBankTransactionUseCase, ListBankTransactionUseCase,
+};
+pub use currency_usecases::{
+    CreateCurrencyUseCase, UpdateCurrencyUseCase, GetCurrencyUseCase,
+    DeleteCurrencyUseCase, ListCurrencyUseCase,
+};
+pub use exchange_rate_usecases::{
+    CreateExchangeRateUseCase, UpdateExchangeRateUseCase, GetExchangeRateUseCase,
+    DeleteExchangeRateUseCase, ListExchangeRateUseCase,
+};
+pub use fx_gain_loss_usecases::{
+    CreateFxGainLossUseCase, UpdateFxGainLossUseCase, GetFxGainLossUseCase,
+    DeleteFxGainLossUseCase, ListFxGainLossUseCase,
 };
 
 // <<< CUSTOM

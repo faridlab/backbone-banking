@@ -15,6 +15,9 @@ mod bank_clearance_seeder;
 mod bank_reconciliation_seeder;
 mod bank_statement_import_seeder;
 mod bank_transaction_seeder;
+mod currency_seeder;
+mod exchange_rate_seeder;
+mod fx_gain_loss_seeder;
 
 pub use bank_seeder::SeedBankSeeder;
 pub use bank_account_seeder::SeedBankAccountSeeder;
@@ -22,6 +25,9 @@ pub use bank_clearance_seeder::SeedBankClearanceSeeder;
 pub use bank_reconciliation_seeder::SeedBankReconciliationSeeder;
 pub use bank_statement_import_seeder::SeedBankStatementImportSeeder;
 pub use bank_transaction_seeder::SeedBankTransactionSeeder;
+pub use currency_seeder::SeedCurrencySeeder;
+pub use exchange_rate_seeder::SeedExchangeRateSeeder;
+pub use fx_gain_loss_seeder::SeedFxGainLossSeeder;
 
 // ============================================================================
 // SEEDER TRAIT

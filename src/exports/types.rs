@@ -391,6 +391,189 @@ pub struct BankTransactionRef {
 }
 
 // ============================================================================
+// CURRENCY TYPES
+// ============================================================================
+
+/// Type-safe ID for Currency
+///
+/// Use this instead of raw Uuid for type safety across modules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CurrencyId(pub Uuid);
+
+impl CurrencyId {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+}
+
+impl From<Uuid> for CurrencyId {
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
+}
+
+impl From<CurrencyId> for Uuid {
+    fn from(id: CurrencyId) -> Self {
+        id.0
+    }
+}
+
+/// Data transfer object for Currency
+///
+/// This is the public representation of Currency for other modules.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyDto {
+    pub id: CurrencyId,
+    pub company_id: Uuid,
+    pub code: String,
+    pub name: String,
+    pub symbol: Option<String>,
+    pub scale: i32,
+    pub is_base: bool,
+    pub is_active: bool,
+    pub metadata: serde_json::Value,
+}
+
+/// Summary view of Currency for list displays
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencySummary {
+    pub id: CurrencyId,
+    pub name: String,
+}
+
+/// Reference to Currency for foreign key relationships
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyRef {
+    pub id: CurrencyId,
+}
+
+// ============================================================================
+// EXCHANGERATE TYPES
+// ============================================================================
+
+/// Type-safe ID for ExchangeRate
+///
+/// Use this instead of raw Uuid for type safety across modules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ExchangeRateId(pub Uuid);
+
+impl ExchangeRateId {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+}
+
+impl From<Uuid> for ExchangeRateId {
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
+}
+
+impl From<ExchangeRateId> for Uuid {
+    fn from(id: ExchangeRateId) -> Self {
+        id.0
+    }
+}
+
+/// Data transfer object for ExchangeRate
+///
+/// This is the public representation of ExchangeRate for other modules.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateDto {
+    pub id: ExchangeRateId,
+    pub company_id: Uuid,
+    pub from_currency: String,
+    pub to_currency: String,
+    pub rate: Decimal,
+    pub effective_at: NaiveDate,
+    pub rate_type: RateType,
+    pub source: Option<String>,
+    pub metadata: serde_json::Value,
+}
+
+/// Summary view of ExchangeRate for list displays
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateSummary {
+    pub id: ExchangeRateId,
+}
+
+/// Reference to ExchangeRate for foreign key relationships
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRateRef {
+    pub id: ExchangeRateId,
+}
+
+// ============================================================================
+// FXGAINLOSS TYPES
+// ============================================================================
+
+/// Type-safe ID for FxGainLoss
+///
+/// Use this instead of raw Uuid for type safety across modules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct FxGainLossId(pub Uuid);
+
+impl FxGainLossId {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+}
+
+impl From<Uuid> for FxGainLossId {
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
+}
+
+impl From<FxGainLossId> for Uuid {
+    fn from(id: FxGainLossId) -> Self {
+        id.0
+    }
+}
+
+/// Data transfer object for FxGainLoss
+///
+/// This is the public representation of FxGainLoss for other modules.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossDto {
+    pub id: FxGainLossId,
+    pub company_id: Uuid,
+    pub bank_clearance_id: Option<Uuid>,
+    pub matched_source_id: Uuid,
+    pub currency: String,
+    pub original_rate: Decimal,
+    pub realised_rate: Decimal,
+    pub base_amount_delta: Decimal,
+    pub direction: FxDirection,
+    pub fx_account_id: Uuid,
+    pub metadata: serde_json::Value,
+}
+
+/// Summary view of FxGainLoss for list displays
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossSummary {
+    pub id: FxGainLossId,
+}
+
+/// Reference to FxGainLoss for foreign key relationships
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxGainLossRef {
+    pub id: FxGainLossId,
+}
+
+// ============================================================================
 // CUSTOM TYPES
 // ============================================================================
 

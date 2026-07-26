@@ -18,6 +18,9 @@ use backbone_banking::seeders::SeedBankClearanceSeeder;
 use backbone_banking::seeders::SeedBankReconciliationSeeder;
 use backbone_banking::seeders::SeedBankStatementImportSeeder;
 use backbone_banking::seeders::SeedBankTransactionSeeder;
+use backbone_banking::seeders::SeedCurrencySeeder;
+use backbone_banking::seeders::SeedExchangeRateSeeder;
+use backbone_banking::seeders::SeedFxGainLossSeeder;
 use backbone_banking::seeders::Seeder;
 
 #[tokio::main]
@@ -52,6 +55,9 @@ async fn main() -> Result<()> {
     seeders.push(Box::new(SeedBankReconciliationSeeder::new()));
     seeders.push(Box::new(SeedBankStatementImportSeeder::new()));
     seeders.push(Box::new(SeedBankTransactionSeeder::new()));
+    seeders.push(Box::new(SeedCurrencySeeder::new()));
+    seeders.push(Box::new(SeedExchangeRateSeeder::new()));
+    seeders.push(Box::new(SeedFxGainLossSeeder::new()));
 
     // Sort by order
     seeders.sort_by_key(|s| s.order());

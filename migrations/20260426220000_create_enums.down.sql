@@ -1,4 +1,6 @@
 -- Down: drop enum types for banking module
+DROP TYPE IF EXISTS fx_direction CASCADE;
+DROP TYPE IF EXISTS rate_type CASCADE;
 DROP TYPE IF EXISTS txn_status CASCADE;
 DROP TYPE IF EXISTS import_status CASCADE;
 DROP TYPE IF EXISTS source_format CASCADE;
