@@ -316,4 +316,3 @@ impl backbone_core::ApplyUpdateDto<UpdateCurrencyDto> for Currency {
 // Add custom DTOs specific to Currency here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
-

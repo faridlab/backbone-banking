@@ -14,6 +14,11 @@ user_owned:
   - "src/application/service/banking_events.rs"
   - "src/application/service/banking_gl.rs"
   - "src/application/service/banking_write_service.rs"
+  # The write surface, chunked out of banking_write_service.rs. Each is an `impl BankingWriteService`
+  # block; the shared vocabulary (input structs, outcomes, errors) stays in banking_write_service.rs.
+  - "src/application/service/banking_statement.rs"
+  - "src/application/service/banking_clearance.rs"
+  - "src/application/service/banking_reconciliation.rs"
   # Own the hand-written banking SQL (the masters, the statement import's header+lines, the clearing
   # engine's line reads + settlement lock/SUM + clearance writes + allocation watermark, and the
   # reconciliation close-gate's exception count) that the write service orchestrates. Declared here —

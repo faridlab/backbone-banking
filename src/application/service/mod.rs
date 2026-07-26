@@ -17,6 +17,12 @@ pub mod bank_transaction_service;
 pub mod banking_events;
 pub mod banking_gl;
 pub mod banking_write_service;
+// The write surface, chunked: each is an `impl BankingWriteService` block over the vocabulary that
+// stays in `banking_write_service` (so the `banking_write_service::{NewClearance, ...}` import paths
+// are unchanged).
+pub mod banking_statement;
+pub mod banking_clearance;
+pub mod banking_reconciliation;
 pub mod fx_service;
 pub use fx_service::{ExchangeRateProvider, ExchangeRateSnapshot, FxError, FxResult, FxService};
 // END CUSTOM

@@ -314,4 +314,3 @@ impl backbone_core::ApplyUpdateDto<UpdateExchangeRateDto> for ExchangeRate {
 // Add custom DTOs specific to ExchangeRate here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
-
