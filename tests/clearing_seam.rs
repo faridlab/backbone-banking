@@ -39,12 +39,15 @@ use backbone_accounting::domain::reconcile_graph::{LineLocator, PairRequest};
 use backbone_accounting::infrastructure::persistence::{SqlxPostingRepository, SqlxReconcileGraphRepository};
 
 /// ACL: either producer's serialized envelope → accounting's PostingRequest against the REAL ledger.
+/// The envelope's idempotency key rides through — it is the producer's retry-dedup contract, and a
+/// composing host that drops it turns every retry into a second journal.
 struct GlAdapter { svc: PostingService }
 impl GlAdapter {
     async fn go(&self, company_id: Uuid, source_type: &str, source_id: Uuid, source_reference: Option<String>,
-        posting_date: chrono::NaiveDate, posting_type: &str, lines: Vec<PostingLine>) -> Result<(Uuid, Uuid, bool), (String, String)> {
+        idempotency_key: Option<String>, posting_date: chrono::NaiveDate, posting_type: &str, lines: Vec<PostingLine>) -> Result<(Uuid, Uuid, bool), (String, String)> {
         let mut r = PostingRequest::original(company_id, source_type, source_id, posting_date);
         r.source_reference = source_reference;
+        r.idempotency_key = idempotency_key;
         r.posting_type = posting_type.to_string();
         r.lines = lines;
         match self.svc.post(r, None).await {
@@ -60,7 +63,7 @@ impl PaySink for GlAdapter {
             account_id: l.account_id, debit: l.debit, credit: l.credit, party_type: l.party_type.clone(),
             party_id: l.party_id, cost_center_id: None, project_id: None, department_id: None, description: l.description.clone(),
         }).collect();
-        match self.go(e.company_id, &e.source_type, e.source_id, e.source_reference.clone(), e.posting_date, &e.posting_type, lines).await {
+        match self.go(e.company_id, &e.source_type, e.source_id, e.source_reference.clone(), Some(e.idempotency_key.clone()), e.posting_date, &e.posting_type, lines).await {
             Ok((post_id, journal_id, idempotent_reuse)) => Ok(PayAck { post_id, journal_id, idempotent_reuse }),
             Err((code, message)) => Err(PayRej { code, message }),
         }
@@ -73,7 +76,7 @@ impl BankSink for GlAdapter {
             account_id: l.account_id, debit: l.debit, credit: l.credit, party_type: l.party_type.clone(),
             party_id: l.party_id, cost_center_id: None, project_id: None, department_id: None, description: l.description.clone(),
         }).collect();
-        match self.go(e.company_id, &e.source_type, e.source_id, e.source_reference.clone(), e.posting_date, &e.posting_type, lines).await {
+        match self.go(e.company_id, &e.source_type, e.source_id, e.source_reference.clone(), Some(e.idempotency_key.clone()), e.posting_date, &e.posting_type, lines).await {
             Ok((post_id, journal_id, idempotent_reuse)) => Ok(BankAck { post_id, journal_id, idempotent_reuse }),
             Err((code, message)) => Err(BankRej { code, message }),
         }
@@ -378,8 +381,9 @@ async fn one_settlement_splits_across_two_lines() {
 /// graph refuses the pair (here: the clearing account is not flagged reconcilable, a CoA config
 /// error), the WHOLE clear rolls back: no `BankClearance` row, the statement line's allocation and
 /// status not advanced. The operator fixes the account flag and re-clears; the settlement fence did
-/// not advance, so nothing was consumed. (The clearing POST itself commits via its own sink before
-/// the refusal — the stranded journal is the documented residue, caught by integrity probes.)
+/// not advance, so nothing was consumed. The clearing POST itself commits via its own sink before
+/// the refusal — the continuation below proves the retry does NOT double-post it: the deterministic
+/// clearance identity makes the retry reuse the stranded journal and heal the strand.
 #[tokio::test]
 async fn a_refused_clearing_edge_rolls_the_clear_back() {
     let pool = pool().await;
@@ -420,6 +424,30 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
     // No graph state was written either.
     assert_eq!(clearing_edges(&pool, company).await, (Decimal::ZERO, 0));
     assert_eq!(full_groups(&pool, company).await, 0);
+
+    // The operator fixes the CoA flag and retries. The retry derives the SAME deterministic
+    // clearance identity and posting key (the refused attempt contributed nothing to the fenced
+    // cumulative-cleared sum), so the stranded first post is REUSED, not doubled — exactly one
+    // Dr Bank journal's worth of money in the ledger, the strand healed, the edge landed.
+    sqlx::query("UPDATE accounting.accounts SET is_reconcilable=true WHERE id=$1")
+        .bind(coa["1190"]).execute(&pool).await.unwrap();
+    let out = banking.clear_transaction(NewClearance {
+        bank_transaction_id: l1, matched_source_type: "payment".into(), matched_source_id: pay,
+        matched_source_amount: d("400000"), matched_amount: d("400000"), match_method: None, clearance_date: day(7),
+    }, &gl, &sink).await.unwrap();
+    assert!(out.fully_reconciled);
+    let journals: i64 = sqlx::query_scalar(
+        "SELECT COUNT(DISTINCT j.id) FROM accounting.journals j JOIN accounting.journal_lines jl ON jl.journal_id=j.id \
+         WHERE j.company_id=$1 AND jl.source_type='settlement' AND jl.source_id=$2")
+        .bind(company).bind(out.clearance_id).fetch_one(&pool).await.unwrap();
+    assert_eq!(journals, 1, "the retry reused the stranded post — no second clearing journal");
+    let cleared: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
+        .bind(company).fetch_one(&pool).await.unwrap();
+    assert_eq!(cleared, 1, "exactly one clearance row after the retry");
+    assert_eq!(balance(&pool, coa["1110"]).await, d("400000.00"), "bank holds the money ONCE, not doubled");
+    assert_eq!(balance(&pool, coa["1190"]).await, d("0.00"), "clearing nets to zero — the strand is healed");
+    assert_eq!(clearing_edges(&pool, company).await, (d("400000.00"), 1));
+    assert_eq!(full_groups(&pool, company).await, 1);
 }
 
 /// CLSEAM-5 (direction): the paid-out flow posts the mirror — `Dr A/P · Cr Clearing` on the payment,

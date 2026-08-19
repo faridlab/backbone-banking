@@ -46,11 +46,15 @@ impl BankingWriteService {
     /// **Fail-closed:** if the sink refuses the pair (unposted payment journal, a clearing account
     /// that is not flagged reconcilable, a clamp disagreement) the clearance row and the allocation
     /// advance roll back — banking refuses to record a clear whose ledger-side edge cannot exist.
-    /// (The clearing post itself is committed by its own sink before the edge; a refusal therefore
-    /// strands that journal — bounded by the settlement fence, which did not advance, so the
-    /// operator fixes the cause and re-clears. The stranded post is an integrity-probe finding, not
-    /// silent money.) Matched-source kinds other than `payment` keep the bounded clearance only —
-    /// their graph convergence is the statement-side reconciliation surface.
+    /// The clearing post itself is committed by its own sink before the edge; a refusal therefore
+    /// strands that journal. The stranded post is NOT re-posted on retry: the clearance identity and
+    /// its posting idempotency key are derived deterministically from the fenced cumulative-cleared
+    /// position, so the retry reuses the stranded journal (the accounting sink dedups the key), the
+    /// edge locator resolves against its lines, and the clear completes — the strand heals itself
+    /// once the operator fixes the refusal's cause. (Re-clearing a DIFFERENT amount after a
+    /// stranded attempt still lands as a residual mismatch — an integrity-probe finding, not silent
+    /// money.) Matched-source kinds other than `payment` keep the bounded clearance only — their
+    /// graph convergence is the statement-side reconciliation surface.
     pub async fn clear_transaction(&self, c: NewClearance, sink: &dyn GlPostSink, reconcile: &dyn ReconcileSink) -> Result<ClearOutcome, BankingError> {
         if c.matched_amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
         let matched = money(c.matched_amount);
@@ -72,26 +76,6 @@ impl BankingWriteService {
             return Err(BankingError::OverAllocated { line_net, already: allocated, attempted: matched });
         }
         let is_receipt = deposit > Decimal::ZERO;
-        let clearance_id = Uuid::new_v4();
-        let lines = if is_receipt {
-            vec![
-                GlPostLine::debit(bank_acct, matched).with_description("Bank clearing (received)"),
-                GlPostLine::credit(clearing, matched).with_description("Clear undeposited funds"),
-            ]
-        } else {
-            vec![
-                GlPostLine::debit(clearing, matched).with_description("Clear undeposited funds"),
-                GlPostLine::credit(bank_acct, matched).with_description("Bank clearing (paid)"),
-            ]
-        };
-        let env = AccountingPostEnvelope {
-            idempotency_key: format!("bankclr:{}:{}", c.bank_transaction_id, clearance_id),
-            company_id, branch_id: None, source_type: "settlement".into(), source_id: clearance_id,
-            source_reference: Some(format!("clear {}", c.bank_transaction_id)),
-            posting_date: c.clearance_date, currency, posting_type: "original".into(), reverses_post_id: None,
-            description: Some("Bank clearing".into()), lines,
-        };
-        if !env.is_balanced() { return Err(BankingError::UnbalancedPost); }
 
         // Settlement-dimension bound (council 2026-07-05): the SUM of all clearances against this
         // settlement cannot exceed the settled document's amount — so one payment cannot be cleared
@@ -109,6 +93,39 @@ impl BankingWriteService {
         if already_cleared + matched > money(c.matched_source_amount) {
             return Err(BankingError::SettlementOverCleared { settlement_amount: money(c.matched_source_amount), already_cleared, attempted: matched });
         }
+
+        // Deterministic clearance identity, derived from (line, settlement, cumulative-cleared) read
+        // UNDER the settlement lock above. A refused clear rolls the whole unit back — the failed
+        // attempt contributes nothing to `already_cleared` — so the operator's retry derives the SAME
+        // id and the SAME posting idempotency key: the clearing post dedups at the accounting sink
+        // instead of committing a second `Dr Bank · Cr Clearing`, and the edge locator resolves
+        // against the first attempt's (stranded) journal lines. Legitimate sequential clears of one
+        // settlement see a strictly increasing cumulative sum under the lock, so their identities
+        // never collide.
+        let identity = format!(
+            "bankclr:{}:{}:{}:{}",
+            c.bank_transaction_id, c.matched_source_type, c.matched_source_id, already_cleared
+        );
+        let clearance_id = Uuid::new_v5(&Uuid::NAMESPACE_URL, identity.as_bytes());
+        let lines = if is_receipt {
+            vec![
+                GlPostLine::debit(bank_acct, matched).with_description("Bank clearing (received)"),
+                GlPostLine::credit(clearing, matched).with_description("Clear undeposited funds"),
+            ]
+        } else {
+            vec![
+                GlPostLine::debit(clearing, matched).with_description("Clear undeposited funds"),
+                GlPostLine::credit(bank_acct, matched).with_description("Bank clearing (paid)"),
+            ]
+        };
+        let env = AccountingPostEnvelope {
+            idempotency_key: identity,
+            company_id, branch_id: None, source_type: "settlement".into(), source_id: clearance_id,
+            source_reference: Some(format!("clear {}", c.bank_transaction_id)),
+            posting_date: c.clearance_date, currency, posting_type: "original".into(), reverses_post_id: None,
+            description: Some("Bank clearing".into()), lines,
+        };
+        if !env.is_balanced() { return Err(BankingError::UnbalancedPost); }
 
         match sink.post(&env).await {
             Ok(ack) => {
