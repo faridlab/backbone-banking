@@ -1,0 +1,7 @@
+# Copy to .cargo/config.toml (gitignored) to build banking against the LOCAL framework checkout's
+# backbone-gl-posting crate. Without it, Cargo builds the contract crate from the pinned git tag
+# (the prod/CI path). The override must NOT be committed in Cargo.toml — a committed [patch] to a
+# missing path hard-errors in a standalone clone. See the [dependencies] block.
+
+[patch."https://github.com/faridlab/backbone-framework"]
+backbone-gl-posting = { path = "../backbone-framework/backbone-gl-posting" }

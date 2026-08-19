@@ -18,7 +18,8 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use backbone_banking::application::service::banking_gl::{
-    AccountingPostEnvelope, GlPostAck, GlPostRejected, GlPostSink,
+    AccountingPostEnvelope, GlPostAck, GlPostRejected, GlPostSink, ReconcileEdgeAck,
+    ReconcilePairRequest, ReconcileRejected, ReconcileSink, UnreconcilePairRequest,
 };
 use backbone_banking::application::service::banking_write_service::{
     BankingError, BankingWriteService, NewBank, NewBankAccount, NewClearance, NewStatementImport,
@@ -124,6 +125,19 @@ impl GlPostSink for RejectingGl {
         Err(GlPostRejected { code: "period_closed".into(), message: "closed".into() })
     }
 }
+/// Refuses every graph call. These probes are refused BEFORE the reconciliation edge (line bound,
+/// GL rejection, currency), so the sink never fires — if one ever does, the probe fails loudly
+/// rather than recording a clearance whose edge went somewhere unexamined.
+struct NoEdgeSink;
+#[async_trait::async_trait]
+impl ReconcileSink for NoEdgeSink {
+    async fn reconcile_pair_on(&self, _conn: &mut sqlx::PgConnection, _req: &ReconcilePairRequest) -> Result<ReconcileEdgeAck, ReconcileRejected> {
+        Err(ReconcileRejected { code: "unexpected_edge".into(), message: "probe refused before the edge; the sink must not be reached".into() })
+    }
+    async fn unreconcile_pair_on(&self, _conn: &mut sqlx::PgConnection, _req: &UnreconcilePairRequest) -> Result<(), ReconcileRejected> {
+        Err(ReconcileRejected { code: "unexpected_edge".into(), message: "probe refused before the edge; the sink must not be reached".into() })
+    }
+}
 
 // IP-1: a clearance cannot exceed the line's un-allocated remainder — over-clearing is refused and the
 // line's allocation is untouched.
@@ -147,7 +161,7 @@ async fn over_clearing_is_refused() {
     let e = w.clear_transaction(NewClearance {
         bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("600000"), matched_amount: d("600000"), match_method: None, clearance_date: day(6),
-    }, &OkGl).await.unwrap_err();
+    }, &OkGl, &NoEdgeSink).await.unwrap_err();
     assert!(matches!(e, BankingError::OverAllocated { .. }));
     let al: Decimal = sqlx::query_scalar("SELECT allocated_amount FROM banking.bank_transactions WHERE id=$1").bind(txn).fetch_one(&pool).await.unwrap();
     assert_eq!(al, d("0.00"), "a refused clearance leaves the line untouched");
@@ -173,7 +187,7 @@ async fn rejected_clear_writes_nothing() {
     let e = w.clear_transaction(NewClearance {
         bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("300000"), matched_amount: d("300000"), match_method: None, clearance_date: day(6),
-    }, &RejectingGl).await.unwrap_err();
+    }, &RejectingGl, &NoEdgeSink).await.unwrap_err();
     assert!(matches!(e, BankingError::GlRejected { .. }));
     let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE bank_transaction_id=$1").bind(txn).fetch_one(&pool).await.unwrap();
     assert_eq!(n, 0, "no clearance row on a rejected post");
@@ -202,7 +216,7 @@ async fn non_idr_refused_at_clear() {
     let e = w.clear_transaction(NewClearance {
         bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("100000"), matched_amount: d("100000"), match_method: None, clearance_date: day(6),
-    }, &OkGl).await.unwrap_err();
+    }, &OkGl, &NoEdgeSink).await.unwrap_err();
     assert!(matches!(e, BankingError::UnsupportedCurrency(c) if c == "USD"));
 }
 

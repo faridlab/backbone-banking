@@ -155,6 +155,10 @@ pub enum BankingError {
     TransactionNotFound(Uuid),
     AccountNotFound(Uuid),
     GlRejected { code: String, message: String },
+    /// The reconciliation-graph sink refused the clearing's edge (unposted payment journal, a
+    /// non-reconcilable clearing account, or a clamp disagreement). Clearing is fail-closed on
+    /// this: the clearance row and the allocation advance roll back with the refused edge.
+    ReconcileRefused { code: String, message: String },
     Db(sqlx::Error),
 }
 
@@ -172,6 +176,7 @@ impl BankingError {
             BankingError::TransactionNotFound(_) => "transaction_not_found".into(),
             BankingError::AccountNotFound(_) => "account_not_found".into(),
             BankingError::GlRejected { code, .. } => code.clone(),
+            BankingError::ReconcileRefused { code, .. } => code.clone(),
             BankingError::Db(_) => "internal_error".into(),
         }
     }
@@ -187,6 +192,7 @@ impl std::fmt::Display for BankingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BankingError::GlRejected { code, message } => write!(f, "{code}: {message}"),
+            BankingError::ReconcileRefused { code, message } => write!(f, "{code}: {message}"),
             BankingError::BalanceMismatch { expected, computed } => write!(f, "balance_mismatch: expected {expected}, computed {computed}"),
             other => write!(f, "{}", other.code()),
         }

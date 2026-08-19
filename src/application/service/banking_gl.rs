@@ -6,10 +6,21 @@
 //! reached only through a `GlPostSink`; the ACL maps it into accounting's `PostingRequest`. Zero
 //! normal Cargo edge. Same shape as the selling/inventory/buying/billing/payment ports — the contract
 //! is duplicated per producer by design.
+//!
+//! The RECONCILIATION contract (`ReconcileSink` + wire types) is NOT duplicated: it is re-exported
+//! from the shared `backbone-gl-posting` crate — the one port every producer's clearing/settlement
+//! edges flow through, so a composing host implements the sink once. Banking's local GL envelope
+//! predates the shared crate and keeps its richer shape (currency + description on the envelope);
+//! only the reconcile vocabulary is shared.
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+pub use backbone_gl_posting::{
+    ReconcileEdgeAck, ReconcileLine, ReconcileOrigin, ReconcilePairRequest, ReconcileRejected,
+    ReconcileSink, UnreconcilePairRequest,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GlPostLine {

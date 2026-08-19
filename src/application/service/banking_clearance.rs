@@ -24,7 +24,10 @@ use crate::infrastructure::persistence::{NewChargeClearanceRow, NewClearanceRow}
 use super::banking_events::{
     BankChargeRecognized, BankTransactionCleared, BankTransactionMatched, BankingEvent,
 };
-use super::banking_gl::{AccountingPostEnvelope, GlPostLine, GlPostSink};
+use super::banking_gl::{
+    AccountingPostEnvelope, GlPostLine, GlPostSink, ReconcileLine, ReconcileOrigin,
+    ReconcilePairRequest, ReconcileSink,
+};
 use super::banking_write_service::{
     money, BankingError, BankingWriteService, ClearOutcome, NewCharge, NewClearance,
 };
@@ -34,7 +37,21 @@ impl BankingWriteService {
     /// `Dr Bank · Cr Clearing`; paid (withdrawal): `Dr Clearing · Cr Bank`. Bounded: the clearance
     /// cannot exceed the line's un-allocated remainder. Records a `BankClearance`, advances the line's
     /// `allocated_amount` + status, and emits `BankTransactionMatched` + `BankTransactionCleared`.
-    pub async fn clear_transaction(&self, c: NewClearance, sink: &dyn GlPostSink) -> Result<ClearOutcome, BankingError> {
+    ///
+    /// When the line was matched to a **payment**, the same unit of work also writes the
+    /// reconciliation-graph edge on the clearing account: the payment's clearing leg meets the
+    /// clearance's clearing leg (the pair that nets the undeposited-funds position to zero), through
+    /// the shared [`ReconcileSink`] port with origin `Clearing`. Receipt: the payment DEPOSITED into
+    /// clearing (`Dr Clearing`) and the clearance withdraws it (`Cr Clearing`); paid-out mirrors.
+    /// **Fail-closed:** if the sink refuses the pair (unposted payment journal, a clearing account
+    /// that is not flagged reconcilable, a clamp disagreement) the clearance row and the allocation
+    /// advance roll back — banking refuses to record a clear whose ledger-side edge cannot exist.
+    /// (The clearing post itself is committed by its own sink before the edge; a refusal therefore
+    /// strands that journal — bounded by the settlement fence, which did not advance, so the
+    /// operator fixes the cause and re-clears. The stranded post is an integrity-probe finding, not
+    /// silent money.) Matched-source kinds other than `payment` keep the bounded clearance only —
+    /// their graph convergence is the statement-side reconciliation surface.
+    pub async fn clear_transaction(&self, c: NewClearance, sink: &dyn GlPostSink, reconcile: &dyn ReconcileSink) -> Result<ClearOutcome, BankingError> {
         if c.matched_amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
         let matched = money(c.matched_amount);
         // Load the line + its account's GL/clearing accounts.
@@ -95,6 +112,44 @@ impl BankingWriteService {
 
         match sink.post(&env).await {
             Ok(ack) => {
+                // The clearing edge (payment-matched only). The post above has committed the
+                // clearance's clearing leg into the ledger; this pairs it with the payment's own
+                // clearing leg on the same account, on the SAME transaction as the clearance row +
+                // allocation advance below — so the graph edge and the banking bookkeeping commit
+                // or roll back together. Direction follows the flow: a receipt deposits INTO
+                // clearing on the payment (its leg is the debit) and the clearance withdraws
+                // (credit); a payout mirrors.
+                if c.matched_source_type == "payment" {
+                    let payment_leg = ReconcileLine::new("payment", c.matched_source_id, clearing);
+                    let clearance_leg = ReconcileLine::new("settlement", clearance_id, clearing);
+                    let (debit, credit) = if is_receipt {
+                        (payment_leg, clearance_leg)
+                    } else {
+                        (clearance_leg, payment_leg)
+                    };
+                    let edge = reconcile
+                        .reconcile_pair_on(&mut *tx, &ReconcilePairRequest {
+                            company_id,
+                            debit,
+                            credit,
+                            amount: matched,
+                            origin: ReconcileOrigin::Clearing,
+                        })
+                        .await
+                        .map_err(|r| BankingError::ReconcileRefused { code: r.code, message: r.message })?;
+                    if edge.applied != matched {
+                        // The graph clamped to a different amount than banking's own bound — the
+                        // bank bookkeeping and the ledger disagree about what is clearable. Refuse
+                        // rather than drift.
+                        return Err(BankingError::ReconcileRefused {
+                            code: "reconcile_clamp_mismatch".into(),
+                            message: format!(
+                                "banking cleared {matched} but the graph applied {}",
+                                edge.applied
+                            ),
+                        });
+                    }
+                }
                 let match_method = c.match_method.clone().unwrap_or_else(|| "manual".into());
                 self.repos.clearances.insert_clearance(&mut tx, &NewClearanceRow {
                     id: clearance_id,

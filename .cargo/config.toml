@@ -1,0 +1,11 @@
+# LOCAL DEV ONLY — gitignored. Recreate from .cargo/config.toml.example.
+#
+# Redirects the backbone-gl-posting git dep (declared in Cargo.toml) to the local framework
+# checkout — needed whenever the shared contract carries changes not yet on a pushed tag (the
+# git dep would resolve the stale tag and fail to compile against them). The other framework
+# crates stay on their branch = "main" resolutions. Cargo forbids `path` + `git` on one line, and
+# a committed [patch] to a missing path hard-errors in a standalone clone, so the override lives
+# here (local-only) rather than in committed Cargo.toml.
+
+[patch."https://github.com/faridlab/backbone-framework"]
+backbone-gl-posting = { path = "../backbone-framework/backbone-gl-posting" }

@@ -1,6 +1,9 @@
 //! Golden oracle for the banking write path (import → match → clear → reconcile). Banking-only — the
 //! clearing seam into the real ledger + payment is proven in `clearing_seam.rs`. Clearing here uses a
-//! FAKE `GlPostSink`. Requires DATABASE_URL (:5433/backbone_banking).
+//! FAKE `GlPostSink` and a REFUSE-ALL `ReconcileSink`: the golden clears match statement lines to
+//! manually posted journal entries (a non-payment source kind), which keep the bounded clearance
+//! only — no reconciliation-graph edge — so the refuse-all sink doubles as the proof that banking
+//! never attempts one for them. Requires DATABASE_URL (:5433/backbone_banking).
 
 use std::sync::{Arc, Mutex};
 
@@ -10,7 +13,8 @@ use uuid::Uuid;
 
 use backbone_banking::application::service::banking_events::{BankingEvent, BankingEventSink};
 use backbone_banking::application::service::banking_gl::{
-    AccountingPostEnvelope, GlPostAck, GlPostRejected, GlPostSink,
+    AccountingPostEnvelope, GlPostAck, GlPostRejected, GlPostSink, ReconcileEdgeAck,
+    ReconcilePairRequest, ReconcileRejected, ReconcileSink, UnreconcilePairRequest,
 };
 use backbone_banking::application::service::banking_write_service::{
     BankingError, BankingWriteService, MatchCandidate, NewBank, NewBankAccount, NewCharge, NewClearance,
@@ -40,6 +44,20 @@ impl GlPostSink for FakeGl {
 #[derive(Default, Clone)]
 struct Recorder { events: Arc<Mutex<Vec<BankingEvent>>> }
 impl BankingEventSink for Recorder { fn publish(&self, e: BankingEvent) { self.events.lock().unwrap().push(e); } }
+
+/// A `ReconcileSink` that refuses everything. The golden clears match JOURNAL ENTRIES (a
+/// non-payment source kind) — those keep the bounded clearance only and must never write a graph
+/// edge, so any call fails the clear loudly instead of silently succeeding.
+struct NoEdgeSink;
+#[async_trait::async_trait]
+impl ReconcileSink for NoEdgeSink {
+    async fn reconcile_pair_on(&self, _conn: &mut sqlx::PgConnection, _req: &ReconcilePairRequest) -> Result<ReconcileEdgeAck, ReconcileRejected> {
+        Err(ReconcileRejected { code: "unexpected_edge".into(), message: "a journal match must not write a reconciliation edge".into() })
+    }
+    async fn unreconcile_pair_on(&self, _conn: &mut sqlx::PgConnection, _req: &UnreconcilePairRequest) -> Result<(), ReconcileRejected> {
+        Err(ReconcileRejected { code: "unexpected_edge".into(), message: "a journal match must not touch the reconciliation graph".into() })
+    }
+}
 
 async fn account(w: &BankingWriteService, company: Uuid, bank_gl: Uuid, clearing: Uuid) -> Uuid {
     let bank = w.create_bank(NewBank { company_id: company, name: uq("Bank"), swift_bic: None, country: None }).await.unwrap();
@@ -133,9 +151,9 @@ async fn clear_deposit_posts_bank_over_clearing() {
 
     let gl = FakeGl::default();
     let out = w.clear_transaction(NewClearance {
-        bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
+        bank_transaction_id: txn, matched_source_type: "journal".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("750000"), matched_amount: d("750000"), match_method: Some("exact".into()), clearance_date: day(6),
-    }, &gl).await.unwrap();
+    }, &gl, &NoEdgeSink).await.unwrap();
     assert!(out.fully_reconciled);
     let env = gl.last();
     assert_eq!(env.totals(), (d("750000.00"), d("750000.00")));
@@ -163,9 +181,9 @@ async fn clear_withdrawal_and_partial() {
     let gl = FakeGl::default();
     // partial clear 250,000 of 400,000
     let out = w.clear_transaction(NewClearance {
-        bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
+        bank_transaction_id: txn, matched_source_type: "journal".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("250000"), matched_amount: d("250000"), match_method: None, clearance_date: day(6),
-    }, &gl).await.unwrap();
+    }, &gl, &NoEdgeSink).await.unwrap();
     assert!(!out.fully_reconciled);
     let env = gl.last();
     assert_eq!(env.lines.iter().find(|l| l.account_id == clearing).unwrap().debit, d("250000.00"));
@@ -175,9 +193,9 @@ async fn clear_withdrawal_and_partial() {
     assert_eq!(st, "partly_reconciled");
     // clear the remaining 150,000 → reconciled
     let out2 = w.clear_transaction(NewClearance {
-        bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
+        bank_transaction_id: txn, matched_source_type: "journal".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("150000"), matched_amount: d("150000"), match_method: None, clearance_date: day(6),
-    }, &gl).await.unwrap();
+    }, &gl, &NoEdgeSink).await.unwrap();
     assert!(out2.fully_reconciled);
 }
 
@@ -263,9 +281,9 @@ async fn reconcile_with_open_lines_stays_balanced_not_closed() {
     // reconcile the line, then the session closes.
     let gl = FakeGl::default();
     w.clear_transaction(NewClearance {
-        bank_transaction_id: txn, matched_source_type: "payment".into(), matched_source_id: Uuid::new_v4(),
+        bank_transaction_id: txn, matched_source_type: "journal".into(), matched_source_id: Uuid::new_v4(),
         matched_source_amount: d("500000"), matched_amount: d("500000"), match_method: None, clearance_date: day(6),
-    }, &gl).await.unwrap();
+    }, &gl, &NoEdgeSink).await.unwrap();
     let out2 = w.reconcile(NewReconciliation {
         company_id: company, bank_account_id: acct, from_date: day(1), to_date: day(31),
         statement_closing_balance: d("500000"), ledger_balance: d("500000"),

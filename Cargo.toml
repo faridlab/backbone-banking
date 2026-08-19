@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 
@@ -21,6 +21,12 @@ backbone-core = { git = "https://github.com/faridlab/backbone-framework", branch
 backbone-orm = { git = "https://github.com/faridlab/backbone-framework", branch = "main" }
 backbone-auth = { git = "https://github.com/faridlab/backbone-framework", branch = "main", features = ["axum"] }
 backbone-messaging = { git = "https://github.com/faridlab/backbone-framework", branch = "main" }
+# The reconciliation contract (ReconcileSink port + wire types) — shared across every producer.
+# Pin discipline: a git dep on an unpushed tag fails cargo resolution even with the local .cargo
+# patch in place, so this rides the last-existing tag between the contract's release commit and its
+# pushed tag, with the patch redirecting local builds to the framework checkout. Flip to the
+# reconciliation release tag once it is pushed.
+backbone-gl-posting = { git = "https://github.com/faridlab/backbone-framework", tag = "v2.7.8" }
 
 # Core async runtime and serialization
 tokio = { version = "1.0", features = ["full"] }
