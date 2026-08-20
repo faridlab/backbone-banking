@@ -30,7 +30,7 @@ impl TestDataGenerator for CurrencyTestData {
             "symbol": null,
             "scale": 1,
             "is_base": false,
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }
@@ -45,7 +45,7 @@ impl TestDataGenerator for CurrencyTestData {
             "symbol": null,
             "scale": 1,
             "is_base": false,
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }

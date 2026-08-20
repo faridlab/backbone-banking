@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use anyhow::Result;
 use uuid::Uuid;
 
-use crate::domain::entity::{BankAccount, BankAccountType};
+use crate::domain::entity::{BankAccount, BankAccountStatus, BankAccountType};
 
 /// Pagination parameters for list queries
 #[derive(Debug, Clone, Default)]
@@ -54,13 +54,13 @@ pub struct BankAccountFilter {
     pub currency: Option<String>,
     pub account_type: Option<BankAccountType>,
     pub is_default: Option<bool>,
-    pub is_active: Option<bool>,
+    pub status: Option<BankAccountStatus>,
 }
 
 impl BankAccountFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.branch_id.is_some() || self.bank_id.is_some() || self.account_name.is_some() || self.account_number.is_some() || self.gl_account_id.is_some() || self.clearing_account_id.is_some() || self.currency.is_some() || self.account_type.is_some() || self.is_default.is_some() || self.is_active.is_some()
+        self.company_id.is_some() || self.branch_id.is_some() || self.bank_id.is_some() || self.account_name.is_some() || self.account_number.is_some() || self.gl_account_id.is_some() || self.clearing_account_id.is_some() || self.currency.is_some() || self.account_type.is_some() || self.is_default.is_some() || self.status.is_some()
     }
 }
 

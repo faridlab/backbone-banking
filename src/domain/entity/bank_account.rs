@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 use super::BankAccountType;
+use super::BankAccountStatus;
 use super::AuditMetadata;
 
 /// Strongly-typed ID for BankAccount
@@ -60,7 +61,7 @@ pub struct BankAccount {
     pub currency: String,
     pub account_type: BankAccountType,
     pub is_default: bool,
-    pub is_active: bool,
+    pub status: BankAccountStatus,
     #[serde(default)]
     #[sqlx(json)]
     pub metadata: AuditMetadata,
@@ -69,11 +70,11 @@ pub struct BankAccount {
 impl BankAccount {
     /// Create a builder for BankAccount
     pub fn builder() -> BankAccountBuilder {
-        BankAccountBuilder::default()
+        <BankAccountBuilder as Default>::default()
     }
 
     /// Create a new BankAccount with required fields
-    pub fn new(company_id: Uuid, bank_id: Uuid, account_name: String, account_number: String, gl_account_id: Uuid, clearing_account_id: Uuid, currency: String, account_type: BankAccountType, is_default: bool, is_active: bool) -> Self {
+    pub fn new(company_id: Uuid, bank_id: Uuid, account_name: String, account_number: String, gl_account_id: Uuid, clearing_account_id: Uuid, currency: String, account_type: BankAccountType, is_default: bool, status: BankAccountStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -86,7 +87,7 @@ impl BankAccount {
             currency,
             account_type,
             is_default,
-            is_active,
+            status,
             metadata: AuditMetadata::default(),
         }
     }
@@ -141,6 +142,11 @@ impl BankAccount {
         self.metadata.deleted_by.as_ref()
     }
 
+    /// Get the current status
+    pub fn status(&self) -> &BankAccountStatus {
+        &self.status
+    }
+
 
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
@@ -190,8 +196,8 @@ impl BankAccount {
                 "is_default" => {
                     if let Ok(v) = serde_json::from_value(value) { self.is_default = v; }
                 }
-                "is_active" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.is_active = v; }
+                "status" => {
+                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -253,6 +259,7 @@ impl backbone_orm::EntityRepoMeta for BankAccount {
         m.insert("gl_account_id".to_string(), "uuid".to_string());
         m.insert("clearing_account_id".to_string(), "uuid".to_string());
         m.insert("account_type".to_string(), "bank_account_type".to_string());
+        m.insert("status".to_string(), "bank_account_status".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {
@@ -279,7 +286,7 @@ pub struct BankAccountBuilder {
     currency: Option<String>,
     account_type: Option<BankAccountType>,
     is_default: Option<bool>,
-    is_active: Option<bool>,
+    status: Option<BankAccountStatus>,
 }
 
 impl BankAccountBuilder {
@@ -343,9 +350,9 @@ impl BankAccountBuilder {
         self
     }
 
-    /// Set the is_active field (default: `true`)
-    pub fn is_active(mut self, value: bool) -> Self {
-        self.is_active = Some(value);
+    /// Set the status field (default: `BankAccountStatus::default()`)
+    pub fn status(mut self, value: BankAccountStatus) -> Self {
+        self.status = Some(value);
         self
     }
 
@@ -370,9 +377,9 @@ impl BankAccountBuilder {
             gl_account_id,
             clearing_account_id,
             currency: self.currency.unwrap_or("IDR".to_string()),
-            account_type: self.account_type.unwrap_or(BankAccountType::default()),
+            account_type: self.account_type.unwrap_or_default(),
             is_default: self.is_default.unwrap_or(false),
-            is_active: self.is_active.unwrap_or(true),
+            status: self.status.unwrap_or_default(),
             metadata: AuditMetadata::default(),
         })
     }

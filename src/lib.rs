@@ -23,6 +23,7 @@ pub mod infrastructure;
 pub mod application;
 pub mod presentation;
 pub mod seeders;
+pub mod exports;
 
 // Re-exports for convenience - Domain entities
 pub use domain::entity::*;
@@ -61,15 +62,17 @@ use sqlx::PgPool;
 /// let router = banking.all_crud_routes();
 /// ```
 pub struct BankingModule {
-    pub bank_service: Arc<BankService>,
-    pub bank_account_service: Arc<BankAccountService>,
-    pub bank_clearance_service: Arc<BankClearanceService>,
-    pub bank_reconciliation_service: Arc<BankReconciliationService>,
-    pub bank_statement_import_service: Arc<BankStatementImportService>,
-    pub bank_transaction_service: Arc<BankTransactionService>,
-    pub currency_service: Arc<CurrencyService>,
-    pub exchange_rate_service: Arc<ExchangeRateService>,
-    pub fx_gain_loss_service: Arc<FxGainLossService>,
+    pub(crate) bank_service: Arc<BankService>,
+    pub(crate) bank_account_service: Arc<BankAccountService>,
+    pub(crate) bank_clearance_service: Arc<BankClearanceService>,
+    pub(crate) bank_reconciliation_service: Arc<BankReconciliationService>,
+    pub(crate) bank_statement_import_service: Arc<BankStatementImportService>,
+    pub(crate) bank_transaction_service: Arc<BankTransactionService>,
+    pub(crate) currency_service: Arc<CurrencyService>,
+    pub(crate) exchange_rate_service: Arc<ExchangeRateService>,
+    pub(crate) fx_gain_loss_service: Arc<FxGainLossService>,
+    // <<< CUSTOM FIELDS
+    // END CUSTOM
 }
 
 impl BankingModule {
@@ -113,10 +116,43 @@ impl BankingModule {
     /// mount exposes unguarded writes. Compose a guarded router (read + validated
     /// writes) for production, or call `all_crud_routes()` to opt into the full
     /// unguarded surface explicitly.
-    #[deprecated(note = "mounts unvalidated generic CRUD on every entity; compose a guarded router for production, or call all_crud_routes() for the intentional full/unguarded surface")]
+    #[deprecated(note = "mounts unvalidated generic CRUD; prefer readonly_routes() + validated writes, or all_crud_routes() for the full/unguarded surface")]
     pub fn routes(&self) -> Router {
         self.all_crud_routes()
     }
+
+    /// Read-only routes for every entity (GET endpoints only) — the safe base.
+    ///
+    /// Generic mutation can't reach here, so this surface cannot bypass a
+    /// validated write service's invariants. Use this as the production base and
+    /// merge validated write routes (or a write service's HTTP layer) onto it.
+    pub fn readonly_routes(&self) -> Router {
+        use presentation::http::{
+            create_bank_read_routes,
+            create_bank_account_read_routes,
+            create_bank_clearance_read_routes,
+            create_bank_reconciliation_read_routes,
+            create_bank_statement_import_read_routes,
+            create_bank_transaction_read_routes,
+            create_currency_read_routes,
+            create_exchange_rate_read_routes,
+            create_fx_gain_loss_read_routes,
+        };
+
+        Router::new()
+            .merge(create_bank_read_routes(self.bank_service.clone()))
+            .merge(create_bank_account_read_routes(self.bank_account_service.clone()))
+            .merge(create_bank_clearance_read_routes(self.bank_clearance_service.clone()))
+            .merge(create_bank_reconciliation_read_routes(self.bank_reconciliation_service.clone()))
+            .merge(create_bank_statement_import_read_routes(self.bank_statement_import_service.clone()))
+            .merge(create_bank_transaction_read_routes(self.bank_transaction_service.clone()))
+            .merge(create_currency_read_routes(self.currency_service.clone()))
+            .merge(create_exchange_rate_read_routes(self.exchange_rate_service.clone()))
+            .merge(create_fx_gain_loss_read_routes(self.fx_gain_loss_service.clone()))
+    }
+
+    // <<< CUSTOM METHODS
+    // END CUSTOM
 }
 
 /// Builder for BankingModule

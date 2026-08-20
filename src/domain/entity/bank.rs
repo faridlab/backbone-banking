@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+
+use super::BankStatus;
 use super::AuditMetadata;
 
 /// Strongly-typed ID for Bank
@@ -52,7 +54,7 @@ pub struct Bank {
     pub name: String,
     pub swift_bic: Option<String>,
     pub country: String,
-    pub is_active: bool,
+    pub status: BankStatus,
     #[serde(default)]
     #[sqlx(json)]
     pub metadata: AuditMetadata,
@@ -61,18 +63,18 @@ pub struct Bank {
 impl Bank {
     /// Create a builder for Bank
     pub fn builder() -> BankBuilder {
-        BankBuilder::default()
+        <BankBuilder as Default>::default()
     }
 
     /// Create a new Bank with required fields
-    pub fn new(company_id: Uuid, name: String, country: String, is_active: bool) -> Self {
+    pub fn new(company_id: Uuid, name: String, country: String, status: BankStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
             name,
             swift_bic: None,
             country,
-            is_active,
+            status,
             metadata: AuditMetadata::default(),
         }
     }
@@ -127,6 +129,11 @@ impl Bank {
         self.metadata.deleted_by.as_ref()
     }
 
+    /// Get the current status
+    pub fn status(&self) -> &BankStatus {
+        &self.status
+    }
+
 
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
@@ -158,8 +165,8 @@ impl Bank {
                 "country" => {
                     if let Ok(v) = serde_json::from_value(value) { self.country = v; }
                 }
-                "is_active" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.is_active = v; }
+                "status" => {
+                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -216,6 +223,7 @@ impl backbone_orm::EntityRepoMeta for Bank {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
         m.insert("company_id".to_string(), "uuid".to_string());
+        m.insert("status".to_string(), "bank_status".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {
@@ -236,7 +244,7 @@ pub struct BankBuilder {
     name: Option<String>,
     swift_bic: Option<String>,
     country: Option<String>,
-    is_active: Option<bool>,
+    status: Option<BankStatus>,
 }
 
 impl BankBuilder {
@@ -264,9 +272,9 @@ impl BankBuilder {
         self
     }
 
-    /// Set the is_active field (default: `true`)
-    pub fn is_active(mut self, value: bool) -> Self {
-        self.is_active = Some(value);
+    /// Set the status field (default: `BankStatus::default()`)
+    pub fn status(mut self, value: BankStatus) -> Self {
+        self.status = Some(value);
         self
     }
 
@@ -283,7 +291,7 @@ impl BankBuilder {
             name,
             swift_bic: self.swift_bic,
             country: self.country.unwrap_or("ID".to_string()),
-            is_active: self.is_active.unwrap_or(true),
+            status: self.status.unwrap_or_default(),
             metadata: AuditMetadata::default(),
         })
     }

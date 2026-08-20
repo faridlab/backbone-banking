@@ -16,7 +16,7 @@
 --     currency,
 --     account_type,
 --     is_default,
---     is_active,
+--     status,
 --     metadata
 -- ) VALUES
 -- (
@@ -26,7 +26,7 @@
 -- Example: Insert reference data
 -- Uncomment and modify the following:
 
--- INSERT INTO banking.bank_accounts (id, code, name, is_active, created_at, updated_at) VALUES
+-- INSERT INTO banking.bank_accounts (id, code, name, status, created_at, updated_at) VALUES
 --     (gen_random_uuid(), 'SAMPLE1', 'Sample 1', true, NOW(), NOW()),
 --     (gen_random_uuid(), 'SAMPLE2', 'Sample 2', true, NOW(), NOW());
 

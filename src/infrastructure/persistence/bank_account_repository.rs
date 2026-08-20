@@ -42,7 +42,7 @@ impl BankAccountRepository {
 ///
 /// Mirrors the raw column shape rather than the `BankAccount` entity: `account_type` binds as `&str`
 /// and is cast at the DB (`$10::bank_account_type`), so a bad value fails as a DB error rather than a
-/// deserialize panic. `is_default`/`is_active` are not fields — the INSERT hard-codes `false`/`true`.
+/// deserialize panic. `is_default`/`status` are not fields — the INSERT hard-codes `false`/`'active'`.
 /// `currency`/`account_type` are already defaulted by the caller, so they are not optional here.
 pub struct NewBankAccountRow<'a> {
     pub id: Uuid,
@@ -77,8 +77,8 @@ impl BankAccountRepository {
             sqlx::query(
                 r#"INSERT INTO banking.bank_accounts
                     (id, company_id, branch_id, bank_id, account_name, account_number, gl_account_id,
-                     clearing_account_id, currency, account_type, is_default, is_active)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,true)"#,
+                     clearing_account_id, currency, account_type, is_default, status)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,'active')"#,
             )
             .bind(a.id).bind(a.company_id).bind(a.branch_id).bind(a.bank_id).bind(a.account_name)
             .bind(a.account_number).bind(a.gl_account_id).bind(a.clearing_account_id)

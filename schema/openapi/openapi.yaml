@@ -3334,7 +3334,7 @@ components:
         - company_id
         - name
         - country
-        - is_active
+        - status
         - metadata
       properties:
         id:
@@ -3353,8 +3353,8 @@ components:
         country:
           type: string
           maxLength: 2
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3377,7 +3377,7 @@ components:
         - company_id
         - name
         - country
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -3393,8 +3393,8 @@ components:
         country:
           type: string
           maxLength: 2
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3404,7 +3404,7 @@ components:
         - company_id
         - name
         - country
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -3420,8 +3420,8 @@ components:
         country:
           type: string
           maxLength: 2
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3441,8 +3441,8 @@ components:
         country:
           type: string
           maxLength: 2
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3469,7 +3469,7 @@ components:
         - currency
         - account_type
         - is_default
-        - is_active
+        - status
         - metadata
       properties:
         id:
@@ -3504,8 +3504,8 @@ components:
           type: string
         is_default:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3534,7 +3534,7 @@ components:
         - currency
         - account_type
         - is_default
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -3566,8 +3566,8 @@ components:
           type: string
         is_default:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3583,7 +3583,7 @@ components:
         - currency
         - account_type
         - is_default
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -3615,8 +3615,8 @@ components:
           type: string
         is_default:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -3652,8 +3652,8 @@ components:
           type: string
         is_default:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -4450,7 +4450,7 @@ components:
         - name
         - scale
         - is_base
-        - is_active
+        - status
         - metadata
       properties:
         id:
@@ -4474,8 +4474,8 @@ components:
           format: int32
         is_base:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -4500,7 +4500,7 @@ components:
         - name
         - scale
         - is_base
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -4521,8 +4521,8 @@ components:
           format: int32
         is_base:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -4534,7 +4534,7 @@ components:
         - name
         - scale
         - is_base
-        - is_active
+        - status
         - metadata
       properties:
         company_id:
@@ -4555,8 +4555,8 @@ components:
           format: int32
         is_base:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 
@@ -4581,8 +4581,8 @@ components:
           format: int32
         is_base:
           type: boolean
-        is_active:
-          type: boolean
+        status:
+          type: string
         metadata:
           type: object
 

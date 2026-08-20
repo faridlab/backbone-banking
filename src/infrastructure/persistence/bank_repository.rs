@@ -40,7 +40,7 @@ impl BankRepository {
 
 /// The exact row a bank registration writes.
 ///
-/// `is_active` is not a field — the INSERT hard-codes `true`. `country` is already defaulted by the
+/// `status` is not a field — the INSERT hard-codes `'active'`. `country` is already defaulted by the
 /// caller, so it is not optional here.
 pub struct NewBankRow<'a> {
     pub id: Uuid,
@@ -67,8 +67,8 @@ impl BankRepository {
         company_scope::execute_scoped(
             pool,
             sqlx::query(
-                r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, is_active)
-                   VALUES ($1,$2,$3,$4,$5,true)"#,
+                r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, status)
+                   VALUES ($1,$2,$3,$4,$5,'active')"#,
             )
             .bind(b.id).bind(b.company_id).bind(b.name).bind(b.swift_bic).bind(b.country),
         )

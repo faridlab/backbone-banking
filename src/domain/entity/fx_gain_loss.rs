@@ -68,7 +68,7 @@ pub struct FxGainLoss {
 impl FxGainLoss {
     /// Create a builder for FxGainLoss
     pub fn builder() -> FxGainLossBuilder {
-        FxGainLossBuilder::default()
+        <FxGainLossBuilder as Default>::default()
     }
 
     /// Create a new FxGainLoss with required fields

@@ -69,7 +69,7 @@ pub struct BankClearance {
 impl BankClearance {
     /// Create a builder for BankClearance
     pub fn builder() -> BankClearanceBuilder {
-        BankClearanceBuilder::default()
+        <BankClearanceBuilder as Default>::default()
     }
 
     /// Create a new BankClearance with required fields
@@ -352,7 +352,7 @@ impl BankClearanceBuilder {
             matched_source_type,
             matched_source_id,
             matched_amount,
-            match_method: self.match_method.unwrap_or(MatchMethod::default()),
+            match_method: self.match_method.unwrap_or_default(),
             clearance_date,
             accounting_post_id: self.accounting_post_id,
             journal_id: self.journal_id,

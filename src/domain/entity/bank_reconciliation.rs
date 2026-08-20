@@ -68,7 +68,7 @@ pub struct BankReconciliation {
 impl BankReconciliation {
     /// Create a builder for BankReconciliation
     pub fn builder() -> BankReconciliationBuilder {
-        BankReconciliationBuilder::default()
+        <BankReconciliationBuilder as Default>::default()
     }
 
     /// Create a new BankReconciliation with required fields
@@ -337,7 +337,7 @@ impl BankReconciliationBuilder {
             ledger_balance: self.ledger_balance.unwrap_or(Decimal::from(0)),
             computed_difference: self.computed_difference.unwrap_or(Decimal::from(0)),
             unreconciled_count: self.unreconciled_count.unwrap_or(0),
-            status: self.status.unwrap_or(ReconStatus::default()),
+            status: self.status.unwrap_or_default(),
             metadata: AuditMetadata::default(),
         })
     }

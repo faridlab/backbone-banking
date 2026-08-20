@@ -34,7 +34,7 @@ impl TestDataGenerator for BankAccountTestData {
             "currency": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "account_type": "checking",
             "is_default": false,
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }
@@ -53,7 +53,7 @@ impl TestDataGenerator for BankAccountTestData {
             "currency": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "account_type": "checking",
             "is_default": false,
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }

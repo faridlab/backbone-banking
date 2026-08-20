@@ -66,7 +66,7 @@ pub struct ExchangeRate {
 impl ExchangeRate {
     /// Create a builder for ExchangeRate
     pub fn builder() -> ExchangeRateBuilder {
-        ExchangeRateBuilder::default()
+        <ExchangeRateBuilder as Default>::default()
     }
 
     /// Create a new ExchangeRate with required fields
@@ -315,7 +315,7 @@ impl ExchangeRateBuilder {
             to_currency,
             rate,
             effective_at,
-            rate_type: self.rate_type.unwrap_or(RateType::default()),
+            rate_type: self.rate_type.unwrap_or_default(),
             source: self.source,
             metadata: AuditMetadata::default(),
         })

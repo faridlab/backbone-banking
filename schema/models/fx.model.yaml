@@ -20,7 +20,7 @@ models:
       symbol: { type: string?, attributes: ["@max(8)"] }
       scale: { type: int, attributes: ["@required", "@non_negative"], description: "Decimal places (IDR=0, USD=2)" }
       is_base: { type: bool, attributes: ["@default(false)"], description: "The ledger base (IDR). Exactly one per company." }
-      is_active: { type: bool, attributes: ["@default(true)"] }
+      status: { type: CurrencyStatus, attributes: ["@default(active)"] }
       metadata: { type: Metadata, attributes: ["@audit_metadata"] }
     indexes:
       - type: unique
@@ -68,6 +68,15 @@ models:
         fields: [company_id, matched_source_id]
 
 enums:
+  - name: CurrencyStatus
+    description: "Lifecycle of a transactable currency"
+    variants:
+      - name: active
+        description: "Available for rates, accounts, and settlement"
+        default: true
+      - name: inactive
+        description: "Withdrawn from use; historical rates and balances remain"
+
   - name: RateType
     description: "Kind of FX rate"
     variants:

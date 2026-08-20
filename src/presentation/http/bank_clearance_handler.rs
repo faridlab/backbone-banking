@@ -132,6 +132,13 @@ pub fn create_bank_clearance_read_routes(service: Arc<BankClearanceService>) -> 
 ///
 /// These routes must NOT be publicly exposed. Wrap them with an auth
 /// middleware before nesting into the application router.
+///
+/// # This is unguarded generic CRUD, not a validated write path
+///
+/// These are plain create/update/patch/delete mutations over the entity row —
+/// they bypass all business invariants. If the module exposes a validated write
+/// service (e.g. a command router over its domain engine), serve THAT instead
+/// for any mutation that must respect domain rules.
 pub fn create_bank_clearance_write_routes(service: Arc<BankClearanceService>) -> Router {
     BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::write_routes(
         service,
@@ -180,4 +187,3 @@ pub fn create_protected_bank_clearance_routes<A: AuthMiddleware + Send + Sync + 
             }
         }))
 }
-

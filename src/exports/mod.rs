@@ -8,7 +8,7 @@
 //! ## Usage from other modules
 //!
 //! ```text
-//! use banking::exports::{BankDto, BankingQueryService};
+//! use banking::exports::{BankDto};
 //! ```
 
 mod types;
@@ -54,9 +54,6 @@ pub use events::*;
 /// - `FxGainLossDto` - Data transfer object for FxGainLoss
 /// - `FxGainLossSummary` - Summary view of FxGainLoss
 /// - `FxGainLossId` - Type-safe ID wrapper
-///
-/// ## Public Services
-/// - `BankingQueryService` - Read-only queries
 ///
 /// ## Public Events
 /// - `BankCreatedEvent` - Published when Bank is created

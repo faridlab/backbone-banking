@@ -11,14 +11,12 @@ pub mod bank_clearance_handler;
 pub mod bank_reconciliation_handler;
 pub mod bank_statement_import_handler;
 pub mod bank_transaction_handler;
-// <<< CUSTOM
-pub mod guarded_routes;
-// END CUSTOM
 pub mod currency_handler;
 pub mod exchange_rate_handler;
 pub mod fx_gain_loss_handler;
 
 // <<< CUSTOM
+pub mod guarded_routes;
 // END CUSTOM
 
 // Re-exports

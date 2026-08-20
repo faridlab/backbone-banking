@@ -18,6 +18,7 @@ use validator::Validate;
 
 use crate::domain::entity::Bank;
 use crate::domain::entity::AuditMetadata;
+use crate::domain::entity::BankStatus;
 
 // =============================================================================
 // Create DTO
@@ -44,9 +45,7 @@ pub struct CreateBankDto {
     #[cfg_attr(feature = "validation", validate(length(max = 2)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub country: String,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(alias = "is_active")]
-    pub is_active: bool,
+    pub status: BankStatus,
 }
 
 // =============================================================================
@@ -74,9 +73,7 @@ pub struct UpdateBankDto {
     #[cfg_attr(feature = "validation", validate(length(max = 2)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub country: String,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(alias = "is_active")]
-    pub is_active: bool,
+    pub status: BankStatus,
 }
 
 // =============================================================================
@@ -106,15 +103,14 @@ pub struct PatchBankDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "is_active")]
-    pub is_active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<BankStatus>,
 }
 
 impl PatchBankDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.is_active.is_some()
+        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.status.is_some()
     }
 }
 
@@ -139,8 +135,7 @@ pub struct BankResponseDto {
     pub swift_bic: Option<String>,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub country: String,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    pub is_active: bool,
+    pub status: BankStatus,
     pub metadata: AuditMetadata,
 }
 
@@ -216,7 +211,7 @@ impl From<Bank> for BankResponseDto {
             name: entity.name,
             swift_bic: entity.swift_bic,
             country: entity.country,
-            is_active: entity.is_active,
+            status: entity.status,
             metadata: entity.metadata,
         }
     }
@@ -243,7 +238,7 @@ impl From<CreateBankDto> for Bank {
             name: dto.name,
             swift_bic: dto.swift_bic,
             country: dto.country,
-            is_active: dto.is_active,
+            status: dto.status,
             metadata: AuditMetadata::default(),
         }
     }
@@ -257,7 +252,7 @@ impl From<&Bank> for BankResponseDto {
             name: entity.name.clone(),
             swift_bic: entity.swift_bic.clone(),
             country: entity.country.clone(),
-            is_active: entity.is_active.clone(),
+            status: entity.status.clone(),
             metadata: entity.metadata.clone(),
         }
     }
@@ -275,7 +270,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankDto> for Bank {
         self.name = dto.name;
         self.swift_bic = dto.swift_bic;
         self.country = dto.country;
-        self.is_active = dto.is_active;
+        self.status = dto.status;
         Ok(self)
     }
 }

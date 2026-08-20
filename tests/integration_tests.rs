@@ -135,4 +135,3 @@ async fn test_fx_gain_loss_api() {
         panic!("{} tests failed", failed.len());
     }
 }
-

@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use anyhow::Result;
 use uuid::Uuid;
 
-use crate::domain::entity::Currency;
+use crate::domain::entity::{Currency, CurrencyStatus};
 
 /// Pagination parameters for list queries
 #[derive(Debug, Clone, Default)]
@@ -49,13 +49,13 @@ pub struct CurrencyFilter {
     pub name: Option<String>,
     pub symbol: Option<String>,
     pub is_base: Option<bool>,
-    pub is_active: Option<bool>,
+    pub status: Option<CurrencyStatus>,
 }
 
 impl CurrencyFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.code.is_some() || self.name.is_some() || self.symbol.is_some() || self.is_base.is_some() || self.is_active.is_some()
+        self.company_id.is_some() || self.code.is_some() || self.name.is_some() || self.symbol.is_some() || self.is_base.is_some() || self.status.is_some()
     }
 }
 

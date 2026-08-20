@@ -13,6 +13,10 @@ pub mod bank_clearance_service;
 pub mod bank_reconciliation_service;
 pub mod bank_statement_import_service;
 pub mod bank_transaction_service;
+pub mod currency_service;
+pub mod exchange_rate_service;
+pub mod fx_gain_loss_service;
+
 // <<< CUSTOM
 pub mod banking_events;
 pub mod banking_gl;
@@ -25,12 +29,6 @@ pub mod banking_clearance;
 pub mod banking_reconciliation;
 pub mod fx_service;
 pub use fx_service::{ExchangeRateProvider, ExchangeRateSnapshot, FxError, FxResult, FxService};
-// END CUSTOM
-pub mod currency_service;
-pub mod exchange_rate_service;
-pub mod fx_gain_loss_service;
-
-// <<< CUSTOM
 // END CUSTOM
 
 pub use bank_service::BankService;

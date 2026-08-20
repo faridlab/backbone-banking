@@ -28,7 +28,7 @@ impl TestDataGenerator for BankTestData {
             "name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "swift_bic": null,
             "country": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }
@@ -41,7 +41,7 @@ impl TestDataGenerator for BankTestData {
             "name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "swift_bic": null,
             "country": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
-            "is_active": false,
+            "status": "active",
             "metadata": json!({}),
         })
     }

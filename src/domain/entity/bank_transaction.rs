@@ -71,7 +71,7 @@ pub struct BankTransaction {
 impl BankTransaction {
     /// Create a builder for BankTransaction
     pub fn builder() -> BankTransactionBuilder {
-        BankTransactionBuilder::default()
+        <BankTransactionBuilder as Default>::default()
     }
 
     /// Create a new BankTransaction with required fields
@@ -401,7 +401,7 @@ impl BankTransactionBuilder {
             deposit: self.deposit.unwrap_or(Decimal::from(0)),
             withdrawal: self.withdrawal.unwrap_or(Decimal::from(0)),
             currency: self.currency.unwrap_or("IDR".to_string()),
-            status: self.status.unwrap_or(TxnStatus::default()),
+            status: self.status.unwrap_or_default(),
             allocated_amount: self.allocated_amount.unwrap_or(Decimal::from(0)),
             metadata: AuditMetadata::default(),
         })

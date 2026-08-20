@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use anyhow::Result;
 use uuid::Uuid;
 
-use crate::domain::entity::Bank;
+use crate::domain::entity::{Bank, BankStatus};
 
 /// Pagination parameters for list queries
 #[derive(Debug, Clone, Default)]
@@ -48,13 +48,13 @@ pub struct BankFilter {
     pub name: Option<String>,
     pub swift_bic: Option<String>,
     pub country: Option<String>,
-    pub is_active: Option<bool>,
+    pub status: Option<BankStatus>,
 }
 
 impl BankFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.is_active.is_some()
+        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.status.is_some()
     }
 }
 

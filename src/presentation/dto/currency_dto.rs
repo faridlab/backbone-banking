@@ -18,6 +18,7 @@ use validator::Validate;
 
 use crate::domain::entity::Currency;
 use crate::domain::entity::AuditMetadata;
+use crate::domain::entity::CurrencyStatus;
 
 // =============================================================================
 // Create DTO
@@ -49,9 +50,7 @@ pub struct CreateCurrencyDto {
     #[cfg_attr(feature = "openapi", schema(example = true))]
     #[serde(alias = "is_base")]
     pub is_base: bool,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(alias = "is_active")]
-    pub is_active: bool,
+    pub status: CurrencyStatus,
 }
 
 // =============================================================================
@@ -84,9 +83,7 @@ pub struct UpdateCurrencyDto {
     #[cfg_attr(feature = "openapi", schema(example = true))]
     #[serde(alias = "is_base")]
     pub is_base: bool,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(alias = "is_active")]
-    pub is_active: bool,
+    pub status: CurrencyStatus,
 }
 
 // =============================================================================
@@ -122,15 +119,14 @@ pub struct PatchCurrencyDto {
     #[cfg_attr(feature = "openapi", schema(example = true))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "is_base")]
     pub is_base: Option<bool>,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "is_active")]
-    pub is_active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<CurrencyStatus>,
 }
 
 impl PatchCurrencyDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.code.is_some() || self.name.is_some() || self.symbol.is_some() || self.scale.is_some() || self.is_base.is_some() || self.is_active.is_some()
+        self.company_id.is_some() || self.code.is_some() || self.name.is_some() || self.symbol.is_some() || self.scale.is_some() || self.is_base.is_some() || self.status.is_some()
     }
 }
 
@@ -159,8 +155,7 @@ pub struct CurrencyResponseDto {
     pub scale: i32,
     #[cfg_attr(feature = "openapi", schema(example = true))]
     pub is_base: bool,
-    #[cfg_attr(feature = "openapi", schema(example = true))]
-    pub is_active: bool,
+    pub status: CurrencyStatus,
     pub metadata: AuditMetadata,
 }
 
@@ -238,7 +233,7 @@ impl From<Currency> for CurrencyResponseDto {
             symbol: entity.symbol,
             scale: entity.scale,
             is_base: entity.is_base,
-            is_active: entity.is_active,
+            status: entity.status,
             metadata: entity.metadata,
         }
     }
@@ -267,7 +262,7 @@ impl From<CreateCurrencyDto> for Currency {
             symbol: dto.symbol,
             scale: dto.scale,
             is_base: dto.is_base,
-            is_active: dto.is_active,
+            status: dto.status,
             metadata: AuditMetadata::default(),
         }
     }
@@ -283,7 +278,7 @@ impl From<&Currency> for CurrencyResponseDto {
             symbol: entity.symbol.clone(),
             scale: entity.scale.clone(),
             is_base: entity.is_base.clone(),
-            is_active: entity.is_active.clone(),
+            status: entity.status.clone(),
             metadata: entity.metadata.clone(),
         }
     }
@@ -303,7 +298,7 @@ impl backbone_core::ApplyUpdateDto<UpdateCurrencyDto> for Currency {
         self.symbol = dto.symbol;
         self.scale = dto.scale;
         self.is_base = dto.is_base;
-        self.is_active = dto.is_active;
+        self.status = dto.status;
         Ok(self)
     }
 }

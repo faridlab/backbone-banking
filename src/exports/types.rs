@@ -53,7 +53,7 @@ pub struct BankDto {
     pub name: String,
     pub swift_bic: Option<String>,
     pub country: String,
-    pub is_active: bool,
+    pub status: BankStatus,
     pub metadata: serde_json::Value,
 }
 
@@ -62,6 +62,7 @@ pub struct BankDto {
 pub struct BankSummary {
     pub id: BankId,
     pub name: String,
+    pub status: BankStatus,
 }
 
 /// Reference to Bank for foreign key relationships
@@ -118,7 +119,7 @@ pub struct BankAccountDto {
     pub currency: String,
     pub account_type: BankAccountType,
     pub is_default: bool,
-    pub is_active: bool,
+    pub status: BankAccountStatus,
     pub metadata: serde_json::Value,
 }
 
@@ -127,6 +128,7 @@ pub struct BankAccountDto {
 pub struct BankAccountSummary {
     pub id: BankAccountId,
     pub account_name: String,
+    pub status: BankAccountStatus,
 }
 
 /// Reference to BankAccount for foreign key relationships
@@ -434,7 +436,7 @@ pub struct CurrencyDto {
     pub symbol: Option<String>,
     pub scale: i32,
     pub is_base: bool,
-    pub is_active: bool,
+    pub status: CurrencyStatus,
     pub metadata: serde_json::Value,
 }
 
@@ -443,6 +445,7 @@ pub struct CurrencyDto {
 pub struct CurrencySummary {
     pub id: CurrencyId,
     pub name: String,
+    pub status: CurrencyStatus,
 }
 
 /// Reference to Currency for foreign key relationships

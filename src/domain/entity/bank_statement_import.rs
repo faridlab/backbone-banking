@@ -70,7 +70,7 @@ pub struct BankStatementImport {
 impl BankStatementImport {
     /// Create a builder for BankStatementImport
     pub fn builder() -> BankStatementImportBuilder {
-        BankStatementImportBuilder::default()
+        <BankStatementImportBuilder as Default>::default()
     }
 
     /// Create a new BankStatementImport with required fields
@@ -355,13 +355,13 @@ impl BankStatementImportBuilder {
             id: Uuid::new_v4(),
             company_id,
             bank_account_id,
-            source_format: self.source_format.unwrap_or(SourceFormat::default()),
+            source_format: self.source_format.unwrap_or_default(),
             statement_period_start,
             statement_period_end,
             opening_balance: self.opening_balance.unwrap_or(Decimal::from(0)),
             closing_balance: self.closing_balance.unwrap_or(Decimal::from(0)),
             file_ref: self.file_ref,
-            status: self.status.unwrap_or(ImportStatus::default()),
+            status: self.status.unwrap_or_default(),
             row_count: self.row_count.unwrap_or(0),
             metadata: AuditMetadata::default(),
         })

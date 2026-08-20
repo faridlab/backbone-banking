@@ -34,10 +34,10 @@ models:
         type: string
         attributes: ["@default(\"ID\")", "@max(2)"]
         description: "ISO country code"
-      is_active:
-        type: bool
-        attributes: ["@default(true)"]
-        description: "Available for selection"
+      status:
+        type: BankStatus
+        attributes: ["@default(active)"]
+        description: "Lifecycle of the bank catalogue entry"
       metadata:
         type: Metadata
         attributes: ["@audit_metadata"]
@@ -45,7 +45,7 @@ models:
 
     indexes:
       - type: index
-        fields: [company_id, is_active]
+        fields: [company_id, status]
 
   - name: BankAccount
     collection: bank_accounts
@@ -96,10 +96,10 @@ models:
         type: bool
         attributes: ["@default(false)"]
         description: "Company default for this currency"
-      is_active:
-        type: bool
-        attributes: ["@default(true)"]
-        description: "Available for selection"
+      status:
+        type: BankAccountStatus
+        attributes: ["@default(active)"]
+        description: "Lifecycle of the account; closed accounts keep their history"
       metadata:
         type: Metadata
         attributes: ["@audit_metadata"]
@@ -110,9 +110,27 @@ models:
         fields: [company_id, bank_id, account_number]
         where: "deleted_at IS NULL"
       - type: index
-        fields: [company_id, is_active]
+        fields: [company_id, status]
 
 enums:
+  - name: BankStatus
+    description: "Lifecycle of a bank catalogue entry"
+    variants:
+      - name: active
+        description: "Available for selection when opening accounts"
+        default: true
+      - name: inactive
+        description: "Withdrawn; existing accounts keep operating"
+
+  - name: BankAccountStatus
+    description: "Lifecycle of a company account at a bank"
+    variants:
+      - name: active
+        description: "Usable for settlement and clearance"
+        default: true
+      - name: inactive
+        description: "Closed or suspended; history and clears remain"
+
   - name: BankAccountType
     description: "Kind of bank account"
     variants:
