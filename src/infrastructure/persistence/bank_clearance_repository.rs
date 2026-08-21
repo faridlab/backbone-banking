@@ -97,17 +97,22 @@ impl BankClearanceRepository {
         if payment_ids.is_empty() {
             return Ok(std::collections::HashMap::new());
         }
+        // Scoped helper, not a raw pool fetch: the fence on bank_clearances would silently filter
+        // every row without the `app.company_id` bind, returning an empty cleared-map and letting
+        // candidate ordering present fully-open amounts for payments already cleared.
         let rows = company_scope::with_company_scope(
             Some(company_id),
-            sqlx::query(
-                r#"SELECT matched_source_id, SUM(matched_amount) AS cleared
+            company_scope::fetch_all_rows_scoped(
+                pool,
+                sqlx::query(
+                    r#"SELECT matched_source_id, SUM(matched_amount) AS cleared
                    FROM banking.bank_clearances
                    WHERE company_id=$1 AND matched_source_type='payment' AND matched_source_id = ANY($2)
                    GROUP BY matched_source_id"#,
-            )
-            .bind(company_id)
-            .bind(payment_ids)
-            .fetch_all(pool),
+                )
+                .bind(company_id)
+                .bind(payment_ids),
+            ),
         )
         .await?;
         Ok(rows

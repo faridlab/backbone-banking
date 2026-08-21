@@ -96,18 +96,25 @@ impl CandidatePoolPort for PaymentPoolRead {
                 "payment.payment_entries is absent — the candidate pool cannot be read".into(),
             ));
         }
+        // RLS note: a raw pool fetch under `with_company_scope` binds nothing on the connection —
+        // the fence on payment.payment_entries then filters every row out and the pool reads as
+        // empty (the set_config-evaporation class). `fetch_all_rows_scoped` opens its own short
+        // tx, binds `app.company_id` there, and commits (ADR-0008), so the pool read sees the
+        // tenant the caller already proved.
         let rows = company_scope::with_company_scope(
             Some(company_id),
-            sqlx::query(
-                r#"SELECT id, payment_number, paid_amount, posting_date, reference_no
+            company_scope::fetch_all_rows_scoped(
+                pool,
+                sqlx::query(
+                    r#"SELECT id, payment_number, paid_amount, posting_date, reference_no
                    FROM payment.payment_entries
                    WHERE company_id=$1 AND bank_account_id=$2
                      AND posting_state='posted' AND status IN ('in_flight','paid')
                      AND (metadata->>'deleted_at') IS NULL"#,
-            )
-            .bind(company_id)
-            .bind(bank_account_id)
-            .fetch_all(pool),
+                )
+                .bind(company_id)
+                .bind(bank_account_id),
+            ),
         )
         .await
         .map_err(BankingError::Db)?;
@@ -135,18 +142,24 @@ impl BankingWriteService {
         preset_id: Uuid,
         line_id: Uuid,
     ) -> Result<Vec<RankedCandidate>, BankingError> {
-        // Preset (tenant-fenced read): company_id explicit — the route's token tenant.
+        // Preset (tenant-fenced read): company_id explicit — the route's token tenant. The read
+        // must ride the scoped helper, not a raw pool fetch: the fence on reconcile_presets would
+        // otherwise filter the row out and `fetch_one` would surface RowNotFound — which maps to
+        // a generic 500 instead of the 404 a missing preset owes the caller.
         let preset = company_scope::with_company_scope(
             Some(company_id),
-            sqlx::query(
-                r#"SELECT company_id, name, match_on::text AS mo, tolerance_percent, days_window, status::text AS st
+            company_scope::fetch_optional_row_scoped(
+                &self.db_pool,
+                sqlx::query(
+                    r#"SELECT company_id, name, match_on::text AS mo, tolerance_percent, days_window, status::text AS st
                    FROM banking.reconcile_presets WHERE id=$1 AND (metadata->>'deleted_at') IS NULL"#,
-            )
-            .bind(preset_id)
-            .fetch_one(&self.db_pool),
+                )
+                .bind(preset_id),
+            ),
         )
         .await
-        .map_err(BankingError::Db)?;
+        .map_err(BankingError::Db)?
+        .ok_or(BankingError::PresetNotFound(preset_id))?;
         let preset_company: Uuid = preset.get("company_id");
         if preset_company != company_id {
             // Strict fence: another tenant's preset is indistinguishable from absence.
