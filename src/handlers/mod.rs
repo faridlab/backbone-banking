@@ -15,9 +15,8 @@ use crate::application::service::BankClearanceService;
 use crate::application::service::BankReconciliationService;
 use crate::application::service::BankStatementImportService;
 use crate::application::service::BankTransactionService;
-use crate::application::service::CurrencyService;
-use crate::application::service::ExchangeRateService;
 use crate::application::service::FxGainLossService;
+use crate::application::service::ReconcilePresetService;
 
 /// Application state for dependency injection.
 ///
@@ -49,12 +48,10 @@ pub struct AppState {
     pub bank_statement_import_service: Arc<BankStatementImportService>,
     /// BankTransaction service
     pub bank_transaction_service: Arc<BankTransactionService>,
-    /// Currency service
-    pub currency_service: Arc<CurrencyService>,
-    /// ExchangeRate service
-    pub exchange_rate_service: Arc<ExchangeRateService>,
     /// FxGainLoss service
     pub fx_gain_loss_service: Arc<FxGainLossService>,
+    /// ReconcilePreset service
+    pub reconcile_preset_service: Arc<ReconcilePresetService>,
 }
 
 impl AppState {
@@ -66,9 +63,8 @@ impl AppState {
         bank_reconciliation_service: Arc<BankReconciliationService>,
         bank_statement_import_service: Arc<BankStatementImportService>,
         bank_transaction_service: Arc<BankTransactionService>,
-        currency_service: Arc<CurrencyService>,
-        exchange_rate_service: Arc<ExchangeRateService>,
-        fx_gain_loss_service: Arc<FxGainLossService>
+        fx_gain_loss_service: Arc<FxGainLossService>,
+        reconcile_preset_service: Arc<ReconcilePresetService>
     ) -> Self {
         Self {
             bank_service,
@@ -77,9 +73,8 @@ impl AppState {
             bank_reconciliation_service,
             bank_statement_import_service,
             bank_transaction_service,
-            currency_service,
-            exchange_rate_service,
             fx_gain_loss_service,
+            reconcile_preset_service,
         }
     }
 
@@ -92,9 +87,8 @@ impl AppState {
             bank_reconciliation_service: module.bank_reconciliation_service.clone(),
             bank_statement_import_service: module.bank_statement_import_service.clone(),
             bank_transaction_service: module.bank_transaction_service.clone(),
-            currency_service: module.currency_service.clone(),
-            exchange_rate_service: module.exchange_rate_service.clone(),
             fx_gain_loss_service: module.fx_gain_loss_service.clone(),
+            reconcile_preset_service: module.reconcile_preset_service.clone(),
         }
     }
 }
@@ -110,9 +104,8 @@ pub struct AppStateBuilder {
     bank_reconciliation_service: Option<Arc<BankReconciliationService>>,
     bank_statement_import_service: Option<Arc<BankStatementImportService>>,
     bank_transaction_service: Option<Arc<BankTransactionService>>,
-    currency_service: Option<Arc<CurrencyService>>,
-    exchange_rate_service: Option<Arc<ExchangeRateService>>,
     fx_gain_loss_service: Option<Arc<FxGainLossService>>,
+    reconcile_preset_service: Option<Arc<ReconcilePresetService>>,
 }
 
 impl AppStateBuilder {
@@ -157,21 +150,15 @@ impl AppStateBuilder {
         self
     }
 
-    /// Set the Currency service.
-    pub fn with_currency_service(mut self, service: Arc<CurrencyService>) -> Self {
-        self.currency_service = Some(service);
-        self
-    }
-
-    /// Set the ExchangeRate service.
-    pub fn with_exchange_rate_service(mut self, service: Arc<ExchangeRateService>) -> Self {
-        self.exchange_rate_service = Some(service);
-        self
-    }
-
     /// Set the FxGainLoss service.
     pub fn with_fx_gain_loss_service(mut self, service: Arc<FxGainLossService>) -> Self {
         self.fx_gain_loss_service = Some(service);
+        self
+    }
+
+    /// Set the ReconcilePreset service.
+    pub fn with_reconcile_preset_service(mut self, service: Arc<ReconcilePresetService>) -> Self {
+        self.reconcile_preset_service = Some(service);
         self
     }
 
@@ -188,9 +175,8 @@ impl AppStateBuilder {
             bank_reconciliation_service: self.bank_reconciliation_service.expect("bank_reconciliation_service is required"),
             bank_statement_import_service: self.bank_statement_import_service.expect("bank_statement_import_service is required"),
             bank_transaction_service: self.bank_transaction_service.expect("bank_transaction_service is required"),
-            currency_service: self.currency_service.expect("currency_service is required"),
-            exchange_rate_service: self.exchange_rate_service.expect("exchange_rate_service is required"),
             fx_gain_loss_service: self.fx_gain_loss_service.expect("fx_gain_loss_service is required"),
+            reconcile_preset_service: self.reconcile_preset_service.expect("reconcile_preset_service is required"),
         }
     }
 }

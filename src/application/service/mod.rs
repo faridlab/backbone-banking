@@ -7,15 +7,14 @@
 pub mod error;
 pub use error::{ServiceError, ServiceResult};
 
-pub mod bank_service;
 pub mod bank_account_service;
 pub mod bank_clearance_service;
 pub mod bank_reconciliation_service;
+pub mod bank_service;
 pub mod bank_statement_import_service;
 pub mod bank_transaction_service;
-pub mod currency_service;
-pub mod exchange_rate_service;
 pub mod fx_gain_loss_service;
+pub mod reconcile_preset_service;
 
 // <<< CUSTOM
 pub mod banking_events;
@@ -24,34 +23,34 @@ pub mod banking_write_service;
 // The write surface, chunked: each is an `impl BankingWriteService` block over the vocabulary that
 // stays in `banking_write_service` (so the `banking_write_service::{NewClearance, ...}` import paths
 // are unchanged).
-pub mod banking_statement;
 pub mod banking_clearance;
 pub mod banking_reconciliation;
+pub mod banking_statement;
+pub mod reconcile_preset_candidates;
+pub use reconcile_preset_candidates::{
+    CandidateLineBasis, CandidatePoolPort, OpenCandidate, PaymentPoolRead, RankedCandidate,
+};
 pub mod fx_service;
 pub use fx_service::{ExchangeRateProvider, ExchangeRateSnapshot, FxError, FxResult, FxService};
 // END CUSTOM
 
-pub use bank_service::BankService;
 pub use bank_account_service::BankAccountService;
 pub use bank_clearance_service::BankClearanceService;
 pub use bank_reconciliation_service::BankReconciliationService;
+pub use bank_service::BankService;
 pub use bank_statement_import_service::BankStatementImportService;
 pub use bank_transaction_service::BankTransactionService;
+pub use fx_gain_loss_service::FxGainLossService;
+pub use reconcile_preset_service::ReconcilePresetService;
 // <<< CUSTOM
 pub use banking_events::{
     BankChargeRecognized, BankReconciliationClosed, BankStatementImported, BankTransactionCleared,
     BankTransactionMatched, BankingEvent, BankingEventSink, LoggingSink,
 };
-pub use banking_gl::{
-    AccountingPostEnvelope, GlPostAck, GlPostLine, GlPostRejected, GlPostSink,
-};
+pub use banking_gl::{AccountingPostEnvelope, GlPostAck, GlPostLine, GlPostRejected, GlPostSink};
 pub use banking_write_service::{
     BankingError, BankingWriteService, ClearOutcome, MatchCandidate, NewBank, NewBankAccount,
-    NewCharge, NewClearance, NewReconciliation, NewStatementImport, NewStatementLine, ReconcileOutcome,
+    NewCharge, NewClearance, NewReconciliation, NewStatementImport, NewStatementLine,
+    ReconcileOutcome,
 };
-// END CUSTOM
-pub use currency_service::CurrencyService;
-pub use exchange_rate_service::ExchangeRateService;
-pub use fx_gain_loss_service::FxGainLossService;
-// <<< CUSTOM
 // END CUSTOM

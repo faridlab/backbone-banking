@@ -55,16 +55,29 @@ impl BankingWriteService {
     /// stranded attempt still lands as a residual mismatch — an integrity-probe finding, not silent
     /// money.) Matched-source kinds other than `payment` keep the bounded clearance only — their
     /// graph convergence is the statement-side reconciliation surface.
-    pub async fn clear_transaction(&self, c: NewClearance, sink: &dyn GlPostSink, reconcile: &dyn ReconcileSink) -> Result<ClearOutcome, BankingError> {
-        if c.matched_amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
+    pub async fn clear_transaction(
+        &self,
+        c: NewClearance,
+        sink: &dyn GlPostSink,
+        reconcile: &dyn ReconcileSink,
+    ) -> Result<ClearOutcome, BankingError> {
+        if c.matched_amount <= Decimal::ZERO {
+            return Err(BankingError::NonPositiveAmount);
+        }
         let matched = money(c.matched_amount);
         // Load the line + its account's GL/clearing accounts.
         // RLS scope (ADR-0008), ID-only pattern — see `propose_match`. Having read the line we bind its
         // OWN company onto the clearing transaction below.
-        let row = self.repos.transactions.fetch_clearing_line(&self.db_pool, c.bank_transaction_id).await?
+        let row = self
+            .repos
+            .transactions
+            .fetch_clearing_line(&self.db_pool, c.bank_transaction_id)
+            .await?
             .ok_or(BankingError::TransactionNotFound(c.bank_transaction_id))?;
         let currency: String = row.currency;
-        if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
+        if currency != "IDR" {
+            return Err(BankingError::UnsupportedCurrency(currency));
+        }
         let company_id = row.company_id;
         let deposit = row.deposit;
         let withdrawal = row.withdrawal;
@@ -73,7 +86,11 @@ impl BankingWriteService {
         let clearing = row.clearing_account_id;
         let line_net = deposit + withdrawal;
         if matched > line_net - allocated {
-            return Err(BankingError::OverAllocated { line_net, already: allocated, attempted: matched });
+            return Err(BankingError::OverAllocated {
+                line_net,
+                already: allocated,
+                attempted: matched,
+            });
         }
         let is_receipt = deposit > Decimal::ZERO;
 
@@ -87,11 +104,26 @@ impl BankingWriteService {
         // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction, so the
         // already-cleared SUM sees the tenant's clearances and the clearance insert passes WITH CHECK.
         company_scope::bind_company_on(&mut tx, company_id).await?;
-        self.repos.clearances.lock_settlement(&mut tx, company_id, c.matched_source_id).await?;
-        let already_cleared = self.repos.clearances
-            .sum_cleared_against_settlement(&mut tx, company_id, &c.matched_source_type, c.matched_source_id).await?;
+        self.repos
+            .clearances
+            .lock_settlement(&mut tx, company_id, c.matched_source_id)
+            .await?;
+        let already_cleared = self
+            .repos
+            .clearances
+            .sum_cleared_against_settlement(
+                &mut tx,
+                company_id,
+                &c.matched_source_type,
+                c.matched_source_id,
+            )
+            .await?;
         if already_cleared + matched > money(c.matched_source_amount) {
-            return Err(BankingError::SettlementOverCleared { settlement_amount: money(c.matched_source_amount), already_cleared, attempted: matched });
+            return Err(BankingError::SettlementOverCleared {
+                settlement_amount: money(c.matched_source_amount),
+                already_cleared,
+                attempted: matched,
+            });
         }
 
         // Deterministic clearance identity, derived from (line, settlement, cumulative-cleared) read
@@ -120,12 +152,21 @@ impl BankingWriteService {
         };
         let env = AccountingPostEnvelope {
             idempotency_key: identity,
-            company_id, branch_id: None, source_type: "settlement".into(), source_id: clearance_id,
+            company_id,
+            branch_id: None,
+            source_type: "settlement".into(),
+            source_id: clearance_id,
             source_reference: Some(format!("clear {}", c.bank_transaction_id)),
-            posting_date: c.clearance_date, currency, posting_type: "original".into(), reverses_post_id: None,
-            description: Some("Bank clearing".into()), lines,
+            posting_date: c.clearance_date,
+            currency,
+            posting_type: "original".into(),
+            reverses_post_id: None,
+            description: Some("Bank clearing".into()),
+            lines,
         };
-        if !env.is_balanced() { return Err(BankingError::UnbalancedPost); }
+        if !env.is_balanced() {
+            return Err(BankingError::UnbalancedPost);
+        }
 
         match sink.post(&env).await {
             Ok(ack) => {
@@ -145,15 +186,21 @@ impl BankingWriteService {
                         (clearance_leg, payment_leg)
                     };
                     let edge = reconcile
-                        .reconcile_pair_on(&mut *tx, &ReconcilePairRequest {
-                            company_id,
-                            debit,
-                            credit,
-                            amount: matched,
-                            origin: ReconcileOrigin::Clearing,
-                        })
+                        .reconcile_pair_on(
+                            &mut *tx,
+                            &ReconcilePairRequest {
+                                company_id,
+                                debit,
+                                credit,
+                                amount: matched,
+                                origin: ReconcileOrigin::Clearing,
+                            },
+                        )
                         .await
-                        .map_err(|r| BankingError::ReconcileRefused { code: r.code, message: r.message })?;
+                        .map_err(|r| BankingError::ReconcileRefused {
+                            code: r.code,
+                            message: r.message,
+                        })?;
                     if edge.applied != matched {
                         // The graph clamped to a different amount than banking's own bound — the
                         // bank bookkeeping and the ledger disagree about what is clearable. Refuse
@@ -168,100 +215,211 @@ impl BankingWriteService {
                     }
                 }
                 let match_method = c.match_method.clone().unwrap_or_else(|| "manual".into());
-                self.repos.clearances.insert_clearance(&mut tx, &NewClearanceRow {
-                    id: clearance_id,
-                    company_id,
-                    bank_transaction_id: c.bank_transaction_id,
-                    matched_source_type: &c.matched_source_type,
-                    matched_source_id: c.matched_source_id,
-                    matched_amount: matched,
-                    match_method: &match_method,
-                    clearance_date: c.clearance_date,
-                    accounting_post_id: ack.post_id,
-                    journal_id: ack.journal_id,
-                }).await?;
+                self.repos
+                    .clearances
+                    .insert_clearance(
+                        &mut tx,
+                        &NewClearanceRow {
+                            id: clearance_id,
+                            company_id,
+                            bank_transaction_id: c.bank_transaction_id,
+                            matched_source_type: &c.matched_source_type,
+                            matched_source_id: c.matched_source_id,
+                            matched_amount: matched,
+                            match_method: &match_method,
+                            clearance_date: c.clearance_date,
+                            accounting_post_id: ack.post_id,
+                            journal_id: ack.journal_id,
+                        },
+                    )
+                    .await?;
                 let new_alloc = allocated + matched;
                 let fully = new_alloc >= line_net;
-                let status = if fully { TxnStatus::Reconciled } else { TxnStatus::PartlyReconciled };
-                self.repos.transactions
-                    .set_allocation(&mut tx, c.bank_transaction_id, new_alloc, status).await?;
+                let status = if fully {
+                    TxnStatus::Reconciled
+                } else {
+                    TxnStatus::PartlyReconciled
+                };
+                self.repos
+                    .transactions
+                    .set_allocation(&mut tx, c.bank_transaction_id, new_alloc, status)
+                    .await?;
+                // Durable `BankClearanceRecorded` staging (payment-matched only — the event's only
+                // consumer is payment's bank-confirmation drift). Inside THIS transaction: a crash
+                // after the clearance can never lose the confirmation event, and a rolled-back clear
+                // never emits one. The relay later delivers it; payment's `confirm_cash_once`
+                // consumer dedups on the event id.
+                if let Some(schema) = self.outbox_schema.clone() {
+                    if c.matched_source_type == "payment" {
+                        let payload = serde_json::json!({
+                            "payment_id": c.matched_source_id.to_string(),
+                            "company_id": company_id.to_string(),
+                            "bank_transaction_id": c.bank_transaction_id.to_string(),
+                            "matched_source_type": c.matched_source_type,
+                            "matched_source_id": c.matched_source_id.to_string(),
+                            "amount": matched.to_string(),
+                            "journal_id": ack.journal_id.to_string(),
+                            "post_id": ack.post_id.to_string(),
+                        });
+                        let rec = backbone_outbox::OutboxRecord::new(
+                            "BankClearanceRecorded",
+                            "BankClearance",
+                            clearance_id.to_string(),
+                            company_id,
+                            payload,
+                            chrono::Utc::now(),
+                        );
+                        backbone_outbox::outbox::stage(&mut *tx, &schema, &rec)
+                            .await
+                            .map_err(|e| BankingError::Db(sqlx::Error::Protocol(e.to_string())))?;
+                    }
+                }
                 tx.commit().await?;
 
-                self.sink.publish(BankingEvent::BankTransactionMatched(BankTransactionMatched {
-                    bank_transaction_id: c.bank_transaction_id, matched_source_type: c.matched_source_type.clone(),
-                    matched_source_id: c.matched_source_id, amount: matched,
-                }));
-                self.sink.publish(BankingEvent::BankTransactionCleared(BankTransactionCleared {
-                    bank_transaction_id: c.bank_transaction_id, matched_source_type: c.matched_source_type,
-                    matched_source_id: c.matched_source_id, company_id, journal_id: ack.journal_id,
-                    post_id: ack.post_id, amount: matched,
-                }));
-                Ok(ClearOutcome { clearance_id, post_id: ack.post_id, journal_id: ack.journal_id, fully_reconciled: fully })
+                self.sink.publish(BankingEvent::BankTransactionMatched(
+                    BankTransactionMatched {
+                        bank_transaction_id: c.bank_transaction_id,
+                        matched_source_type: c.matched_source_type.clone(),
+                        matched_source_id: c.matched_source_id,
+                        amount: matched,
+                    },
+                ));
+                self.sink.publish(BankingEvent::BankTransactionCleared(
+                    BankTransactionCleared {
+                        bank_transaction_id: c.bank_transaction_id,
+                        matched_source_type: c.matched_source_type,
+                        matched_source_id: c.matched_source_id,
+                        company_id,
+                        journal_id: ack.journal_id,
+                        post_id: ack.post_id,
+                        amount: matched,
+                    },
+                ));
+                Ok(ClearOutcome {
+                    clearance_id,
+                    post_id: ack.post_id,
+                    journal_id: ack.journal_id,
+                    fully_reconciled: fully,
+                })
             }
-            Err(rej) => Err(BankingError::GlRejected { code: rej.code, message: rej.message }),
+            Err(rej) => Err(BankingError::GlRejected {
+                code: rej.code,
+                message: rej.message,
+            }),
         }
     }
 
     /// Recognise an outflow line as a bank charge: `Dr Bank Charges · Cr Bank`. Marks the line
     /// reconciled and emits `BankChargeRecognized`.
-    pub async fn recognize_bank_charge(&self, ch: NewCharge, sink: &dyn GlPostSink) -> Result<ClearOutcome, BankingError> {
-        if ch.amount <= Decimal::ZERO { return Err(BankingError::NonPositiveAmount); }
+    pub async fn recognize_bank_charge(
+        &self,
+        ch: NewCharge,
+        sink: &dyn GlPostSink,
+    ) -> Result<ClearOutcome, BankingError> {
+        if ch.amount <= Decimal::ZERO {
+            return Err(BankingError::NonPositiveAmount);
+        }
         let amount = money(ch.amount);
         // RLS scope (ADR-0008), ID-only pattern — see `propose_match`; the charge tx below binds the
         // line's own company.
-        let row = self.repos.transactions.fetch_charge_line(&self.db_pool, ch.bank_transaction_id).await?
+        let row = self
+            .repos
+            .transactions
+            .fetch_charge_line(&self.db_pool, ch.bank_transaction_id)
+            .await?
             .ok_or(BankingError::TransactionNotFound(ch.bank_transaction_id))?;
         let currency: String = row.currency;
-        if currency != "IDR" { return Err(BankingError::UnsupportedCurrency(currency)); }
+        if currency != "IDR" {
+            return Err(BankingError::UnsupportedCurrency(currency));
+        }
         let company_id = row.company_id;
         let allocated = row.allocated_amount;
         let line_net = row.deposit + row.withdrawal;
         let bank_acct = row.gl_account_id;
         if amount > line_net - allocated {
-            return Err(BankingError::OverAllocated { line_net, already: allocated, attempted: amount });
+            return Err(BankingError::OverAllocated {
+                line_net,
+                already: allocated,
+                attempted: amount,
+            });
         }
         let clearance_id = Uuid::new_v4();
         let env = AccountingPostEnvelope {
             idempotency_key: format!("bankchg:{}:{}", ch.bank_transaction_id, clearance_id),
-            company_id, branch_id: None, source_type: "settlement".into(), source_id: clearance_id,
+            company_id,
+            branch_id: None,
+            source_type: "settlement".into(),
+            source_id: clearance_id,
             source_reference: Some(format!("charge {}", ch.bank_transaction_id)),
-            posting_date: ch.clearance_date, currency, posting_type: "original".into(), reverses_post_id: None,
+            posting_date: ch.clearance_date,
+            currency,
+            posting_type: "original".into(),
+            reverses_post_id: None,
             description: Some("Bank charge".into()),
             lines: vec![
                 GlPostLine::debit(ch.charge_account_id, amount).with_description("Bank charges"),
                 GlPostLine::credit(bank_acct, amount).with_description("Bank"),
             ],
         };
-        if !env.is_balanced() { return Err(BankingError::UnbalancedPost); }
+        if !env.is_balanced() {
+            return Err(BankingError::UnbalancedPost);
+        }
         match sink.post(&env).await {
             Ok(ack) => {
                 let mut tx = self.db_pool.begin().await?;
                 // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction.
                 company_scope::bind_company_on(&mut tx, company_id).await?;
-                self.repos.clearances.insert_charge_clearance(&mut tx, &NewChargeClearanceRow {
-                    id: clearance_id,
-                    company_id,
-                    bank_transaction_id: ch.bank_transaction_id,
-                    charge_account_id: ch.charge_account_id,
-                    matched_amount: amount,
-                    clearance_date: ch.clearance_date,
-                    accounting_post_id: ack.post_id,
-                    journal_id: ack.journal_id,
-                }).await?;
+                self.repos
+                    .clearances
+                    .insert_charge_clearance(
+                        &mut tx,
+                        &NewChargeClearanceRow {
+                            id: clearance_id,
+                            company_id,
+                            bank_transaction_id: ch.bank_transaction_id,
+                            charge_account_id: ch.charge_account_id,
+                            matched_amount: amount,
+                            clearance_date: ch.clearance_date,
+                            accounting_post_id: ack.post_id,
+                            journal_id: ack.journal_id,
+                        },
+                    )
+                    .await?;
                 let new_alloc = allocated + amount;
                 let fully = new_alloc >= line_net;
-                self.repos.transactions.set_allocation(
-                    &mut tx, ch.bank_transaction_id, new_alloc,
-                    if fully { TxnStatus::Reconciled } else { TxnStatus::PartlyReconciled },
-                ).await?;
+                self.repos
+                    .transactions
+                    .set_allocation(
+                        &mut tx,
+                        ch.bank_transaction_id,
+                        new_alloc,
+                        if fully {
+                            TxnStatus::Reconciled
+                        } else {
+                            TxnStatus::PartlyReconciled
+                        },
+                    )
+                    .await?;
                 tx.commit().await?;
-                self.sink.publish(BankingEvent::BankChargeRecognized(BankChargeRecognized {
-                    bank_transaction_id: ch.bank_transaction_id, company_id, amount,
-                    journal_id: ack.journal_id, post_id: ack.post_id,
-                }));
-                Ok(ClearOutcome { clearance_id, post_id: ack.post_id, journal_id: ack.journal_id, fully_reconciled: fully })
+                self.sink
+                    .publish(BankingEvent::BankChargeRecognized(BankChargeRecognized {
+                        bank_transaction_id: ch.bank_transaction_id,
+                        company_id,
+                        amount,
+                        journal_id: ack.journal_id,
+                        post_id: ack.post_id,
+                    }));
+                Ok(ClearOutcome {
+                    clearance_id,
+                    post_id: ack.post_id,
+                    journal_id: ack.journal_id,
+                    fully_reconciled: fully,
+                })
             }
-            Err(rej) => Err(BankingError::GlRejected { code: rej.code, message: rej.message }),
+            Err(rej) => Err(BankingError::GlRejected {
+                code: rej.code,
+                message: rej.message,
+            }),
         }
     }
 }

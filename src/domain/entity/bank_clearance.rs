@@ -1,12 +1,12 @@
-use chrono::{DateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use rust_decimal::Decimal;
 
-use super::MatchedSourceType;
-use super::MatchMethod;
 use super::AuditMetadata;
+use super::MatchMethod;
+use super::MatchedSourceType;
 
 /// Strongly-typed ID for BankClearance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,9 +14,15 @@ use super::AuditMetadata;
 pub struct BankClearanceId(pub Uuid);
 
 impl BankClearanceId {
-    pub fn new(id: Uuid) -> Self { Self(id) }
-    pub fn generate() -> Self { Self(Uuid::new_v4()) }
-    pub fn into_inner(self) -> Uuid { self.0 }
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+    pub fn generate() -> Self {
+        Self(Uuid::new_v4())
+    }
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
 }
 
 impl std::fmt::Display for BankClearanceId {
@@ -33,20 +39,28 @@ impl std::str::FromStr for BankClearanceId {
 }
 
 impl From<Uuid> for BankClearanceId {
-    fn from(id: Uuid) -> Self { Self(id) }
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
 }
 
 impl From<BankClearanceId> for Uuid {
-    fn from(id: BankClearanceId) -> Self { id.0 }
+    fn from(id: BankClearanceId) -> Self {
+        id.0
+    }
 }
 
 impl AsRef<Uuid> for BankClearanceId {
-    fn as_ref(&self) -> &Uuid { &self.0 }
+    fn as_ref(&self) -> &Uuid {
+        &self.0
+    }
 }
 
 impl std::ops::Deref for BankClearanceId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -73,7 +87,15 @@ impl BankClearance {
     }
 
     /// Create a new BankClearance with required fields
-    pub fn new(company_id: Uuid, bank_transaction_id: Uuid, matched_source_type: MatchedSourceType, matched_source_id: Uuid, matched_amount: Decimal, match_method: MatchMethod, clearance_date: NaiveDate) -> Self {
+    pub fn new(
+        company_id: Uuid,
+        bank_transaction_id: Uuid,
+        matched_source_type: MatchedSourceType,
+        matched_source_id: Uuid,
+        matched_amount: Decimal,
+        match_method: MatchMethod,
+        clearance_date: NaiveDate,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -139,7 +161,6 @@ impl BankClearance {
         self.metadata.deleted_by.as_ref()
     }
 
-
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -165,31 +186,49 @@ impl BankClearance {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.company_id = v;
+                    }
                 }
                 "bank_transaction_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.bank_transaction_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.bank_transaction_id = v;
+                    }
                 }
                 "matched_source_type" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.matched_source_type = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.matched_source_type = v;
+                    }
                 }
                 "matched_source_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.matched_source_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.matched_source_id = v;
+                    }
                 }
                 "matched_amount" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.matched_amount = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.matched_amount = v;
+                    }
                 }
                 "match_method" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.match_method = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.match_method = v;
+                    }
                 }
                 "clearance_date" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.clearance_date = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.clearance_date = v;
+                    }
                 }
                 "accounting_post_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.accounting_post_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.accounting_post_id = v;
+                    }
                 }
                 "journal_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.journal_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.journal_id = v;
+                    }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -250,7 +289,10 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
         m.insert("matched_source_id".to_string(), "uuid".to_string());
         m.insert("accounting_post_id".to_string(), "uuid".to_string());
         m.insert("journal_id".to_string(), "uuid".to_string());
-        m.insert("matched_source_type".to_string(), "matched_source_type".to_string());
+        m.insert(
+            "matched_source_type".to_string(),
+            "matched_source_type".to_string(),
+        );
         m.insert("match_method".to_string(), "match_method".to_string());
         m
     }
@@ -338,12 +380,24 @@ impl BankClearanceBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankClearance, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
-        let bank_transaction_id = self.bank_transaction_id.ok_or_else(|| "bank_transaction_id is required".to_string())?;
-        let matched_source_type = self.matched_source_type.ok_or_else(|| "matched_source_type is required".to_string())?;
-        let matched_source_id = self.matched_source_id.ok_or_else(|| "matched_source_id is required".to_string())?;
-        let matched_amount = self.matched_amount.ok_or_else(|| "matched_amount is required".to_string())?;
-        let clearance_date = self.clearance_date.ok_or_else(|| "clearance_date is required".to_string())?;
+        let company_id = self
+            .company_id
+            .ok_or_else(|| "company_id is required".to_string())?;
+        let bank_transaction_id = self
+            .bank_transaction_id
+            .ok_or_else(|| "bank_transaction_id is required".to_string())?;
+        let matched_source_type = self
+            .matched_source_type
+            .ok_or_else(|| "matched_source_type is required".to_string())?;
+        let matched_source_id = self
+            .matched_source_id
+            .ok_or_else(|| "matched_source_id is required".to_string())?;
+        let matched_amount = self
+            .matched_amount
+            .ok_or_else(|| "matched_amount is required".to_string())?;
+        let clearance_date = self
+            .clearance_date
+            .ok_or_else(|| "clearance_date is required".to_string())?;
 
         Ok(BankClearance {
             id: Uuid::new_v4(),

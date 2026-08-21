@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use super::BankAccountType;
-use super::BankAccountStatus;
 use super::AuditMetadata;
+use super::BankAccountStatus;
+use super::BankAccountType;
 
 /// Strongly-typed ID for BankAccount
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,9 +13,15 @@ use super::AuditMetadata;
 pub struct BankAccountId(pub Uuid);
 
 impl BankAccountId {
-    pub fn new(id: Uuid) -> Self { Self(id) }
-    pub fn generate() -> Self { Self(Uuid::new_v4()) }
-    pub fn into_inner(self) -> Uuid { self.0 }
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+    pub fn generate() -> Self {
+        Self(Uuid::new_v4())
+    }
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
 }
 
 impl std::fmt::Display for BankAccountId {
@@ -32,20 +38,28 @@ impl std::str::FromStr for BankAccountId {
 }
 
 impl From<Uuid> for BankAccountId {
-    fn from(id: Uuid) -> Self { Self(id) }
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
 }
 
 impl From<BankAccountId> for Uuid {
-    fn from(id: BankAccountId) -> Self { id.0 }
+    fn from(id: BankAccountId) -> Self {
+        id.0
+    }
 }
 
 impl AsRef<Uuid> for BankAccountId {
-    fn as_ref(&self) -> &Uuid { &self.0 }
+    fn as_ref(&self) -> &Uuid {
+        &self.0
+    }
 }
 
 impl std::ops::Deref for BankAccountId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -74,7 +88,18 @@ impl BankAccount {
     }
 
     /// Create a new BankAccount with required fields
-    pub fn new(company_id: Uuid, bank_id: Uuid, account_name: String, account_number: String, gl_account_id: Uuid, clearing_account_id: Uuid, currency: String, account_type: BankAccountType, is_default: bool, status: BankAccountStatus) -> Self {
+    pub fn new(
+        company_id: Uuid,
+        bank_id: Uuid,
+        account_name: String,
+        account_number: String,
+        gl_account_id: Uuid,
+        clearing_account_id: Uuid,
+        currency: String,
+        account_type: BankAccountType,
+        is_default: bool,
+        status: BankAccountStatus,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -147,7 +172,6 @@ impl BankAccount {
         &self.status
     }
 
-
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -167,37 +191,59 @@ impl BankAccount {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.company_id = v;
+                    }
                 }
                 "branch_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.branch_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.branch_id = v;
+                    }
                 }
                 "bank_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.bank_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.bank_id = v;
+                    }
                 }
                 "account_name" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.account_name = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.account_name = v;
+                    }
                 }
                 "account_number" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.account_number = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.account_number = v;
+                    }
                 }
                 "gl_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.gl_account_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.gl_account_id = v;
+                    }
                 }
                 "clearing_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.clearing_account_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.clearing_account_id = v;
+                    }
                 }
                 "currency" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.currency = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.currency = v;
+                    }
                 }
                 "account_type" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.account_type = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.account_type = v;
+                    }
                 }
                 "is_default" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.is_default = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.is_default = v;
+                    }
                 }
                 "status" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.status = v;
+                    }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -360,12 +406,24 @@ impl BankAccountBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankAccount, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
-        let bank_id = self.bank_id.ok_or_else(|| "bank_id is required".to_string())?;
-        let account_name = self.account_name.ok_or_else(|| "account_name is required".to_string())?;
-        let account_number = self.account_number.ok_or_else(|| "account_number is required".to_string())?;
-        let gl_account_id = self.gl_account_id.ok_or_else(|| "gl_account_id is required".to_string())?;
-        let clearing_account_id = self.clearing_account_id.ok_or_else(|| "clearing_account_id is required".to_string())?;
+        let company_id = self
+            .company_id
+            .ok_or_else(|| "company_id is required".to_string())?;
+        let bank_id = self
+            .bank_id
+            .ok_or_else(|| "bank_id is required".to_string())?;
+        let account_name = self
+            .account_name
+            .ok_or_else(|| "account_name is required".to_string())?;
+        let account_number = self
+            .account_number
+            .ok_or_else(|| "account_number is required".to_string())?;
+        let gl_account_id = self
+            .gl_account_id
+            .ok_or_else(|| "gl_account_id is required".to_string())?;
+        let clearing_account_id = self
+            .clearing_account_id
+            .ok_or_else(|| "clearing_account_id is required".to_string())?;
 
         Ok(BankAccount {
             id: Uuid::new_v4(),

@@ -34,10 +34,24 @@ pub struct GlPostLine {
 
 impl GlPostLine {
     pub fn debit(account_id: Uuid, amount: Decimal) -> Self {
-        Self { account_id, debit: amount, credit: Decimal::ZERO, party_type: None, party_id: None, description: None }
+        Self {
+            account_id,
+            debit: amount,
+            credit: Decimal::ZERO,
+            party_type: None,
+            party_id: None,
+            description: None,
+        }
     }
     pub fn credit(account_id: Uuid, amount: Decimal) -> Self {
-        Self { account_id, debit: Decimal::ZERO, credit: amount, party_type: None, party_id: None, description: None }
+        Self {
+            account_id,
+            debit: Decimal::ZERO,
+            credit: amount,
+            party_type: None,
+            party_id: None,
+            description: None,
+        }
     }
     pub fn with_description(mut self, d: impl Into<String>) -> Self {
         self.description = Some(d.into());
@@ -66,7 +80,10 @@ pub struct AccountingPostEnvelope {
 
 impl AccountingPostEnvelope {
     pub fn totals(&self) -> (Decimal, Decimal) {
-        (self.lines.iter().map(|l| l.debit).sum(), self.lines.iter().map(|l| l.credit).sum())
+        (
+            self.lines.iter().map(|l| l.debit).sum(),
+            self.lines.iter().map(|l| l.credit).sum(),
+        )
     }
     pub fn is_balanced(&self) -> bool {
         let (d, c) = self.totals();

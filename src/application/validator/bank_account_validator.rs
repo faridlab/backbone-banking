@@ -5,9 +5,9 @@
 //! Returns an `EntityValidator<BankAccount>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
-use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
-use backbone_core::{RequiredString};
 use crate::domain::entity::BankAccount;
+use backbone_core::RequiredString;
+use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
 
 /// Validator type alias for BankAccount entities.
 pub type BankAccountValidator = EntityValidator<BankAccount>;
@@ -15,9 +15,15 @@ pub type BankAccountValidator = EntityValidator<BankAccount>;
 /// Build a validator for BankAccount with all schema-defined field rules.
 pub fn bank_account_validator() -> BankAccountValidator {
     EntityValidator::new()
-        .rule(RequiredString::new("account_name", |e: &BankAccount| &e.account_name))
-        .rule(RequiredString::new("account_number", |e: &BankAccount| &e.account_number))
-        .rule(RequiredString::new("currency", |e: &BankAccount| &e.currency))
+        .rule(RequiredString::new("account_name", |e: &BankAccount| {
+            &e.account_name
+        }))
+        .rule(RequiredString::new("account_number", |e: &BankAccount| {
+            &e.account_number
+        }))
+        .rule(RequiredString::new("currency", |e: &BankAccount| {
+            &e.currency
+        }))
     // <<< CUSTOM RULES
     // END CUSTOM RULES
 }

@@ -5,32 +5,47 @@
 //! These handlers use Axum and backbone-core's BackboneCrudHandler
 //! to provide all 12 standard Backbone CRUD endpoints.
 
-pub mod bank_handler;
 pub mod bank_account_handler;
 pub mod bank_clearance_handler;
+pub mod bank_handler;
 pub mod bank_reconciliation_handler;
 pub mod bank_statement_import_handler;
 pub mod bank_transaction_handler;
-pub mod currency_handler;
-pub mod exchange_rate_handler;
 pub mod fx_gain_loss_handler;
+pub mod reconcile_preset_handler;
 
 // <<< CUSTOM
 pub mod guarded_routes;
 // END CUSTOM
 
 // Re-exports
-pub use bank_handler::{create_bank_routes, create_bank_read_routes, create_bank_write_routes};
-pub use bank_account_handler::{create_bank_account_routes, create_bank_account_read_routes, create_bank_account_write_routes};
-pub use bank_clearance_handler::{create_bank_clearance_routes, create_bank_clearance_read_routes, create_bank_clearance_write_routes};
-pub use bank_reconciliation_handler::{create_bank_reconciliation_routes, create_bank_reconciliation_read_routes, create_bank_reconciliation_write_routes};
-pub use bank_statement_import_handler::{create_bank_statement_import_routes, create_bank_statement_import_read_routes, create_bank_statement_import_write_routes};
-pub use bank_transaction_handler::{create_bank_transaction_routes, create_bank_transaction_read_routes, create_bank_transaction_write_routes};
+pub use bank_account_handler::{
+    create_bank_account_read_routes, create_bank_account_routes, create_bank_account_write_routes,
+};
+pub use bank_clearance_handler::{
+    create_bank_clearance_read_routes, create_bank_clearance_routes,
+    create_bank_clearance_write_routes,
+};
+pub use bank_handler::{create_bank_read_routes, create_bank_routes, create_bank_write_routes};
+pub use bank_reconciliation_handler::{
+    create_bank_reconciliation_read_routes, create_bank_reconciliation_routes,
+    create_bank_reconciliation_write_routes,
+};
+pub use bank_statement_import_handler::{
+    create_bank_statement_import_read_routes, create_bank_statement_import_routes,
+    create_bank_statement_import_write_routes,
+};
+pub use bank_transaction_handler::{
+    create_bank_transaction_read_routes, create_bank_transaction_routes,
+    create_bank_transaction_write_routes,
+};
+pub use fx_gain_loss_handler::{
+    create_fx_gain_loss_read_routes, create_fx_gain_loss_routes, create_fx_gain_loss_write_routes,
+};
+pub use reconcile_preset_handler::{
+    create_reconcile_preset_read_routes, create_reconcile_preset_routes,
+    create_reconcile_preset_write_routes,
+};
 // <<< CUSTOM
 pub use guarded_routes::create_guarded_banking_routes;
-// END CUSTOM
-pub use currency_handler::{create_currency_routes, create_currency_read_routes, create_currency_write_routes};
-pub use exchange_rate_handler::{create_exchange_rate_routes, create_exchange_rate_read_routes, create_exchange_rate_write_routes};
-pub use fx_gain_loss_handler::{create_fx_gain_loss_routes, create_fx_gain_loss_read_routes, create_fx_gain_loss_write_routes};
-// <<< CUSTOM
 // END CUSTOM

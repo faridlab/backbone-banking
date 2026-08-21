@@ -15,9 +15,8 @@ use super::{
     bank_reconciliation_handler::create_bank_reconciliation_routes,
     bank_statement_import_handler::create_bank_statement_import_routes,
     bank_transaction_handler::create_bank_transaction_routes,
-    currency_handler::create_currency_routes,
-    exchange_rate_handler::create_exchange_rate_routes,
     fx_gain_loss_handler::create_fx_gain_loss_routes,
+    reconcile_preset_handler::create_reconcile_preset_routes,
 };
 
 use crate::application::service::{
@@ -27,9 +26,8 @@ use crate::application::service::{
     BankReconciliationService,
     BankStatementImportService,
     BankTransactionService,
-    CurrencyService,
-    ExchangeRateService,
     FxGainLossService,
+    ReconcilePresetService,
 };
 
 /// Services collection for all CRUD endpoints
@@ -40,9 +38,8 @@ pub struct HttpServices {
     pub bank_reconciliation: Arc<BankReconciliationService>,
     pub bank_statement_import: Arc<BankStatementImportService>,
     pub bank_transaction: Arc<BankTransactionService>,
-    pub currency: Arc<CurrencyService>,
-    pub exchange_rate: Arc<ExchangeRateService>,
     pub fx_gain_loss: Arc<FxGainLossService>,
+    pub reconcile_preset: Arc<ReconcilePresetService>,
 }
 
 /// Configure all HTTP routes for this module using Axum and BackboneCrudHandler.
@@ -74,12 +71,10 @@ pub fn configure_routes(services: HttpServices) -> Router {
         .merge(create_bank_statement_import_routes(services.bank_statement_import))
         // BankTransaction routes (12 Backbone endpoints)
         .merge(create_bank_transaction_routes(services.bank_transaction))
-        // Currency routes (12 Backbone endpoints)
-        .merge(create_currency_routes(services.currency))
-        // ExchangeRate routes (12 Backbone endpoints)
-        .merge(create_exchange_rate_routes(services.exchange_rate))
         // FxGainLoss routes (12 Backbone endpoints)
         .merge(create_fx_gain_loss_routes(services.fx_gain_loss))
+        // ReconcilePreset routes (12 Backbone endpoints)
+        .merge(create_reconcile_preset_routes(services.reconcile_preset))
 }
 
 /// Create an individual entity's routes (for modular configuration)
@@ -110,16 +105,12 @@ pub mod individual {
         create_bank_transaction_routes(service)
     }
 
-    pub fn currency_routes(service: Arc<CurrencyService>) -> Router {
-        create_currency_routes(service)
-    }
-
-    pub fn exchange_rate_routes(service: Arc<ExchangeRateService>) -> Router {
-        create_exchange_rate_routes(service)
-    }
-
     pub fn fx_gain_loss_routes(service: Arc<FxGainLossService>) -> Router {
         create_fx_gain_loss_routes(service)
+    }
+
+    pub fn reconcile_preset_routes(service: Arc<ReconcilePresetService>) -> Router {
+        create_reconcile_preset_routes(service)
     }
 
 }

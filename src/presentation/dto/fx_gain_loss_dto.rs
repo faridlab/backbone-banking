@@ -5,10 +5,10 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -17,9 +17,9 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
-use crate::domain::entity::FxGainLoss;
 use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::FxDirection;
+use crate::domain::entity::FxGainLoss;
 
 // =============================================================================
 // Create DTO
@@ -34,12 +34,22 @@ use crate::domain::entity::FxDirection;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "bank_clearance_id"
+    )]
     pub bank_clearance_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "matched_source_id")]
     pub matched_source_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -52,7 +62,10 @@ pub struct CreateFxGainLossDto {
     #[serde(alias = "base_amount_delta")]
     pub base_amount_delta: Decimal,
     pub direction: FxDirection,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "fx_account_id")]
     pub fx_account_id: Uuid,
 }
@@ -70,12 +83,22 @@ pub struct CreateFxGainLossDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "bank_clearance_id"
+    )]
     pub bank_clearance_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "matched_source_id")]
     pub matched_source_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -88,7 +111,10 @@ pub struct UpdateFxGainLossDto {
     #[serde(alias = "base_amount_delta")]
     pub base_amount_delta: Decimal,
     pub direction: FxDirection,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "fx_account_id")]
     pub fx_account_id: Uuid,
 }
@@ -106,12 +132,18 @@ pub struct UpdateFxGainLossDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
     pub bank_clearance_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_source_id")]
     pub matched_source_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -126,7 +158,10 @@ pub struct PatchFxGainLossDto {
     pub base_amount_delta: Option<Decimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub direction: Option<FxDirection>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "fx_account_id")]
     pub fx_account_id: Option<Uuid>,
 }
@@ -134,7 +169,15 @@ pub struct PatchFxGainLossDto {
 impl PatchFxGainLossDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.original_rate.is_some() || self.realised_rate.is_some() || self.base_amount_delta.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
+        self.company_id.is_some()
+            || self.bank_clearance_id.is_some()
+            || self.matched_source_id.is_some()
+            || self.currency.is_some()
+            || self.original_rate.is_some()
+            || self.realised_rate.is_some()
+            || self.base_amount_delta.is_some()
+            || self.direction.is_some()
+            || self.fx_account_id.is_some()
     }
 }
 
@@ -150,12 +193,21 @@ impl PatchFxGainLossDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct FxGainLossResponseDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub matched_source_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub currency: String,
@@ -163,7 +215,10 @@ pub struct FxGainLossResponseDto {
     pub realised_rate: Decimal,
     pub base_amount_delta: Decimal,
     pub direction: FxDirection,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub fx_account_id: Uuid,
     pub metadata: AuditMetadata,
 }

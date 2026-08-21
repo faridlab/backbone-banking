@@ -10,8 +10,12 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::State, http::StatusCode, middleware::from_fn_with_state, response::IntoResponse,
-    routing::post, Json, Router,
+    extract::{Path, Query, State},
+    http::StatusCode,
+    middleware::from_fn_with_state,
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
 };
 use backbone_auth::company::{company_auth, CompanyContext, CompanyVerifier};
 use rust_decimal::Decimal;
@@ -25,31 +29,54 @@ use crate::application::service::banking_write_service::{
 use crate::BankingModule;
 
 use super::{
-    create_bank_account_read_routes, create_bank_read_routes, create_bank_reconciliation_read_routes,
-    create_bank_statement_import_read_routes, create_bank_transaction_read_routes,
+    create_bank_account_read_routes, create_bank_read_routes,
+    create_bank_reconciliation_read_routes, create_bank_statement_import_read_routes,
+    create_bank_transaction_read_routes, create_reconcile_preset_read_routes,
 };
 
 #[derive(Debug, Serialize)]
-struct ErrorBody { error: String, message: String }
+struct ErrorBody {
+    error: String,
+    message: String,
+}
 #[derive(Debug, Serialize)]
-struct IdResponse { id: Uuid }
+struct IdResponse {
+    id: Uuid,
+}
 fn err(e: BankingError) -> axum::response::Response {
     let s = StatusCode::from_u16(e.http_status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-    (s, Json(ErrorBody { error: e.code(), message: e.to_string() })).into_response()
+    (
+        s,
+        Json(ErrorBody {
+            error: e.code(),
+            message: e.to_string(),
+        }),
+    )
+        .into_response()
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LineBody {
     txn_date: chrono::NaiveDate,
-    #[serde(default)] description: Option<String>,
-    #[serde(default)] reference_no: Option<String>,
-    #[serde(default)] deposit: Decimal,
-    #[serde(default)] withdrawal: Decimal,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    reference_no: Option<String>,
+    #[serde(default)]
+    deposit: Decimal,
+    #[serde(default)]
+    withdrawal: Decimal,
 }
 impl From<LineBody> for NewStatementLine {
     fn from(b: LineBody) -> Self {
-        NewStatementLine { txn_date: b.txn_date, description: b.description, reference_no: b.reference_no, deposit: b.deposit, withdrawal: b.withdrawal }
+        NewStatementLine {
+            txn_date: b.txn_date,
+            description: b.description,
+            reference_no: b.reference_no,
+            deposit: b.deposit,
+            withdrawal: b.withdrawal,
+        }
     }
 }
 
@@ -59,12 +86,16 @@ struct ImportBody {
     // No `company_id`: the tenant is derived from the signed token via `CompanyContext`, never from the
     // request body — a client must not be able to name the company whose bank statement it imports.
     bank_account_id: Uuid,
-    #[serde(default)] source_format: Option<String>,
+    #[serde(default)]
+    source_format: Option<String>,
     period_start: chrono::NaiveDate,
     period_end: chrono::NaiveDate,
-    #[serde(default)] opening_balance: Decimal,
-    #[serde(default)] closing_balance: Decimal,
-    #[serde(default)] file_ref: Option<String>,
+    #[serde(default)]
+    opening_balance: Decimal,
+    #[serde(default)]
+    closing_balance: Decimal,
+    #[serde(default)]
+    file_ref: Option<String>,
     lines: Vec<LineBody>,
 }
 async fn import_statement(
@@ -73,9 +104,14 @@ async fn import_statement(
     Json(b): Json<ImportBody>,
 ) -> axum::response::Response {
     let imp = NewStatementImport {
-        company_id: tenant.company_id, bank_account_id: b.bank_account_id, source_format: b.source_format,
-        period_start: b.period_start, period_end: b.period_end, opening_balance: b.opening_balance,
-        closing_balance: b.closing_balance, file_ref: b.file_ref,
+        company_id: tenant.company_id,
+        bank_account_id: b.bank_account_id,
+        source_format: b.source_format,
+        period_start: b.period_start,
+        period_end: b.period_end,
+        opening_balance: b.opening_balance,
+        closing_balance: b.closing_balance,
+        file_ref: b.file_ref,
         lines: b.lines.into_iter().map(Into::into).collect(),
     };
     match svc.import_statement(imp).await {
@@ -84,9 +120,62 @@ async fn import_statement(
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct CandidatesQuery {
+    txn_id: Uuid,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidateBody {
+    payment_id: Uuid,
+    payment_number: String,
+    open_amount: Decimal,
+    posting_date: chrono::NaiveDate,
+    score: i64,
+    reason: String,
+}
+
+/// `GET /reconcile-presets/:id/candidates?txn_id=<line>` — the ordered candidate list for one
+/// statement line under one preset. Tenant = the token's company; both the preset and the line are
+/// fence-read and refused as not-found when they belong to another tenant.
+async fn preset_candidates(
+    State(svc): State<Arc<BankingWriteService>>,
+    tenant: CompanyContext,
+    Path(preset_id): Path<Uuid>,
+    Query(q): Query<CandidatesQuery>,
+) -> axum::response::Response {
+    match svc
+        .order_candidates(tenant.company_id, preset_id, q.txn_id)
+        .await
+    {
+        Ok(list) => (
+            StatusCode::OK,
+            Json(
+                list.into_iter()
+                    .map(|c| CandidateBody {
+                        payment_id: c.payment_id,
+                        payment_number: c.payment_number,
+                        open_amount: c.open_amount,
+                        posting_date: c.posting_date,
+                        score: c.score,
+                        reason: c.reason,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(e) => err(e),
+    }
+}
+
 fn write_routes(svc: Arc<BankingWriteService>, verifier: CompanyVerifier) -> Router {
     Router::new()
         .route("/bank-statements/import", post(import_statement))
+        // Preset-driven candidate ordering — a READ (side-effect-free by construction; the ordering
+        // probe pins it), mounted beside the import because it shares the write service's injected
+        // candidate-pool port. The operator confirms a candidate through the clear verb, not here.
+        .route("/reconcile-presets/:id/candidates", get(preset_candidates))
         // The import is tenant-scoped: `company_auth` rejects a request whose token is absent, invalid,
         // or carries no `company_id`, so the writer only ever runs with a proven tenant.
         //
@@ -112,9 +201,20 @@ pub fn create_guarded_banking_routes(
     let write = Arc::new(BankingWriteService::new(pool));
     Router::new()
         .merge(create_bank_read_routes(m.bank_service.clone()))
-        .merge(create_bank_account_read_routes(m.bank_account_service.clone()))
-        .merge(create_bank_statement_import_read_routes(m.bank_statement_import_service.clone()))
-        .merge(create_bank_transaction_read_routes(m.bank_transaction_service.clone()))
-        .merge(create_bank_reconciliation_read_routes(m.bank_reconciliation_service.clone()))
+        .merge(create_bank_account_read_routes(
+            m.bank_account_service.clone(),
+        ))
+        .merge(create_bank_statement_import_read_routes(
+            m.bank_statement_import_service.clone(),
+        ))
+        .merge(create_bank_transaction_read_routes(
+            m.bank_transaction_service.clone(),
+        ))
+        .merge(create_bank_reconciliation_read_routes(
+            m.bank_reconciliation_service.clone(),
+        ))
+        .merge(create_reconcile_preset_read_routes(
+            m.reconcile_preset_service.clone(),
+        ))
         .merge(write_routes(write, verifier))
 }

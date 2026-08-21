@@ -95,36 +95,22 @@ async fn test_bank_transaction_api() {
 }
 
 #[tokio::test]
-async fn test_currency_api() {
-    let mut test = CurrencyApiTest::new();
-    let results = test.run_all().await;
-
-    let failed: Vec<_> = results.iter().filter(|r| !r.success).collect();
-    if !failed.is_empty() {
-        for f in &failed {
-            eprintln!("FAILED: {} - {}", f.test_name, f.details);
-        }
-        panic!("{} tests failed", failed.len());
-    }
-}
-
-#[tokio::test]
-async fn test_exchange_rate_api() {
-    let mut test = ExchangeRateApiTest::new();
-    let results = test.run_all().await;
-
-    let failed: Vec<_> = results.iter().filter(|r| !r.success).collect();
-    if !failed.is_empty() {
-        for f in &failed {
-            eprintln!("FAILED: {} - {}", f.test_name, f.details);
-        }
-        panic!("{} tests failed", failed.len());
-    }
-}
-
-#[tokio::test]
 async fn test_fx_gain_loss_api() {
     let mut test = FxGainLossApiTest::new();
+    let results = test.run_all().await;
+
+    let failed: Vec<_> = results.iter().filter(|r| !r.success).collect();
+    if !failed.is_empty() {
+        for f in &failed {
+            eprintln!("FAILED: {} - {}", f.test_name, f.details);
+        }
+        panic!("{} tests failed", failed.len());
+    }
+}
+
+#[tokio::test]
+async fn test_reconcile_preset_api() {
+    let mut test = ReconcilePresetApiTest::new();
     let results = test.run_all().await;
 
     let failed: Vec<_> = results.iter().filter(|r| !r.success).collect();

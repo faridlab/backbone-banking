@@ -5,10 +5,10 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc, NaiveDate};
-use rust_decimal::Decimal;
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -17,8 +17,8 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
-use crate::domain::entity::BankReconciliation;
 use crate::domain::entity::AuditMetadata;
+use crate::domain::entity::BankReconciliation;
 use crate::domain::entity::ReconStatus;
 
 // =============================================================================
@@ -34,10 +34,16 @@ use crate::domain::entity::ReconStatus;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankReconciliationDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -56,6 +62,8 @@ pub struct CreateBankReconciliationDto {
     #[serde(alias = "unreconciled_count")]
     pub unreconciled_count: i32,
     pub status: ReconStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "preset_id")]
+    pub preset_id: Option<Uuid>,
 }
 
 // =============================================================================
@@ -71,10 +79,16 @@ pub struct CreateBankReconciliationDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankReconciliationDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -93,6 +107,8 @@ pub struct UpdateBankReconciliationDto {
     #[serde(alias = "unreconciled_count")]
     pub unreconciled_count: i32,
     pub status: ReconStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "preset_id")]
+    pub preset_id: Option<Uuid>,
 }
 
 // =============================================================================
@@ -108,10 +124,16 @@ pub struct UpdateBankReconciliationDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankReconciliationDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_account_id")]
     pub bank_account_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -120,7 +142,10 @@ pub struct PatchBankReconciliationDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "to_date")]
     pub to_date: Option<NaiveDate>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "statement_closing_balance")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "statement_closing_balance"
+    )]
     pub statement_closing_balance: Option<Decimal>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "ledger_balance")]
     pub ledger_balance: Option<Decimal>,
@@ -131,12 +156,23 @@ pub struct PatchBankReconciliationDto {
     pub unreconciled_count: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<ReconStatus>,
+    #[serde(skip_serializing_if = "Option::is_none", alias = "preset_id")]
+    pub preset_id: Option<Uuid>,
 }
 
 impl PatchBankReconciliationDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.from_date.is_some() || self.to_date.is_some() || self.statement_closing_balance.is_some() || self.ledger_balance.is_some() || self.computed_difference.is_some() || self.unreconciled_count.is_some() || self.status.is_some()
+        self.company_id.is_some()
+            || self.bank_account_id.is_some()
+            || self.from_date.is_some()
+            || self.to_date.is_some()
+            || self.statement_closing_balance.is_some()
+            || self.ledger_balance.is_some()
+            || self.computed_difference.is_some()
+            || self.unreconciled_count.is_some()
+            || self.status.is_some()
+            || self.preset_id.is_some()
     }
 }
 
@@ -152,11 +188,20 @@ impl PatchBankReconciliationDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct BankReconciliationResponseDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub bank_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     pub from_date: NaiveDate,
@@ -168,6 +213,7 @@ pub struct BankReconciliationResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = 42))]
     pub unreconciled_count: i32,
     pub status: ReconStatus,
+    pub preset_id: Option<Uuid>,
     pub metadata: AuditMetadata,
 }
 
@@ -201,7 +247,12 @@ pub struct BankReconciliationListResponseDto {
 
 impl BankReconciliationListResponseDto {
     /// Create a new list response from items and pagination info
-    pub fn new(items: Vec<BankReconciliationResponseDto>, total: u64, page: u32, per_page: u32) -> Self {
+    pub fn new(
+        items: Vec<BankReconciliationResponseDto>,
+        total: u64,
+        page: u32,
+        per_page: u32,
+    ) -> Self {
         let total_pages = if per_page > 0 {
             ((total as f64) / (per_page as f64)).ceil() as u32
         } else {
@@ -248,6 +299,7 @@ impl From<BankReconciliation> for BankReconciliationResponseDto {
             computed_difference: entity.computed_difference,
             unreconciled_count: entity.unreconciled_count,
             status: entity.status,
+            preset_id: entity.preset_id,
             metadata: entity.metadata,
         }
     }
@@ -279,6 +331,7 @@ impl From<CreateBankReconciliationDto> for BankReconciliation {
             computed_difference: dto.computed_difference,
             unreconciled_count: dto.unreconciled_count,
             status: dto.status,
+            preset_id: dto.preset_id,
             metadata: AuditMetadata::default(),
         }
     }
@@ -297,6 +350,7 @@ impl From<&BankReconciliation> for BankReconciliationResponseDto {
             computed_difference: entity.computed_difference.clone(),
             unreconciled_count: entity.unreconciled_count.clone(),
             status: entity.status.clone(),
+            preset_id: entity.preset_id.clone(),
             metadata: entity.metadata.clone(),
         }
     }
@@ -309,7 +363,10 @@ impl backbone_core::FromCreateDto<CreateBankReconciliationDto> for BankReconcili
 }
 
 impl backbone_core::ApplyUpdateDto<UpdateBankReconciliationDto> for BankReconciliation {
-    fn apply_update(mut self, dto: UpdateBankReconciliationDto) -> backbone_core::ServiceResult<Self> {
+    fn apply_update(
+        mut self,
+        dto: UpdateBankReconciliationDto,
+    ) -> backbone_core::ServiceResult<Self> {
         self.company_id = dto.company_id;
         self.bank_account_id = dto.bank_account_id;
         self.from_date = dto.from_date;
@@ -319,6 +376,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankReconciliationDto> for BankReconcil
         self.computed_difference = dto.computed_difference;
         self.unreconciled_count = dto.unreconciled_count;
         self.status = dto.status;
+        self.preset_id = dto.preset_id;
         Ok(self)
     }
 }

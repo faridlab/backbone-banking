@@ -5,11 +5,11 @@
 //! This trait defines the repository contract for the FxGainLoss aggregate.
 //! Implementation is in the infrastructure layer.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::domain::entity::{FxGainLoss, FxDirection};
+use crate::domain::entity::{FxDirection, FxGainLoss};
 
 /// Pagination parameters for list queries
 #[derive(Debug, Clone, Default)]
@@ -55,7 +55,12 @@ pub struct FxGainLossFilter {
 impl FxGainLossFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
+        self.company_id.is_some()
+            || self.bank_clearance_id.is_some()
+            || self.matched_source_id.is_some()
+            || self.currency.is_some()
+            || self.direction.is_some()
+            || self.fx_account_id.is_some()
     }
 }
 
@@ -65,7 +70,6 @@ impl FxGainLossFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait FxGainLossRepository: Send + Sync {
-
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -93,7 +97,11 @@ pub trait FxGainLossRepository: Send + Sync {
     async fn list(&self, params: FxGainLossPaginationParams) -> Result<FxGainLossPaginatedResult>;
 
     /// List fx_gain_loss with pagination and filters
-    async fn list_with_filters(&self, params: FxGainLossPaginationParams, filters: FxGainLossFilter) -> Result<FxGainLossPaginatedResult>;
+    async fn list_with_filters(
+        &self,
+        params: FxGainLossPaginationParams,
+        filters: FxGainLossFilter,
+    ) -> Result<FxGainLossPaginatedResult>;
 
     /// Count all fx_gain_loss entities
     async fn count(&self) -> Result<u64>;
@@ -115,7 +123,10 @@ pub trait FxGainLossRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<FxGainLoss>>;
 
     /// List soft-deleted fx_gain_loss entities
-    async fn list_deleted(&self, params: FxGainLossPaginationParams) -> Result<FxGainLossPaginatedResult>;
+    async fn list_deleted(
+        &self,
+        params: FxGainLossPaginationParams,
+    ) -> Result<FxGainLossPaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;

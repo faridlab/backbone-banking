@@ -5,11 +5,11 @@
 //! These DTOs are the ONLY types other modules should use.
 //! They are decoupled from internal domain entities.
 
+use crate::domain::entity::*;
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc, NaiveDate};
-use rust_decimal::Decimal;
-use crate::domain::entity::*;
 
 // ============================================================================
 // BANK TYPES
@@ -246,6 +246,7 @@ pub struct BankReconciliationDto {
     pub computed_difference: Decimal,
     pub unreconciled_count: i32,
     pub status: ReconStatus,
+    pub preset_id: Option<Uuid>,
     pub metadata: serde_json::Value,
 }
 
@@ -393,128 +394,6 @@ pub struct BankTransactionRef {
 }
 
 // ============================================================================
-// CURRENCY TYPES
-// ============================================================================
-
-/// Type-safe ID for Currency
-///
-/// Use this instead of raw Uuid for type safety across modules.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct CurrencyId(pub Uuid);
-
-impl CurrencyId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
-}
-
-impl From<Uuid> for CurrencyId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
-}
-
-impl From<CurrencyId> for Uuid {
-    fn from(id: CurrencyId) -> Self {
-        id.0
-    }
-}
-
-/// Data transfer object for Currency
-///
-/// This is the public representation of Currency for other modules.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencyDto {
-    pub id: CurrencyId,
-    pub company_id: Uuid,
-    pub code: String,
-    pub name: String,
-    pub symbol: Option<String>,
-    pub scale: i32,
-    pub is_base: bool,
-    pub status: CurrencyStatus,
-    pub metadata: serde_json::Value,
-}
-
-/// Summary view of Currency for list displays
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencySummary {
-    pub id: CurrencyId,
-    pub name: String,
-    pub status: CurrencyStatus,
-}
-
-/// Reference to Currency for foreign key relationships
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencyRef {
-    pub id: CurrencyId,
-}
-
-// ============================================================================
-// EXCHANGERATE TYPES
-// ============================================================================
-
-/// Type-safe ID for ExchangeRate
-///
-/// Use this instead of raw Uuid for type safety across modules.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ExchangeRateId(pub Uuid);
-
-impl ExchangeRateId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
-}
-
-impl From<Uuid> for ExchangeRateId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
-}
-
-impl From<ExchangeRateId> for Uuid {
-    fn from(id: ExchangeRateId) -> Self {
-        id.0
-    }
-}
-
-/// Data transfer object for ExchangeRate
-///
-/// This is the public representation of ExchangeRate for other modules.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateDto {
-    pub id: ExchangeRateId,
-    pub company_id: Uuid,
-    pub from_currency: String,
-    pub to_currency: String,
-    pub rate: Decimal,
-    pub effective_at: NaiveDate,
-    pub rate_type: RateType,
-    pub source: Option<String>,
-    pub metadata: serde_json::Value,
-}
-
-/// Summary view of ExchangeRate for list displays
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateSummary {
-    pub id: ExchangeRateId,
-}
-
-/// Reference to ExchangeRate for foreign key relationships
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateRef {
-    pub id: ExchangeRateId,
-}
-
-// ============================================================================
 // FXGAINLOSS TYPES
 // ============================================================================
 
@@ -574,6 +453,69 @@ pub struct FxGainLossSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxGainLossRef {
     pub id: FxGainLossId,
+}
+
+// ============================================================================
+// RECONCILEPRESET TYPES
+// ============================================================================
+
+/// Type-safe ID for ReconcilePreset
+///
+/// Use this instead of raw Uuid for type safety across modules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ReconcilePresetId(pub Uuid);
+
+impl ReconcilePresetId {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+}
+
+impl From<Uuid> for ReconcilePresetId {
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
+}
+
+impl From<ReconcilePresetId> for Uuid {
+    fn from(id: ReconcilePresetId) -> Self {
+        id.0
+    }
+}
+
+/// Data transfer object for ReconcilePreset
+///
+/// This is the public representation of ReconcilePreset for other modules.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetDto {
+    pub id: ReconcilePresetId,
+    pub company_id: Uuid,
+    pub name: String,
+    pub note: Option<String>,
+    pub priority: i32,
+    pub match_on: MatchOn,
+    pub tolerance_percent: Option<Decimal>,
+    pub days_window: Option<i32>,
+    pub status: PresetStatus,
+    pub metadata: serde_json::Value,
+}
+
+/// Summary view of ReconcilePreset for list displays
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetSummary {
+    pub id: ReconcilePresetId,
+    pub name: String,
+    pub status: PresetStatus,
+}
+
+/// Reference to ReconcilePreset for foreign key relationships
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetRef {
+    pub id: ReconcilePresetId,
 }
 
 // ============================================================================

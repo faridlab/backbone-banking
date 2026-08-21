@@ -22,13 +22,13 @@ pub const TABLE_NAME: &str = "banking.banks";
 ///
 /// All standard CRUD, soft-delete, pagination, and bulk methods are
 /// provided automatically via `Deref` to `backbone_orm::GenericCrudRepository`.
-pub struct BankRepository(
-    backbone_orm::GenericCrudRepository<Bank, backbone_orm::SoftDelete>,
-);
+pub struct BankRepository(backbone_orm::GenericCrudRepository<Bank, backbone_orm::SoftDelete>);
 
 impl std::ops::Deref for BankRepository {
     type Target = backbone_orm::GenericCrudRepository<Bank, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankRepository {
@@ -59,18 +59,18 @@ impl BankRepository {
     /// (ADR-0008) applies. The caller wraps this in `with_company_scope(Some(company))` — the company
     /// is on the DTO, and that scope is what lets the INSERT's WITH CHECK pass under the non-superuser
     /// app role.
-    pub async fn insert_bank(
-        &self,
-        pool: &PgPool,
-        b: &NewBankRow<'_>,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn insert_bank(&self, pool: &PgPool, b: &NewBankRow<'_>) -> Result<(), sqlx::Error> {
         company_scope::execute_scoped(
             pool,
             sqlx::query(
                 r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, status)
                    VALUES ($1,$2,$3,$4,$5,'active')"#,
             )
-            .bind(b.id).bind(b.company_id).bind(b.name).bind(b.swift_bic).bind(b.country),
+            .bind(b.id)
+            .bind(b.company_id)
+            .bind(b.name)
+            .bind(b.swift_bic)
+            .bind(b.country),
         )
         .await?;
         Ok(())

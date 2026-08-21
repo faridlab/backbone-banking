@@ -30,9 +30,13 @@ user_owned:
   - "src/infrastructure/persistence/bank_reconciliation_repository.rs"
   - "src/infrastructure/persistence/bank_statement_import_repository.rs"
   - "src/infrastructure/persistence/bank_transaction_repository.rs"
-  # FX engine's rate + gain/loss SQL, orchestrated by fx_service.rs.
-  - "src/infrastructure/persistence/exchange_rate_repository.rs"
+  # FX realisation SQL, orchestrated by fx_service.rs. (The rate-table repository retired with the
+  # FX-catalogue move to corporate — only the gain/loss engine remains.)
   - "src/infrastructure/persistence/fx_gain_loss_repository.rs"
+  # Reconcile-preset candidate ordering — a read, never a match. Hand-authored over the preset +
+  # line + candidate-pool vocabulary; the pool port is injectable so tests (and non-payment
+  # compositions) substitute their own source of candidates.
+  - "src/application/service/reconcile_preset_candidates.rs"
   - "src/presentation/http/guarded_routes.rs"
   - "tests/banking_golden_cases.rs"
   - "tests/integrity_probes.rs"
@@ -50,4 +54,12 @@ user_owned:
   # Hand-authored module documentation.
   - "docs/**"
   - "src/application/service/fx_service.rs"
-  - "tests/fx_seam.rs"
+  # FX retirement probe (rate tables gone, realisation engine + shared enum types survive, no HTTP
+  # route left for the retired catalogue).
+  - "tests/fx_retirement_probe.rs"
+  # Statement-side invariant suite (ADR-0005: evidence, not accounting).
+  - "tests/born_posted_invariant_suite.rs"
+  # Reconcile-preset candidate ordering (deterministic, side-effect-free, fenced).
+  - "tests/reconcile_preset_candidate_ordering.rs"
+  # Durable BankClearanceRecorded staging inside the clearance transaction.
+  - "tests/clearance_event_staging.rs"

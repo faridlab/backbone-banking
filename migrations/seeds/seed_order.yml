@@ -18,3 +18,6 @@
 - fx_gain_loss_seed
 - currency_seed
 - exchange_rate_seed
+
+# Newly added seeds (preserve manual order above):
+- reconcile_preset_seed

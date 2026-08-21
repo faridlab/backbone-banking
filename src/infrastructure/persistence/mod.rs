@@ -4,48 +4,44 @@
 //!
 //! Uses backbone-orm's `DatabaseOperations<T>` trait.
 
-mod bank_repository;
 mod bank_account_repository;
 mod bank_clearance_repository;
 mod bank_reconciliation_repository;
+mod bank_repository;
 mod bank_statement_import_repository;
 mod bank_transaction_repository;
-mod currency_repository;
-mod exchange_rate_repository;
 mod fx_gain_loss_repository;
+mod reconcile_preset_repository;
 
 // Custom persistence modules
 // <<< CUSTOM
 // The hand-written banking SQL's parameter/projection types. Every repository listed here is declared
 // `user_owned` in metaphor.codegen.yaml — see the write service, which orchestrates them.
-pub use bank_repository::NewBankRow;
 pub use bank_account_repository::NewBankAccountRow;
 pub use bank_clearance_repository::{NewChargeClearanceRow, NewClearanceRow};
 pub use bank_reconciliation_repository::NewReconciliationRow;
+pub use bank_repository::NewBankRow;
 pub use bank_statement_import_repository::NewStatementImportRow;
 pub use bank_transaction_repository::{
-    ChargeLineRow, ClearingLineRow, MatchBasisRow, NewBankTransactionRow,
+    CandidateLineBasisRow, ChargeLineRow, ClearingLineRow, MatchBasisRow, NewBankTransactionRow,
 };
-pub use exchange_rate_repository::{ExchangeRateSpotRow, NewExchangeRateRow};
 pub use fx_gain_loss_repository::NewFxGainLossRow;
 // END CUSTOM
 
 // Re-exports
-pub use bank_repository::BankRepository;
 pub use bank_account_repository::BankAccountRepository;
 pub use bank_clearance_repository::BankClearanceRepository;
 pub use bank_reconciliation_repository::BankReconciliationRepository;
+pub use bank_repository::BankRepository;
 pub use bank_statement_import_repository::BankStatementImportRepository;
 pub use bank_transaction_repository::BankTransactionRepository;
-pub use currency_repository::CurrencyRepository;
-pub use exchange_rate_repository::ExchangeRateRepository;
 pub use fx_gain_loss_repository::FxGainLossRepository;
+pub use reconcile_preset_repository::ReconcilePresetRepository;
 
 // Re-export backbone-orm types
 pub use backbone_orm::repository::{
-    DatabaseOperations, PostgresRepository,
-    PaginationParams, PaginationInfo, PaginatedResult,
-    FilterParams, FilterCondition, SortParams, SortDirection,
+    DatabaseOperations, FilterCondition, FilterParams, PaginatedResult, PaginationInfo,
+    PaginationParams, PostgresRepository, SortDirection, SortParams,
 };
 
 // Re-export custom persistence types

@@ -5,8 +5,8 @@
 //! This trait defines the repository contract for the Bank aggregate.
 //! Implementation is in the infrastructure layer.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::domain::entity::{Bank, BankStatus};
@@ -54,7 +54,11 @@ pub struct BankFilter {
 impl BankFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.status.is_some()
+        self.company_id.is_some()
+            || self.name.is_some()
+            || self.swift_bic.is_some()
+            || self.country.is_some()
+            || self.status.is_some()
     }
 }
 
@@ -64,7 +68,6 @@ impl BankFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait BankRepository: Send + Sync {
-
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -92,7 +95,11 @@ pub trait BankRepository: Send + Sync {
     async fn list(&self, params: BankPaginationParams) -> Result<BankPaginatedResult>;
 
     /// List bank with pagination and filters
-    async fn list_with_filters(&self, params: BankPaginationParams, filters: BankFilter) -> Result<BankPaginatedResult>;
+    async fn list_with_filters(
+        &self,
+        params: BankPaginationParams,
+        filters: BankFilter,
+    ) -> Result<BankPaginatedResult>;
 
     /// Count all bank entities
     async fn count(&self) -> Result<u64>;

@@ -66,7 +66,13 @@ impl TestDataGenerator for BankAccountTestData {
 
     async fn seed_dependencies(&self, api: &ApiTest) -> Vec<(String, String)> {
         let mut deps: Vec<(String, String)> = Vec::new();
-        if let Some(id) = super::crud_test_base::create_and_get_id(api, "/api/v1/banks", &super::bank_api_test::BankTestData).await {
+        if let Some(id) = super::crud_test_base::create_and_get_id(
+            api,
+            "/api/v1/banks",
+            &super::bank_api_test::BankTestData,
+        )
+        .await
+        {
             deps.push(("bank_id".to_string(), id));
         }
         deps

@@ -109,6 +109,10 @@ models:
         type: ReconStatus
         attributes: ["@default(open)"]
         description: "Session state — open (numbers disagree) | balanced (numbers agree, exceptions outstanding) | closed (agree + zero exceptions)"
+      preset_id:
+        type: uuid?
+        attributes: ["@exclude_from_foreign_key_check"]
+        description: "The reconcile preset whose ordering governed this session's matches # logical FK to ReconcilePreset.id"
       metadata:
         type: Metadata
         attributes: ["@audit_metadata"]
@@ -147,7 +151,7 @@ enums:
       - name: fuzzy
         description: "Amount + date window heuristic"
       - name: auto_rule
-        description: "A custom match rule"
+        description: "A custom match rule. DEPRECATED: preset-driven matching (ReconcilePreset) supersedes free-form rules — new code should stamp match_method from the preset's match_on; the variant stays for existing rows only"
 
   - name: ReconStatus
     description: "Reconciliation session state"

@@ -27,7 +27,9 @@ pub struct FxGainLossRepository(
 
 impl std::ops::Deref for FxGainLossRepository {
     type Target = backbone_orm::GenericCrudRepository<FxGainLoss, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl FxGainLossRepository {
@@ -66,10 +68,18 @@ impl FxGainLossRepository {
                   original_rate, realised_rate, base_amount_delta, direction, fx_account_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::fx_direction, $10)"#,
         )
-        .bind(r.id).bind(r.company_id).bind(r.bank_clearance_id).bind(r.matched_source_id)
-        .bind(r.currency).bind(r.original_rate).bind(r.realised_rate).bind(r.base_amount_delta)
-        .bind(r.direction).bind(r.fx_account_id)
-        .execute(conn).await?;
+        .bind(r.id)
+        .bind(r.company_id)
+        .bind(r.bank_clearance_id)
+        .bind(r.matched_source_id)
+        .bind(r.currency)
+        .bind(r.original_rate)
+        .bind(r.realised_rate)
+        .bind(r.base_amount_delta)
+        .bind(r.direction)
+        .bind(r.fx_account_id)
+        .execute(conn)
+        .await?;
         Ok(())
     }
 }

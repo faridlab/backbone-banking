@@ -7,9 +7,9 @@
 
 use backbone_core::GenericCrudService;
 
-use crate::presentation::dto::{CreateFxGainLossDto, UpdateFxGainLossDto};
 use crate::domain::entity::FxGainLoss;
 use crate::infrastructure::persistence::FxGainLossRepository;
+use crate::presentation::dto::{CreateFxGainLossDto, UpdateFxGainLossDto};
 
 /// Application service for FxGainLoss entities.
 ///
@@ -25,12 +25,8 @@ use crate::infrastructure::persistence::FxGainLossRepository;
 ///     // add domain-specific dependencies here
 /// }
 /// ```
-pub type FxGainLossService = GenericCrudService<
-    FxGainLoss,
-    CreateFxGainLossDto,
-    UpdateFxGainLossDto,
-    FxGainLossRepository,
->;
+pub type FxGainLossService =
+    GenericCrudService<FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossRepository>;
 
 // <<< CUSTOM
 // END CUSTOM

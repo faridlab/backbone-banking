@@ -33,6 +33,7 @@ impl TestDataGenerator for BankReconciliationTestData {
             "computed_difference": 0,
             "unreconciled_count": 1,
             "status": "open",
+            "preset_id": null,
             "metadata": json!({}),
         })
     }
@@ -50,6 +51,7 @@ impl TestDataGenerator for BankReconciliationTestData {
             "computed_difference": 0,
             "unreconciled_count": 1,
             "status": "open",
+            "preset_id": null,
             "metadata": json!({}),
         })
     }

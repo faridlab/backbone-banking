@@ -27,8 +27,11 @@ pub struct BankStatementImportRepository(
 );
 
 impl std::ops::Deref for BankStatementImportRepository {
-    type Target = backbone_orm::GenericCrudRepository<BankStatementImport, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    type Target =
+        backbone_orm::GenericCrudRepository<BankStatementImport, backbone_orm::SoftDelete>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankStatementImportRepository {
@@ -85,4 +88,8 @@ impl BankStatementImportRepository {
     }
 }
 
-backbone_core::impl_crud_repository!(BankStatementImportRepository, BankStatementImport, soft_delete);
+backbone_core::impl_crud_repository!(
+    BankStatementImportRepository,
+    BankStatementImport,
+    soft_delete
+);

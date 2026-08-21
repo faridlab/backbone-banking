@@ -11,8 +11,6 @@ pub mod bank_clearance_bulk;
 pub mod bank_reconciliation_bulk;
 pub mod bank_statement_import_bulk;
 pub mod bank_transaction_bulk;
-pub mod currency_bulk;
-pub mod exchange_rate_bulk;
 pub mod fx_gain_loss_bulk;
 
 pub use bank_bulk::BankBulkService;
@@ -21,8 +19,6 @@ pub use bank_clearance_bulk::BankClearanceBulkService;
 pub use bank_reconciliation_bulk::BankReconciliationBulkService;
 pub use bank_statement_import_bulk::BankStatementImportBulkService;
 pub use bank_transaction_bulk::BankTransactionBulkService;
-pub use currency_bulk::CurrencyBulkService;
-pub use exchange_rate_bulk::ExchangeRateBulkService;
 pub use fx_gain_loss_bulk::FxGainLossBulkService;
 
 // <<< CUSTOM

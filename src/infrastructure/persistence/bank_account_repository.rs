@@ -28,7 +28,9 @@ pub struct BankAccountRepository(
 
 impl std::ops::Deref for BankAccountRepository {
     type Target = backbone_orm::GenericCrudRepository<BankAccount, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankAccountRepository {

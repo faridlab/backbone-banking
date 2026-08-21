@@ -7,9 +7,9 @@
 
 use backbone_core::GenericCrudService;
 
-use crate::presentation::dto::{CreateBankDto, UpdateBankDto};
 use crate::domain::entity::Bank;
 use crate::infrastructure::persistence::BankRepository;
+use crate::presentation::dto::{CreateBankDto, UpdateBankDto};
 
 /// Application service for Bank entities.
 ///
@@ -25,12 +25,7 @@ use crate::infrastructure::persistence::BankRepository;
 ///     // add domain-specific dependencies here
 /// }
 /// ```
-pub type BankService = GenericCrudService<
-    Bank,
-    CreateBankDto,
-    UpdateBankDto,
-    BankRepository,
->;
+pub type BankService = GenericCrudService<Bank, CreateBankDto, UpdateBankDto, BankRepository>;
 
 // <<< CUSTOM
 // END CUSTOM

@@ -23,12 +23,10 @@ tags:
     description: BankStatementImport management endpoints
   - name: BankTransactions
     description: BankTransaction management endpoints
-  - name: Currencies
-    description: Currency management endpoints
-  - name: ExchangeRates
-    description: ExchangeRate management endpoints
   - name: FxGainLosses
     description: FxGainLoss management endpoints
+  - name: ReconcilePresets
+    description: ReconcilePreset management endpoints
 
 paths:
   /api/v1/banks:
@@ -2227,738 +2225,6 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
-  /api/v1/currencies:
-    get:
-      tags:
-        - Currencies
-      summary: List Currencies
-      description: Get a paginated list of Currencies with optional filtering and sorting
-      operationId: listCurrencies
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PerPageParam'
-        - $ref: '#/components/parameters/SortByParam'
-        - $ref: '#/components/parameters/SortOrderParam'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags:
-        - Currencies
-      summary: Create Currency
-      description: Create a new Currency
-      operationId: createCurrency
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateCurrencyRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/v1/currencies/{id}:
-    parameters:
-      - $ref: '#/components/parameters/IdParam'
-
-    get:
-      tags:
-        - Currencies
-      summary: Get Currency by ID
-      operationId: getCurrency
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      tags:
-        - Currencies
-      summary: Update Currency (full)
-      operationId: updateCurrency
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCurrencyRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags:
-        - Currencies
-      summary: Update Currency (partial)
-      operationId: patchCurrency
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchCurrencyRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    delete:
-      tags:
-        - Currencies
-      summary: Delete Currency (soft)
-      operationId: deleteCurrency
-      responses:
-        '204':
-          description: Deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/currencies/bulk:
-    post:
-      tags:
-        - Currencies
-      summary: Bulk create Currencies
-      operationId: bulkCreateCurrencies
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/CreateCurrencyRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Currency'
-    put:
-      tags:
-        - Currencies
-      summary: Bulk update Currencies (full, atomic)
-      operationId: bulkUpdateCurrencies
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                allOf:
-                  - type: object
-                    required: [id]
-                    properties:
-                      id:
-                        type: string
-                  - $ref: '#/components/schemas/UpdateCurrencyRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-    patch:
-      tags:
-        - Currencies
-      summary: Bulk partial-update Currencies (atomic)
-      operationId: bulkPatchCurrencies
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - type: object
-                  required: [ids, patch]
-                  properties:
-                    ids:
-                      type: array
-                      items: { type: string }
-                    patch:
-                      type: object
-                      additionalProperties: true
-                - type: object
-                  required: [items]
-                  properties:
-                    items:
-                      type: array
-                      items:
-                        type: object
-                        required: [id, patch]
-                        properties:
-                          id: { type: string }
-                          patch: { type: object, additionalProperties: true }
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/currencies/upsert:
-    post:
-      tags:
-        - Currencies
-      summary: Upsert Currency
-      operationId: upsertCurrency
-      parameters:
-        - name: key_field
-          in: query
-          schema:
-            type: string
-        - name: key_value
-          in: query
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCurrencyRequest'
-      responses:
-        '200':
-          description: Upserted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-
-  /api/v1/currencies/trash:
-    get:
-      tags:
-        - Currencies
-      summary: List deleted Currencies
-      operationId: listDeletedCurrencies
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PerPageParam'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyList'
-
-  /api/v1/currencies/{id}/restore:
-    parameters:
-      - $ref: '#/components/parameters/IdParam'
-    post:
-      tags:
-        - Currencies
-      summary: Restore deleted Currency
-      operationId: restoreCurrency
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Currency'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/currencies/empty:
-    delete:
-      tags:
-        - Currencies
-      summary: Empty trash for Currencies
-      operationId: emptyTrashCurrencies
-      responses:
-        '200':
-          description: Trash emptied
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  deleted_count:
-                    type: integer
-
-  /api/v1/currencies/delete/bulk:
-    post:
-      tags:
-        - Currencies
-      summary: Bulk soft-delete Currencies by ids (atomic)
-      operationId: bulkDeleteCurrencies
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Soft-deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  soft_deleted: { type: integer }
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/currencies/restore/bulk:
-    post:
-      tags:
-        - Currencies
-      summary: Bulk restore Currencies by ids (atomic)
-      operationId: bulkRestoreCurrencies
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/currencies/restore/all:
-    post:
-      tags:
-        - Currencies
-      summary: Restore all soft-deleted Currencies
-      operationId: restoreAllCurrencies
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  restored: { type: integer }
-
-  /api/v1/currencies/trash/bulk:
-    delete:
-      tags:
-        - Currencies
-      summary: Bulk permanently-delete Currencies from trash by ids (atomic)
-      operationId: bulkPermanentDeleteCurrencies
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Permanently deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  permanently_deleted: { type: integer }
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/exchange_rates:
-    get:
-      tags:
-        - ExchangeRates
-      summary: List ExchangeRates
-      description: Get a paginated list of ExchangeRates with optional filtering and sorting
-      operationId: listExchangeRates
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PerPageParam'
-        - $ref: '#/components/parameters/SortByParam'
-        - $ref: '#/components/parameters/SortOrderParam'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRateList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags:
-        - ExchangeRates
-      summary: Create ExchangeRate
-      description: Create a new ExchangeRate
-      operationId: createExchangeRate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateExchangeRateRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/v1/exchange_rates/{id}:
-    parameters:
-      - $ref: '#/components/parameters/IdParam'
-
-    get:
-      tags:
-        - ExchangeRates
-      summary: Get ExchangeRate by ID
-      operationId: getExchangeRate
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      tags:
-        - ExchangeRates
-      summary: Update ExchangeRate (full)
-      operationId: updateExchangeRate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateExchangeRateRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags:
-        - ExchangeRates
-      summary: Update ExchangeRate (partial)
-      operationId: patchExchangeRate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchExchangeRateRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    delete:
-      tags:
-        - ExchangeRates
-      summary: Delete ExchangeRate (soft)
-      operationId: deleteExchangeRate
-      responses:
-        '204':
-          description: Deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/exchange_rates/bulk:
-    post:
-      tags:
-        - ExchangeRates
-      summary: Bulk create ExchangeRates
-      operationId: bulkCreateExchangeRates
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/CreateExchangeRateRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExchangeRate'
-    put:
-      tags:
-        - ExchangeRates
-      summary: Bulk update ExchangeRates (full, atomic)
-      operationId: bulkUpdateExchangeRates
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                allOf:
-                  - type: object
-                    required: [id]
-                    properties:
-                      id:
-                        type: string
-                  - $ref: '#/components/schemas/UpdateExchangeRateRequest'
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRateBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-    patch:
-      tags:
-        - ExchangeRates
-      summary: Bulk partial-update ExchangeRates (atomic)
-      operationId: bulkPatchExchangeRates
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - type: object
-                  required: [ids, patch]
-                  properties:
-                    ids:
-                      type: array
-                      items: { type: string }
-                    patch:
-                      type: object
-                      additionalProperties: true
-                - type: object
-                  required: [items]
-                  properties:
-                    items:
-                      type: array
-                      items:
-                        type: object
-                        required: [id, patch]
-                        properties:
-                          id: { type: string }
-                          patch: { type: object, additionalProperties: true }
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRateBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/exchange_rates/upsert:
-    post:
-      tags:
-        - ExchangeRates
-      summary: Upsert ExchangeRate
-      operationId: upsertExchangeRate
-      parameters:
-        - name: key_field
-          in: query
-          schema:
-            type: string
-        - name: key_value
-          in: query
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateExchangeRateRequest'
-      responses:
-        '200':
-          description: Upserted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-
-  /api/v1/exchange_rates/trash:
-    get:
-      tags:
-        - ExchangeRates
-      summary: List deleted ExchangeRates
-      operationId: listDeletedExchangeRates
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PerPageParam'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRateList'
-
-  /api/v1/exchange_rates/{id}/restore:
-    parameters:
-      - $ref: '#/components/parameters/IdParam'
-    post:
-      tags:
-        - ExchangeRates
-      summary: Restore deleted ExchangeRate
-      operationId: restoreExchangeRate
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRate'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/exchange_rates/empty:
-    delete:
-      tags:
-        - ExchangeRates
-      summary: Empty trash for ExchangeRates
-      operationId: emptyTrashExchangeRates
-      responses:
-        '200':
-          description: Trash emptied
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  deleted_count:
-                    type: integer
-
-  /api/v1/exchange_rates/delete/bulk:
-    post:
-      tags:
-        - ExchangeRates
-      summary: Bulk soft-delete ExchangeRates by ids (atomic)
-      operationId: bulkDeleteExchangeRates
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Soft-deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  soft_deleted: { type: integer }
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/exchange_rates/restore/bulk:
-    post:
-      tags:
-        - ExchangeRates
-      summary: Bulk restore ExchangeRates by ids (atomic)
-      operationId: bulkRestoreExchangeRates
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExchangeRateBulkResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/exchange_rates/restore/all:
-    post:
-      tags:
-        - ExchangeRates
-      summary: Restore all soft-deleted ExchangeRates
-      operationId: restoreAllExchangeRates
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  restored: { type: integer }
-
-  /api/v1/exchange_rates/trash/bulk:
-    delete:
-      tags:
-        - ExchangeRates
-      summary: Bulk permanently-delete ExchangeRates from trash by ids (atomic)
-      operationId: bulkPermanentDeleteExchangeRates
-      requestBody:
-        $ref: '#/components/requestBodies/BatchIds'
-      responses:
-        '200':
-          description: Permanently deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  permanently_deleted: { type: integer }
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
   /api/v1/fx_gain_losses:
     get:
       tags:
@@ -3311,6 +2577,372 @@ paths:
         - FxGainLosses
       summary: Bulk permanently-delete FxGainLosses from trash by ids (atomic)
       operationId: bulkPermanentDeleteFxGainLosses
+      requestBody:
+        $ref: '#/components/requestBodies/BatchIds'
+      responses:
+        '200':
+          description: Permanently deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  permanently_deleted: { type: integer }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/reconcile_presets:
+    get:
+      tags:
+        - ReconcilePresets
+      summary: List ReconcilePresets
+      description: Get a paginated list of ReconcilePresets with optional filtering and sorting
+      operationId: listReconcilePresets
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePresetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Create ReconcilePreset
+      description: Create a new ReconcilePreset
+      operationId: createReconcilePreset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReconcilePresetRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/reconcile_presets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+
+    get:
+      tags:
+        - ReconcilePresets
+      summary: Get ReconcilePreset by ID
+      operationId: getReconcilePreset
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - ReconcilePresets
+      summary: Update ReconcilePreset (full)
+      operationId: updateReconcilePreset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReconcilePresetRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - ReconcilePresets
+      summary: Update ReconcilePreset (partial)
+      operationId: patchReconcilePreset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchReconcilePresetRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - ReconcilePresets
+      summary: Delete ReconcilePreset (soft)
+      operationId: deleteReconcilePreset
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/reconcile_presets/bulk:
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Bulk create ReconcilePresets
+      operationId: bulkCreateReconcilePresets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateReconcilePresetRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReconcilePreset'
+    put:
+      tags:
+        - ReconcilePresets
+      summary: Bulk update ReconcilePresets (full, atomic)
+      operationId: bulkUpdateReconcilePresets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                allOf:
+                  - type: object
+                    required: [id]
+                    properties:
+                      id:
+                        type: string
+                  - $ref: '#/components/schemas/UpdateReconcilePresetRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePresetBulkResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    patch:
+      tags:
+        - ReconcilePresets
+      summary: Bulk partial-update ReconcilePresets (atomic)
+      operationId: bulkPatchReconcilePresets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [ids, patch]
+                  properties:
+                    ids:
+                      type: array
+                      items: { type: string }
+                    patch:
+                      type: object
+                      additionalProperties: true
+                - type: object
+                  required: [items]
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        required: [id, patch]
+                        properties:
+                          id: { type: string }
+                          patch: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePresetBulkResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/reconcile_presets/upsert:
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Upsert ReconcilePreset
+      operationId: upsertReconcilePreset
+      parameters:
+        - name: key_field
+          in: query
+          schema:
+            type: string
+        - name: key_value
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReconcilePresetRequest'
+      responses:
+        '200':
+          description: Upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+
+  /api/v1/reconcile_presets/trash:
+    get:
+      tags:
+        - ReconcilePresets
+      summary: List deleted ReconcilePresets
+      operationId: listDeletedReconcilePresets
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePresetList'
+
+  /api/v1/reconcile_presets/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Restore deleted ReconcilePreset
+      operationId: restoreReconcilePreset
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/reconcile_presets/empty:
+    delete:
+      tags:
+        - ReconcilePresets
+      summary: Empty trash for ReconcilePresets
+      operationId: emptyTrashReconcilePresets
+      responses:
+        '200':
+          description: Trash emptied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+
+  /api/v1/reconcile_presets/delete/bulk:
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Bulk soft-delete ReconcilePresets by ids (atomic)
+      operationId: bulkDeleteReconcilePresets
+      requestBody:
+        $ref: '#/components/requestBodies/BatchIds'
+      responses:
+        '200':
+          description: Soft-deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  soft_deleted: { type: integer }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/reconcile_presets/restore/bulk:
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Bulk restore ReconcilePresets by ids (atomic)
+      operationId: bulkRestoreReconcilePresets
+      requestBody:
+        $ref: '#/components/requestBodies/BatchIds'
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcilePresetBulkResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/reconcile_presets/restore/all:
+    post:
+      tags:
+        - ReconcilePresets
+      summary: Restore all soft-deleted ReconcilePresets
+      operationId: restoreAllReconcilePresets
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restored: { type: integer }
+
+  /api/v1/reconcile_presets/trash/bulk:
+    delete:
+      tags:
+        - ReconcilePresets
+      summary: Bulk permanently-delete ReconcilePresets from trash by ids (atomic)
+      operationId: bulkPermanentDeleteReconcilePresets
       requestBody:
         $ref: '#/components/requestBodies/BatchIds'
       responses:
@@ -3890,6 +3522,10 @@ components:
           format: int32
         status:
           type: string
+        preset_id:
+          nullable: true
+          type: string
+          format: uuid
         metadata:
           type: object
 
@@ -3943,6 +3579,10 @@ components:
           format: int32
         status:
           type: string
+        preset_id:
+          nullable: true
+          type: string
+          format: uuid
         metadata:
           type: object
 
@@ -3983,6 +3623,10 @@ components:
           format: int32
         status:
           type: string
+        preset_id:
+          nullable: true
+          type: string
+          format: uuid
         metadata:
           type: object
 
@@ -4012,6 +3656,10 @@ components:
           format: int32
         status:
           type: string
+        preset_id:
+          nullable: true
+          type: string
+          format: uuid
         metadata:
           type: object
 
@@ -4441,316 +4089,6 @@ components:
         meta:
           $ref: '#/components/schemas/PaginationMeta'
 
-    Currency:
-      type: object
-      required:
-        - id
-        - company_id
-        - code
-        - name
-        - scale
-        - is_base
-        - status
-        - metadata
-      properties:
-        id:
-          type: string
-          format: uuid
-        company_id:
-          type: string
-          format: uuid
-        code:
-          type: string
-          maxLength: 3
-        name:
-          type: string
-          maxLength: 60
-        symbol:
-          nullable: true
-          type: string
-          maxLength: 8
-        scale:
-          type: integer
-          format: int32
-        is_base:
-          type: boolean
-        status:
-          type: string
-        metadata:
-          type: object
-
-    CurrencyBulkResult:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Currency'
-        total: { type: integer }
-        failed: { type: integer }
-        errors:
-          type: array
-          items: { type: string }
-
-    CreateCurrencyRequest:
-      type: object
-      required:
-        - company_id
-        - code
-        - name
-        - scale
-        - is_base
-        - status
-        - metadata
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        code:
-          type: string
-          maxLength: 3
-        name:
-          type: string
-          maxLength: 60
-        symbol:
-          nullable: true
-          type: string
-          maxLength: 8
-        scale:
-          type: integer
-          format: int32
-        is_base:
-          type: boolean
-        status:
-          type: string
-        metadata:
-          type: object
-
-    UpdateCurrencyRequest:
-      type: object
-      required:
-        - company_id
-        - code
-        - name
-        - scale
-        - is_base
-        - status
-        - metadata
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        code:
-          type: string
-          maxLength: 3
-        name:
-          type: string
-          maxLength: 60
-        symbol:
-          nullable: true
-          type: string
-          maxLength: 8
-        scale:
-          type: integer
-          format: int32
-        is_base:
-          type: boolean
-        status:
-          type: string
-        metadata:
-          type: object
-
-    PatchCurrencyRequest:
-      type: object
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        code:
-          type: string
-          maxLength: 3
-        name:
-          type: string
-          maxLength: 60
-        symbol:
-          nullable: true
-          type: string
-          maxLength: 8
-        scale:
-          type: integer
-          format: int32
-        is_base:
-          type: boolean
-        status:
-          type: string
-        metadata:
-          type: object
-
-    CurrencyList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Currency'
-        meta:
-          $ref: '#/components/schemas/PaginationMeta'
-
-    ExchangeRate:
-      type: object
-      required:
-        - id
-        - company_id
-        - from_currency
-        - to_currency
-        - rate
-        - effective_at
-        - rate_type
-        - metadata
-      properties:
-        id:
-          type: string
-          format: uuid
-        company_id:
-          type: string
-          format: uuid
-        from_currency:
-          type: string
-          maxLength: 3
-        to_currency:
-          type: string
-          maxLength: 3
-        rate:
-          type: string
-        effective_at:
-          type: string
-          format: date
-        rate_type:
-          type: string
-        source:
-          nullable: true
-          type: string
-          maxLength: 140
-        metadata:
-          type: object
-
-    ExchangeRateBulkResult:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExchangeRate'
-        total: { type: integer }
-        failed: { type: integer }
-        errors:
-          type: array
-          items: { type: string }
-
-    CreateExchangeRateRequest:
-      type: object
-      required:
-        - company_id
-        - from_currency
-        - to_currency
-        - rate
-        - effective_at
-        - rate_type
-        - metadata
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        from_currency:
-          type: string
-          maxLength: 3
-        to_currency:
-          type: string
-          maxLength: 3
-        rate:
-          type: string
-        effective_at:
-          type: string
-          format: date
-        rate_type:
-          type: string
-        source:
-          nullable: true
-          type: string
-          maxLength: 140
-        metadata:
-          type: object
-
-    UpdateExchangeRateRequest:
-      type: object
-      required:
-        - company_id
-        - from_currency
-        - to_currency
-        - rate
-        - effective_at
-        - rate_type
-        - metadata
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        from_currency:
-          type: string
-          maxLength: 3
-        to_currency:
-          type: string
-          maxLength: 3
-        rate:
-          type: string
-        effective_at:
-          type: string
-          format: date
-        rate_type:
-          type: string
-        source:
-          nullable: true
-          type: string
-          maxLength: 140
-        metadata:
-          type: object
-
-    PatchExchangeRateRequest:
-      type: object
-      properties:
-        company_id:
-          type: string
-          format: uuid
-        from_currency:
-          type: string
-          maxLength: 3
-        to_currency:
-          type: string
-          maxLength: 3
-        rate:
-          type: string
-        effective_at:
-          type: string
-          format: date
-        rate_type:
-          type: string
-        source:
-          nullable: true
-          type: string
-          maxLength: 140
-        metadata:
-          type: object
-
-    ExchangeRateList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExchangeRate'
-        meta:
-          $ref: '#/components/schemas/PaginationMeta'
-
     FxGainLoss:
       type: object
       required:
@@ -4925,6 +4263,174 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FxGainLoss'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ReconcilePreset:
+      type: object
+      required:
+        - id
+        - company_id
+        - name
+        - priority
+        - match_on
+        - status
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 80
+        note:
+          nullable: true
+          type: string
+          maxLength: 255
+        priority:
+          type: integer
+          format: int32
+        match_on:
+          type: string
+        tolerance_percent:
+          nullable: true
+          type: string
+        days_window:
+          nullable: true
+          type: integer
+          format: int32
+        status:
+          type: string
+        metadata:
+          type: object
+
+    ReconcilePresetBulkResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReconcilePreset'
+        total: { type: integer }
+        failed: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+
+    CreateReconcilePresetRequest:
+      type: object
+      required:
+        - company_id
+        - name
+        - priority
+        - match_on
+        - status
+        - metadata
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 80
+        note:
+          nullable: true
+          type: string
+          maxLength: 255
+        priority:
+          type: integer
+          format: int32
+        match_on:
+          type: string
+        tolerance_percent:
+          nullable: true
+          type: string
+        days_window:
+          nullable: true
+          type: integer
+          format: int32
+        status:
+          type: string
+        metadata:
+          type: object
+
+    UpdateReconcilePresetRequest:
+      type: object
+      required:
+        - company_id
+        - name
+        - priority
+        - match_on
+        - status
+        - metadata
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 80
+        note:
+          nullable: true
+          type: string
+          maxLength: 255
+        priority:
+          type: integer
+          format: int32
+        match_on:
+          type: string
+        tolerance_percent:
+          nullable: true
+          type: string
+        days_window:
+          nullable: true
+          type: integer
+          format: int32
+        status:
+          type: string
+        metadata:
+          type: object
+
+    PatchReconcilePresetRequest:
+      type: object
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 80
+        note:
+          nullable: true
+          type: string
+          maxLength: 255
+        priority:
+          type: integer
+          format: int32
+        match_on:
+          type: string
+        tolerance_percent:
+          nullable: true
+          type: string
+        days_window:
+          nullable: true
+          type: integer
+          format: int32
+        status:
+          type: string
+        metadata:
+          type: object
+
+    ReconcilePresetList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReconcilePreset'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
 

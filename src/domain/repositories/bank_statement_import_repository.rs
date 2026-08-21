@@ -5,8 +5,8 @@
 //! This trait defines the repository contract for the BankStatementImport aggregate.
 //! Implementation is in the infrastructure layer.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::domain::entity::{BankStatementImport, ImportStatus, SourceFormat};
@@ -54,7 +54,11 @@ pub struct BankStatementImportFilter {
 impl BankStatementImportFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.source_format.is_some() || self.file_ref.is_some() || self.status.is_some()
+        self.company_id.is_some()
+            || self.bank_account_id.is_some()
+            || self.source_format.is_some()
+            || self.file_ref.is_some()
+            || self.status.is_some()
     }
 }
 
@@ -64,7 +68,6 @@ impl BankStatementImportFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait BankStatementImportRepository: Send + Sync {
-
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -79,7 +82,11 @@ pub trait BankStatementImportRepository: Send + Sync {
     async fn find_all(&self) -> Result<Vec<BankStatementImport>>;
 
     /// Update bank_statement_import by ID
-    async fn update(&self, id: &str, entity: &BankStatementImport) -> Result<Option<BankStatementImport>>;
+    async fn update(
+        &self,
+        id: &str,
+        entity: &BankStatementImport,
+    ) -> Result<Option<BankStatementImport>>;
 
     /// Delete bank_statement_import by ID
     async fn delete(&self, id: &str) -> Result<bool>;
@@ -89,10 +96,17 @@ pub trait BankStatementImportRepository: Send + Sync {
     // =========================================================================
 
     /// List bank_statement_import with pagination
-    async fn list(&self, params: BankStatementImportPaginationParams) -> Result<BankStatementImportPaginatedResult>;
+    async fn list(
+        &self,
+        params: BankStatementImportPaginationParams,
+    ) -> Result<BankStatementImportPaginatedResult>;
 
     /// List bank_statement_import with pagination and filters
-    async fn list_with_filters(&self, params: BankStatementImportPaginationParams, filters: BankStatementImportFilter) -> Result<BankStatementImportPaginatedResult>;
+    async fn list_with_filters(
+        &self,
+        params: BankStatementImportPaginationParams,
+        filters: BankStatementImportFilter,
+    ) -> Result<BankStatementImportPaginatedResult>;
 
     /// Count all bank_statement_import entities
     async fn count(&self) -> Result<u64>;
@@ -114,7 +128,10 @@ pub trait BankStatementImportRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<BankStatementImport>>;
 
     /// List soft-deleted bank_statement_import entities
-    async fn list_deleted(&self, params: BankStatementImportPaginationParams) -> Result<BankStatementImportPaginatedResult>;
+    async fn list_deleted(
+        &self,
+        params: BankStatementImportPaginationParams,
+    ) -> Result<BankStatementImportPaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;
@@ -124,7 +141,8 @@ pub trait BankStatementImportRepository: Send + Sync {
     // =========================================================================
 
     /// Bulk save bank_statement_import entities
-    async fn bulk_save(&self, entities: &[BankStatementImport]) -> Result<Vec<BankStatementImport>>;
+    async fn bulk_save(&self, entities: &[BankStatementImport])
+        -> Result<Vec<BankStatementImport>>;
 
     /// Bulk delete by IDs
     async fn bulk_delete(&self, ids: &[&str]) -> Result<u64>;

@@ -5,8 +5,8 @@
 //! This trait defines the repository contract for the BankTransaction aggregate.
 //! Implementation is in the infrastructure layer.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::domain::entity::{BankTransaction, TxnStatus};
@@ -56,7 +56,13 @@ pub struct BankTransactionFilter {
 impl BankTransactionFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.import_id.is_some() || self.description.is_some() || self.reference_no.is_some() || self.currency.is_some() || self.status.is_some()
+        self.company_id.is_some()
+            || self.bank_account_id.is_some()
+            || self.import_id.is_some()
+            || self.description.is_some()
+            || self.reference_no.is_some()
+            || self.currency.is_some()
+            || self.status.is_some()
     }
 }
 
@@ -66,7 +72,6 @@ impl BankTransactionFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait BankTransactionRepository: Send + Sync {
-
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -91,10 +96,17 @@ pub trait BankTransactionRepository: Send + Sync {
     // =========================================================================
 
     /// List bank_transaction with pagination
-    async fn list(&self, params: BankTransactionPaginationParams) -> Result<BankTransactionPaginatedResult>;
+    async fn list(
+        &self,
+        params: BankTransactionPaginationParams,
+    ) -> Result<BankTransactionPaginatedResult>;
 
     /// List bank_transaction with pagination and filters
-    async fn list_with_filters(&self, params: BankTransactionPaginationParams, filters: BankTransactionFilter) -> Result<BankTransactionPaginatedResult>;
+    async fn list_with_filters(
+        &self,
+        params: BankTransactionPaginationParams,
+        filters: BankTransactionFilter,
+    ) -> Result<BankTransactionPaginatedResult>;
 
     /// Count all bank_transaction entities
     async fn count(&self) -> Result<u64>;
@@ -116,7 +128,10 @@ pub trait BankTransactionRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<BankTransaction>>;
 
     /// List soft-deleted bank_transaction entities
-    async fn list_deleted(&self, params: BankTransactionPaginationParams) -> Result<BankTransactionPaginatedResult>;
+    async fn list_deleted(
+        &self,
+        params: BankTransactionPaginationParams,
+    ) -> Result<BankTransactionPaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;

@@ -18,7 +18,9 @@ use uuid::Uuid;
 use crate::infrastructure::persistence::NewReconciliationRow;
 
 use super::banking_events::{BankReconciliationClosed, BankingEvent};
-use super::banking_write_service::{money, BankingError, BankingWriteService, NewReconciliation, ReconcileOutcome};
+use super::banking_write_service::{
+    money, BankingError, BankingWriteService, NewReconciliation, ReconcileOutcome,
+};
 
 impl BankingWriteService {
     /// Open/close a reconciliation session (council 2026-07-05 — line-completeness close-gate). A
@@ -38,31 +40,61 @@ impl BankingWriteService {
         // defense-in-depth.
         let company = r.company_id;
         company_scope::with_company_scope(Some(company), async move {
-        let diff = money(r.statement_closing_balance - r.ledger_balance);
-        let id = Uuid::new_v4();
-        let unreconciled: i64 = self.repos.transactions.count_open_in_period(
-            &self.db_pool, r.company_id, r.bank_account_id, r.from_date, r.to_date,
-        ).await?;
-        let status = if !diff.is_zero() { "open" } else if unreconciled > 0 { "balanced" } else { "closed" };
-        self.repos.reconciliations.insert_reconciliation(&self.db_pool, &NewReconciliationRow {
-            id,
-            company_id: r.company_id,
-            bank_account_id: r.bank_account_id,
-            from_date: r.from_date,
-            to_date: r.to_date,
-            statement_closing_balance: money(r.statement_closing_balance),
-            ledger_balance: money(r.ledger_balance),
-            computed_difference: diff,
-            unreconciled_count: unreconciled as i32,
-            status,
-        }).await?;
-        // Attest "the bank agrees with our books" ONLY when the session actually closes.
-        if status == "closed" {
-            self.sink.publish(BankingEvent::BankReconciliationClosed(BankReconciliationClosed {
-                reconciliation_id: id, bank_account_id: r.bank_account_id, difference: diff,
-            }));
-        }
-        Ok(ReconcileOutcome { id, difference: diff, unreconciled_count: unreconciled, status: status.to_string() })
-        }).await
+            let diff = money(r.statement_closing_balance - r.ledger_balance);
+            let id = Uuid::new_v4();
+            let unreconciled: i64 = self
+                .repos
+                .transactions
+                .count_open_in_period(
+                    &self.db_pool,
+                    r.company_id,
+                    r.bank_account_id,
+                    r.from_date,
+                    r.to_date,
+                )
+                .await?;
+            let status = if !diff.is_zero() {
+                "open"
+            } else if unreconciled > 0 {
+                "balanced"
+            } else {
+                "closed"
+            };
+            self.repos
+                .reconciliations
+                .insert_reconciliation(
+                    &self.db_pool,
+                    &NewReconciliationRow {
+                        id,
+                        company_id: r.company_id,
+                        bank_account_id: r.bank_account_id,
+                        from_date: r.from_date,
+                        to_date: r.to_date,
+                        statement_closing_balance: money(r.statement_closing_balance),
+                        ledger_balance: money(r.ledger_balance),
+                        computed_difference: diff,
+                        unreconciled_count: unreconciled as i32,
+                        status,
+                    },
+                )
+                .await?;
+            // Attest "the bank agrees with our books" ONLY when the session actually closes.
+            if status == "closed" {
+                self.sink.publish(BankingEvent::BankReconciliationClosed(
+                    BankReconciliationClosed {
+                        reconciliation_id: id,
+                        bank_account_id: r.bank_account_id,
+                        difference: diff,
+                    },
+                ));
+            }
+            Ok(ReconcileOutcome {
+                id,
+                difference: diff,
+                unreconciled_count: unreconciled,
+                status: status.to_string(),
+            })
+        })
+        .await
     }
 }

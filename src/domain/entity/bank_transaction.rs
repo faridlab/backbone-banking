@@ -1,11 +1,11 @@
-use chrono::{DateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use rust_decimal::Decimal;
 
-use super::TxnStatus;
 use super::AuditMetadata;
+use super::TxnStatus;
 
 /// Strongly-typed ID for BankTransaction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,9 +13,15 @@ use super::AuditMetadata;
 pub struct BankTransactionId(pub Uuid);
 
 impl BankTransactionId {
-    pub fn new(id: Uuid) -> Self { Self(id) }
-    pub fn generate() -> Self { Self(Uuid::new_v4()) }
-    pub fn into_inner(self) -> Uuid { self.0 }
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+    pub fn generate() -> Self {
+        Self(Uuid::new_v4())
+    }
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
 }
 
 impl std::fmt::Display for BankTransactionId {
@@ -32,20 +38,28 @@ impl std::str::FromStr for BankTransactionId {
 }
 
 impl From<Uuid> for BankTransactionId {
-    fn from(id: Uuid) -> Self { Self(id) }
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
 }
 
 impl From<BankTransactionId> for Uuid {
-    fn from(id: BankTransactionId) -> Self { id.0 }
+    fn from(id: BankTransactionId) -> Self {
+        id.0
+    }
 }
 
 impl AsRef<Uuid> for BankTransactionId {
-    fn as_ref(&self) -> &Uuid { &self.0 }
+    fn as_ref(&self) -> &Uuid {
+        &self.0
+    }
 }
 
 impl std::ops::Deref for BankTransactionId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -75,7 +89,17 @@ impl BankTransaction {
     }
 
     /// Create a new BankTransaction with required fields
-    pub fn new(company_id: Uuid, bank_account_id: Uuid, import_id: Uuid, txn_date: NaiveDate, deposit: Decimal, withdrawal: Decimal, currency: String, status: TxnStatus, allocated_amount: Decimal) -> Self {
+    pub fn new(
+        company_id: Uuid,
+        bank_account_id: Uuid,
+        import_id: Uuid,
+        txn_date: NaiveDate,
+        deposit: Decimal,
+        withdrawal: Decimal,
+        currency: String,
+        status: TxnStatus,
+        allocated_amount: Decimal,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -149,7 +173,6 @@ impl BankTransaction {
         &self.status
     }
 
-
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -181,40 +204,64 @@ impl BankTransaction {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.company_id = v;
+                    }
                 }
                 "bank_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.bank_account_id = v;
+                    }
                 }
                 "import_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.import_id = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.import_id = v;
+                    }
                 }
                 "txn_date" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.txn_date = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.txn_date = v;
+                    }
                 }
                 "value_date" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.value_date = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.value_date = v;
+                    }
                 }
                 "description" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.description = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.description = v;
+                    }
                 }
                 "reference_no" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.reference_no = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.reference_no = v;
+                    }
                 }
                 "deposit" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.deposit = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.deposit = v;
+                    }
                 }
                 "withdrawal" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.withdrawal = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.withdrawal = v;
+                    }
                 }
                 "currency" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.currency = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.currency = v;
+                    }
                 }
                 "status" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.status = v;
+                    }
                 }
                 "allocated_amount" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.allocated_amount = v; }
+                    if let Ok(v) = serde_json::from_value(value) {
+                        self.allocated_amount = v;
+                    }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -384,10 +431,18 @@ impl BankTransactionBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankTransaction, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
-        let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
-        let import_id = self.import_id.ok_or_else(|| "import_id is required".to_string())?;
-        let txn_date = self.txn_date.ok_or_else(|| "txn_date is required".to_string())?;
+        let company_id = self
+            .company_id
+            .ok_or_else(|| "company_id is required".to_string())?;
+        let bank_account_id = self
+            .bank_account_id
+            .ok_or_else(|| "bank_account_id is required".to_string())?;
+        let import_id = self
+            .import_id
+            .ok_or_else(|| "import_id is required".to_string())?;
+        let txn_date = self
+            .txn_date
+            .ok_or_else(|| "txn_date is required".to_string())?;
 
         Ok(BankTransaction {
             id: Uuid::new_v4(),

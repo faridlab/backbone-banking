@@ -5,9 +5,9 @@
 //! Returns an `EntityValidator<Bank>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
-use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
-use backbone_core::{OptionalNotBlank, RequiredString};
 use crate::domain::entity::Bank;
+use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
+use backbone_core::{OptionalNotBlank, RequiredString};
 
 /// Validator type alias for Bank entities.
 pub type BankValidator = EntityValidator<Bank>;
@@ -16,7 +16,9 @@ pub type BankValidator = EntityValidator<Bank>;
 pub fn bank_validator() -> BankValidator {
     EntityValidator::new()
         .rule(RequiredString::new("name", |e: &Bank| &e.name))
-        .rule(OptionalNotBlank::new("swift_bic", |e: &Bank| e.swift_bic.as_deref()))
+        .rule(OptionalNotBlank::new("swift_bic", |e: &Bank| {
+            e.swift_bic.as_deref()
+        }))
         .rule(RequiredString::new("country", |e: &Bank| &e.country))
     // <<< CUSTOM RULES
     // END CUSTOM RULES

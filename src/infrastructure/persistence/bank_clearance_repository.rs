@@ -10,8 +10,10 @@
 
 use anyhow::Result;
 use rust_decimal::Decimal;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
+
+use backbone_orm::company_scope;
 
 use crate::domain::entity::BankClearance;
 
@@ -28,7 +30,9 @@ pub struct BankClearanceRepository(
 
 impl std::ops::Deref for BankClearanceRepository {
     type Target = backbone_orm::GenericCrudRepository<BankClearance, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankClearanceRepository {
@@ -80,6 +84,42 @@ pub struct NewChargeClearanceRow {
 /// in the service — this layer only locks and sums.
 impl BankClearanceRepository {
     /// Serialize clearances against one settlement with an advisory xact lock, so two concurrent
+    /// Sum of cleared amounts per payment, over a candidate set — the reconcile-preset ordering's
+    /// open-amount input. Reads banking's OWN clearance table (the same amounts the clear verb's
+    /// settlement bound counts), so ordering and clearing can never disagree about what is open.
+    /// Pool-based scoped read; an empty id list returns an empty map.
+    pub async fn sums_cleared_for_payments(
+        &self,
+        pool: &PgPool,
+        company_id: Uuid,
+        payment_ids: &[Uuid],
+    ) -> Result<std::collections::HashMap<Uuid, Decimal>, sqlx::Error> {
+        if payment_ids.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+        let rows = company_scope::with_company_scope(
+            Some(company_id),
+            sqlx::query(
+                r#"SELECT matched_source_id, SUM(matched_amount) AS cleared
+                   FROM banking.bank_clearances
+                   WHERE company_id=$1 AND matched_source_type='payment' AND matched_source_id = ANY($2)
+                   GROUP BY matched_source_id"#,
+            )
+            .bind(company_id)
+            .bind(payment_ids)
+            .fetch_all(pool),
+        )
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let id: Uuid = r.get("matched_source_id");
+                let cleared: Decimal = r.get("cleared");
+                (id, cleared)
+            })
+            .collect())
+    }
+
     /// first-clears cannot race the [`Self::sum_cleared_against_settlement`] phantom-insert.
     ///
     /// Takes the CALLER'S connection: an xact lock is released at commit, so it MUST be taken on the
@@ -95,10 +135,13 @@ impl BankClearanceRepository {
         company_id: Uuid,
         matched_source_id: Uuid,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 0))")
-            .bind(company_id).bind(matched_source_id)
-            .execute(conn)
-            .await?;
+        sqlx::query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 0))",
+        )
+        .bind(company_id)
+        .bind(matched_source_id)
+        .execute(conn)
+        .await?;
         Ok(())
     }
 
@@ -145,9 +188,16 @@ impl BankClearanceRepository {
                  matched_amount, match_method, clearance_date, accounting_post_id, journal_id)
                VALUES ($1,$2,$3,$4::matched_source_type,$5,$6,$7::match_method,$8,$9,$10)"#,
         )
-        .bind(c.id).bind(c.company_id).bind(c.bank_transaction_id).bind(c.matched_source_type)
-        .bind(c.matched_source_id).bind(c.matched_amount).bind(c.match_method)
-        .bind(c.clearance_date).bind(c.accounting_post_id).bind(c.journal_id)
+        .bind(c.id)
+        .bind(c.company_id)
+        .bind(c.bank_transaction_id)
+        .bind(c.matched_source_type)
+        .bind(c.matched_source_id)
+        .bind(c.matched_amount)
+        .bind(c.match_method)
+        .bind(c.clearance_date)
+        .bind(c.accounting_post_id)
+        .bind(c.journal_id)
         .execute(conn)
         .await?;
         Ok(())

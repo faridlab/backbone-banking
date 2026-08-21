@@ -5,10 +5,10 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc, NaiveDate};
-use rust_decimal::Decimal;
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -17,8 +17,8 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
-use crate::domain::entity::BankStatementImport;
 use crate::domain::entity::AuditMetadata;
+use crate::domain::entity::BankStatementImport;
 use crate::domain::entity::ImportStatus;
 use crate::domain::entity::SourceFormat;
 
@@ -35,10 +35,16 @@ use crate::domain::entity::SourceFormat;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankStatementImportDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[serde(alias = "source_format")]
@@ -75,10 +81,16 @@ pub struct CreateBankStatementImportDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankStatementImportDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[serde(alias = "source_format")]
@@ -115,19 +127,31 @@ pub struct UpdateBankStatementImportDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankStatementImportDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_account_id")]
     pub bank_account_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "source_format")]
     pub source_format: Option<SourceFormat>,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "statement_period_start")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "statement_period_start"
+    )]
     pub statement_period_start: Option<NaiveDate>,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "statement_period_end")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "statement_period_end"
+    )]
     pub statement_period_end: Option<NaiveDate>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "opening_balance")]
     pub opening_balance: Option<Decimal>,
@@ -146,7 +170,16 @@ pub struct PatchBankStatementImportDto {
 impl PatchBankStatementImportDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.source_format.is_some() || self.statement_period_start.is_some() || self.statement_period_end.is_some() || self.opening_balance.is_some() || self.closing_balance.is_some() || self.file_ref.is_some() || self.status.is_some() || self.row_count.is_some()
+        self.company_id.is_some()
+            || self.bank_account_id.is_some()
+            || self.source_format.is_some()
+            || self.statement_period_start.is_some()
+            || self.statement_period_end.is_some()
+            || self.opening_balance.is_some()
+            || self.closing_balance.is_some()
+            || self.file_ref.is_some()
+            || self.status.is_some()
+            || self.row_count.is_some()
     }
 }
 
@@ -162,11 +195,20 @@ impl PatchBankStatementImportDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct BankStatementImportResponseDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(example = "550e8400-e29b-41d4-a716-446655440000")
+    )]
     pub bank_account_id: Uuid,
     pub source_format: SourceFormat,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -212,7 +254,12 @@ pub struct BankStatementImportListResponseDto {
 
 impl BankStatementImportListResponseDto {
     /// Create a new list response from items and pagination info
-    pub fn new(items: Vec<BankStatementImportResponseDto>, total: u64, page: u32, per_page: u32) -> Self {
+    pub fn new(
+        items: Vec<BankStatementImportResponseDto>,
+        total: u64,
+        page: u32,
+        per_page: u32,
+    ) -> Self {
         let total_pages = if per_page > 0 {
             ((total as f64) / (per_page as f64)).ceil() as u32
         } else {
@@ -323,7 +370,10 @@ impl backbone_core::FromCreateDto<CreateBankStatementImportDto> for BankStatemen
 }
 
 impl backbone_core::ApplyUpdateDto<UpdateBankStatementImportDto> for BankStatementImport {
-    fn apply_update(mut self, dto: UpdateBankStatementImportDto) -> backbone_core::ServiceResult<Self> {
+    fn apply_update(
+        mut self,
+        dto: UpdateBankStatementImportDto,
+    ) -> backbone_core::ServiceResult<Self> {
         self.company_id = dto.company_id;
         self.bank_account_id = dto.bank_account_id;
         self.source_format = dto.source_format;

@@ -31,7 +31,9 @@ pub struct BankTransactionRepository(
 
 impl std::ops::Deref for BankTransactionRepository {
     type Target = backbone_orm::GenericCrudRepository<BankTransaction, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankTransactionRepository {
@@ -62,6 +64,16 @@ pub struct NewBankTransactionRow<'a> {
 pub struct MatchBasisRow {
     pub deposit: Decimal,
     pub withdrawal: Decimal,
+    pub reference_no: Option<String>,
+}
+
+/// A statement line's identity + match signals, as reconcile-preset candidate ordering reads it.
+pub struct CandidateLineBasisRow {
+    pub company_id: Uuid,
+    pub bank_account_id: Uuid,
+    pub deposit: Decimal,
+    pub withdrawal: Decimal,
+    pub txn_date: chrono::NaiveDate,
     pub reference_no: Option<String>,
 }
 
@@ -109,8 +121,15 @@ impl BankTransactionRepository {
                  deposit, withdrawal, currency, status, allocated_amount)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'IDR','unreconciled'::txn_status,0)"#,
         )
-        .bind(t.id).bind(t.company_id).bind(t.bank_account_id).bind(t.import_id).bind(t.txn_date)
-        .bind(t.description).bind(t.reference_no).bind(t.deposit).bind(t.withdrawal)
+        .bind(t.id)
+        .bind(t.company_id)
+        .bind(t.bank_account_id)
+        .bind(t.import_id)
+        .bind(t.txn_date)
+        .bind(t.description)
+        .bind(t.reference_no)
+        .bind(t.deposit)
+        .bind(t.withdrawal)
         .execute(conn)
         .await?;
         Ok(())
@@ -139,6 +158,35 @@ impl BankTransactionRepository {
             withdrawal: r.get("withdrawal"),
             reference_no: r.get("reference_no"),
         }))
+    }
+
+    /// Read the line side of reconcile-preset candidate ordering: identity + the match signals
+    /// (reference, amount, date). `Ok(None)` = not found. ID-only + scoped read — see
+    /// [`Self::fetch_match_basis`]; the caller compares the row's company against the token tenant.
+    pub async fn fetch_candidate_basis(
+        &self,
+        pool: &PgPool,
+        bank_transaction_id: Uuid,
+    ) -> Result<Option<crate::infrastructure::persistence::CandidateLineBasisRow>, sqlx::Error>
+    {
+        let row = company_scope::fetch_optional_row_scoped(
+            pool,
+            sqlx::query(
+                "SELECT company_id, bank_account_id, deposit, withdrawal, txn_date, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL",
+            )
+            .bind(bank_transaction_id),
+        )
+        .await?;
+        Ok(row.map(
+            |r| crate::infrastructure::persistence::CandidateLineBasisRow {
+                company_id: r.get("company_id"),
+                bank_account_id: r.get("bank_account_id"),
+                deposit: r.get("deposit"),
+                withdrawal: r.get("withdrawal"),
+                txn_date: r.get("txn_date"),
+                reference_no: r.get("reference_no"),
+            },
+        ))
     }
 
     /// Read a line joined to its account's GL + clearing accounts. `Ok(None)` = not found. ID-only +
@@ -221,7 +269,9 @@ impl BankTransactionRepository {
         sqlx::query(
             "UPDATE banking.bank_transactions SET allocated_amount=$2, status=$3 WHERE id=$1",
         )
-        .bind(bank_transaction_id).bind(allocated_amount).bind(status)
+        .bind(bank_transaction_id)
+        .bind(allocated_amount)
+        .bind(status)
         .execute(conn)
         .await?;
         Ok(())
@@ -251,7 +301,10 @@ impl BankTransactionRepository {
                      AND status IN ('unreconciled'::txn_status,'partly_reconciled'::txn_status)
                      AND (metadata->>'deleted_at') IS NULL"#,
             )
-            .bind(company_id).bind(bank_account_id).bind(from_date).bind(to_date),
+            .bind(company_id)
+            .bind(bank_account_id)
+            .bind(from_date)
+            .bind(to_date),
         )
         .await
     }

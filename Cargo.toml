@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.3.6"
+version = "0.4.0"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 
@@ -27,6 +27,10 @@ backbone-messaging = { git = "https://github.com/faridlab/backbone-framework", b
 # last-existing tag, with the patch redirecting local builds to the framework checkout. Flip to
 # the new tag in the same push that announces the framework release.
 backbone-gl-posting = { git = "https://github.com/faridlab/backbone-framework", tag = "v2.7.9" }
+# Durable event emission: a payment-matched clear stages `BankClearanceRecorded` into the module
+# outbox inside the clearance transaction (crash-safe — payment's bank-confirmation drift consumes
+# it). multi_tenant (the company-RLS fence + relay bypass, ADR-0011).
+backbone-outbox = { git = "https://github.com/faridlab/backbone-framework", tag = "v2.7.9", features = ["multi_tenant"] }
 
 # Core async runtime and serialization
 tokio = { version = "1.0", features = ["full"] }

@@ -7,9 +7,9 @@
 
 use backbone_core::GenericCrudService;
 
-use crate::presentation::dto::{CreateBankStatementImportDto, UpdateBankStatementImportDto};
 use crate::domain::entity::BankStatementImport;
 use crate::infrastructure::persistence::BankStatementImportRepository;
+use crate::presentation::dto::{CreateBankStatementImportDto, UpdateBankStatementImportDto};
 
 /// Application service for BankStatementImport entities.
 ///

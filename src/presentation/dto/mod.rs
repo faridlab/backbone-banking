@@ -5,88 +5,48 @@
 //! This module provides DTOs for the presentation layer,
 //! with validation and OpenAPI schema support.
 
-pub mod bank_dto;
 pub mod bank_account_dto;
 pub mod bank_clearance_dto;
+pub mod bank_dto;
 pub mod bank_reconciliation_dto;
 pub mod bank_statement_import_dto;
 pub mod bank_transaction_dto;
-pub mod currency_dto;
-pub mod exchange_rate_dto;
 pub mod fx_gain_loss_dto;
+pub mod reconcile_preset_dto;
 
 // Re-exports
-pub use bank_dto::{
-    CreateBankDto,
-    UpdateBankDto,
-    PatchBankDto,
-    BankResponseDto,
-    BankListResponseDto,
-    BankSummaryDto,
-};
 pub use bank_account_dto::{
-    CreateBankAccountDto,
-    UpdateBankAccountDto,
-    PatchBankAccountDto,
-    BankAccountResponseDto,
-    BankAccountListResponseDto,
-    BankAccountSummaryDto,
+    BankAccountListResponseDto, BankAccountResponseDto, BankAccountSummaryDto,
+    CreateBankAccountDto, PatchBankAccountDto, UpdateBankAccountDto,
 };
 pub use bank_clearance_dto::{
-    CreateBankClearanceDto,
-    UpdateBankClearanceDto,
-    PatchBankClearanceDto,
-    BankClearanceResponseDto,
-    BankClearanceListResponseDto,
-    BankClearanceSummaryDto,
+    BankClearanceListResponseDto, BankClearanceResponseDto, BankClearanceSummaryDto,
+    CreateBankClearanceDto, PatchBankClearanceDto, UpdateBankClearanceDto,
+};
+pub use bank_dto::{
+    BankListResponseDto, BankResponseDto, BankSummaryDto, CreateBankDto, PatchBankDto,
+    UpdateBankDto,
 };
 pub use bank_reconciliation_dto::{
-    CreateBankReconciliationDto,
-    UpdateBankReconciliationDto,
-    PatchBankReconciliationDto,
-    BankReconciliationResponseDto,
-    BankReconciliationListResponseDto,
-    BankReconciliationSummaryDto,
+    BankReconciliationListResponseDto, BankReconciliationResponseDto, BankReconciliationSummaryDto,
+    CreateBankReconciliationDto, PatchBankReconciliationDto, UpdateBankReconciliationDto,
 };
 pub use bank_statement_import_dto::{
-    CreateBankStatementImportDto,
+    BankStatementImportListResponseDto, BankStatementImportResponseDto,
+    BankStatementImportSummaryDto, CreateBankStatementImportDto, PatchBankStatementImportDto,
     UpdateBankStatementImportDto,
-    PatchBankStatementImportDto,
-    BankStatementImportResponseDto,
-    BankStatementImportListResponseDto,
-    BankStatementImportSummaryDto,
 };
 pub use bank_transaction_dto::{
-    CreateBankTransactionDto,
-    UpdateBankTransactionDto,
-    PatchBankTransactionDto,
-    BankTransactionResponseDto,
-    BankTransactionListResponseDto,
-    BankTransactionSummaryDto,
-};
-pub use currency_dto::{
-    CreateCurrencyDto,
-    UpdateCurrencyDto,
-    PatchCurrencyDto,
-    CurrencyResponseDto,
-    CurrencyListResponseDto,
-    CurrencySummaryDto,
-};
-pub use exchange_rate_dto::{
-    CreateExchangeRateDto,
-    UpdateExchangeRateDto,
-    PatchExchangeRateDto,
-    ExchangeRateResponseDto,
-    ExchangeRateListResponseDto,
-    ExchangeRateSummaryDto,
+    BankTransactionListResponseDto, BankTransactionResponseDto, BankTransactionSummaryDto,
+    CreateBankTransactionDto, PatchBankTransactionDto, UpdateBankTransactionDto,
 };
 pub use fx_gain_loss_dto::{
-    CreateFxGainLossDto,
-    UpdateFxGainLossDto,
-    PatchFxGainLossDto,
-    FxGainLossResponseDto,
-    FxGainLossListResponseDto,
-    FxGainLossSummaryDto,
+    CreateFxGainLossDto, FxGainLossListResponseDto, FxGainLossResponseDto, FxGainLossSummaryDto,
+    PatchFxGainLossDto, UpdateFxGainLossDto,
+};
+pub use reconcile_preset_dto::{
+    CreateReconcilePresetDto, PatchReconcilePresetDto, ReconcilePresetListResponseDto,
+    ReconcilePresetResponseDto, ReconcilePresetSummaryDto, UpdateReconcilePresetDto,
 };
 
 // Common pagination types
@@ -112,8 +72,12 @@ pub struct PaginationParams {
     pub sort_order: Option<String>,
 }
 
-fn default_page() -> u32 { 1 }
-fn default_per_page() -> u32 { 20 }
+fn default_page() -> u32 {
+    1
+}
+fn default_per_page() -> u32 {
+    20
+}
 
 /// API response wrapper
 #[derive(Debug, Clone, Serialize)]
@@ -138,7 +102,11 @@ pub struct ApiError {
 
 impl<T> ApiResponse<T> {
     pub fn ok(data: T) -> Self {
-        Self { success: true, data: Some(data), error: None }
+        Self {
+            success: true,
+            data: Some(data),
+            error: None,
+        }
     }
 
     pub fn err(code: impl Into<String>, message: impl Into<String>) -> Self {

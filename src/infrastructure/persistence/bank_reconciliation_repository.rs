@@ -30,7 +30,9 @@ pub struct BankReconciliationRepository(
 
 impl std::ops::Deref for BankReconciliationRepository {
     type Target = backbone_orm::GenericCrudRepository<BankReconciliation, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl BankReconciliationRepository {
@@ -82,13 +84,24 @@ impl BankReconciliationRepository {
                      ledger_balance, computed_difference, unreconciled_count, status)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::recon_status)"#,
             )
-            .bind(r.id).bind(r.company_id).bind(r.bank_account_id).bind(r.from_date).bind(r.to_date)
-            .bind(r.statement_closing_balance).bind(r.ledger_balance).bind(r.computed_difference)
-            .bind(r.unreconciled_count).bind(r.status),
+            .bind(r.id)
+            .bind(r.company_id)
+            .bind(r.bank_account_id)
+            .bind(r.from_date)
+            .bind(r.to_date)
+            .bind(r.statement_closing_balance)
+            .bind(r.ledger_balance)
+            .bind(r.computed_difference)
+            .bind(r.unreconciled_count)
+            .bind(r.status),
         )
         .await?;
         Ok(())
     }
 }
 
-backbone_core::impl_crud_repository!(BankReconciliationRepository, BankReconciliation, soft_delete);
+backbone_core::impl_crud_repository!(
+    BankReconciliationRepository,
+    BankReconciliation,
+    soft_delete
+);

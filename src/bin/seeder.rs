@@ -12,28 +12,28 @@ use sqlx::postgres::PgPoolOptions;
 use std::env;
 
 // Import seeders
-use backbone_banking::seeders::SeedBankSeeder;
 use backbone_banking::seeders::SeedBankAccountSeeder;
 use backbone_banking::seeders::SeedBankClearanceSeeder;
 use backbone_banking::seeders::SeedBankReconciliationSeeder;
+use backbone_banking::seeders::SeedBankSeeder;
 use backbone_banking::seeders::SeedBankStatementImportSeeder;
 use backbone_banking::seeders::SeedBankTransactionSeeder;
-use backbone_banking::seeders::SeedCurrencySeeder;
-use backbone_banking::seeders::SeedExchangeRateSeeder;
 use backbone_banking::seeders::SeedFxGainLossSeeder;
+use backbone_banking::seeders::SeedReconcilePresetSeeder;
 use backbone_banking::seeders::Seeder;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let force = args.iter().any(|a| a == "--force");
-    let filter: Option<&str> = args.iter()
+    let filter: Option<&str> = args
+        .iter()
         .skip(1)
         .find(|a| !a.starts_with("-"))
         .map(|s| s.as_str());
 
-    let database_url = env::var("DATABASE_URL")
-        .map_err(|e| anyhow::anyhow!("DATABASE_URL must be set: {e}"))?;
+    let database_url =
+        env::var("DATABASE_URL").map_err(|e| anyhow::anyhow!("DATABASE_URL must be set: {e}"))?;
 
     println!("Connecting to database...");
 
@@ -55,9 +55,8 @@ async fn main() -> Result<()> {
     seeders.push(Box::new(SeedBankReconciliationSeeder::new()));
     seeders.push(Box::new(SeedBankStatementImportSeeder::new()));
     seeders.push(Box::new(SeedBankTransactionSeeder::new()));
-    seeders.push(Box::new(SeedCurrencySeeder::new()));
-    seeders.push(Box::new(SeedExchangeRateSeeder::new()));
     seeders.push(Box::new(SeedFxGainLossSeeder::new()));
+    seeders.push(Box::new(SeedReconcilePresetSeeder::new()));
 
     // Sort by order
     seeders.sort_by_key(|s| s.order());

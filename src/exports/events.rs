@@ -5,8 +5,8 @@
 //! These events are published by this module for other modules to subscribe to.
 //! Events are the primary mechanism for cross-module communication.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use super::types::*;
 
@@ -173,60 +173,6 @@ pub struct BankTransactionDeletedEvent {
 }
 
 // ============================================================================
-// CURRENCY EVENTS
-// ============================================================================
-
-/// Event published when a Currency is created
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencyCreatedEvent {
-    pub id: CurrencyId,
-    pub data: CurrencyDto,
-    pub occurred_at: DateTime<Utc>,
-}
-
-/// Event published when a Currency is updated
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencyUpdatedEvent {
-    pub id: CurrencyId,
-    pub data: CurrencyDto,
-    pub occurred_at: DateTime<Utc>,
-}
-
-/// Event published when a Currency is deleted
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrencyDeletedEvent {
-    pub id: CurrencyId,
-    pub occurred_at: DateTime<Utc>,
-}
-
-// ============================================================================
-// EXCHANGERATE EVENTS
-// ============================================================================
-
-/// Event published when a ExchangeRate is created
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateCreatedEvent {
-    pub id: ExchangeRateId,
-    pub data: ExchangeRateDto,
-    pub occurred_at: DateTime<Utc>,
-}
-
-/// Event published when a ExchangeRate is updated
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateUpdatedEvent {
-    pub id: ExchangeRateId,
-    pub data: ExchangeRateDto,
-    pub occurred_at: DateTime<Utc>,
-}
-
-/// Event published when a ExchangeRate is deleted
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExchangeRateDeletedEvent {
-    pub id: ExchangeRateId,
-    pub occurred_at: DateTime<Utc>,
-}
-
-// ============================================================================
 // FXGAINLOSS EVENTS
 // ============================================================================
 
@@ -250,6 +196,33 @@ pub struct FxGainLossUpdatedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxGainLossDeletedEvent {
     pub id: FxGainLossId,
+    pub occurred_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// RECONCILEPRESET EVENTS
+// ============================================================================
+
+/// Event published when a ReconcilePreset is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetCreatedEvent {
+    pub id: ReconcilePresetId,
+    pub data: ReconcilePresetDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a ReconcilePreset is updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetUpdatedEvent {
+    pub id: ReconcilePresetId,
+    pub data: ReconcilePresetDto,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Event published when a ReconcilePreset is deleted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReconcilePresetDeletedEvent {
+    pub id: ReconcilePresetId,
     pub occurred_at: DateTime<Utc>,
 }
 
@@ -279,15 +252,12 @@ pub enum BankingEvent {
     BankTransactionCreated(BankTransactionCreatedEvent),
     BankTransactionUpdated(BankTransactionUpdatedEvent),
     BankTransactionDeleted(BankTransactionDeletedEvent),
-    CurrencyCreated(CurrencyCreatedEvent),
-    CurrencyUpdated(CurrencyUpdatedEvent),
-    CurrencyDeleted(CurrencyDeletedEvent),
-    ExchangeRateCreated(ExchangeRateCreatedEvent),
-    ExchangeRateUpdated(ExchangeRateUpdatedEvent),
-    ExchangeRateDeleted(ExchangeRateDeletedEvent),
     FxGainLossCreated(FxGainLossCreatedEvent),
     FxGainLossUpdated(FxGainLossUpdatedEvent),
     FxGainLossDeleted(FxGainLossDeletedEvent),
+    ReconcilePresetCreated(ReconcilePresetCreatedEvent),
+    ReconcilePresetUpdated(ReconcilePresetUpdatedEvent),
+    ReconcilePresetDeleted(ReconcilePresetDeletedEvent),
 }
 
 /// Metadata for module events

@@ -5,8 +5,8 @@
 //! This trait defines the repository contract for the BankClearance aggregate.
 //! Implementation is in the infrastructure layer.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::domain::entity::{BankClearance, MatchMethod, MatchedSourceType};
@@ -56,7 +56,13 @@ pub struct BankClearanceFilter {
 impl BankClearanceFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.match_method.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
+        self.company_id.is_some()
+            || self.bank_transaction_id.is_some()
+            || self.matched_source_type.is_some()
+            || self.matched_source_id.is_some()
+            || self.match_method.is_some()
+            || self.accounting_post_id.is_some()
+            || self.journal_id.is_some()
     }
 }
 
@@ -66,7 +72,6 @@ impl BankClearanceFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait BankClearanceRepository: Send + Sync {
-
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -91,10 +96,17 @@ pub trait BankClearanceRepository: Send + Sync {
     // =========================================================================
 
     /// List bank_clearance with pagination
-    async fn list(&self, params: BankClearancePaginationParams) -> Result<BankClearancePaginatedResult>;
+    async fn list(
+        &self,
+        params: BankClearancePaginationParams,
+    ) -> Result<BankClearancePaginatedResult>;
 
     /// List bank_clearance with pagination and filters
-    async fn list_with_filters(&self, params: BankClearancePaginationParams, filters: BankClearanceFilter) -> Result<BankClearancePaginatedResult>;
+    async fn list_with_filters(
+        &self,
+        params: BankClearancePaginationParams,
+        filters: BankClearanceFilter,
+    ) -> Result<BankClearancePaginatedResult>;
 
     /// Count all bank_clearance entities
     async fn count(&self) -> Result<u64>;
@@ -116,7 +128,10 @@ pub trait BankClearanceRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<BankClearance>>;
 
     /// List soft-deleted bank_clearance entities
-    async fn list_deleted(&self, params: BankClearancePaginationParams) -> Result<BankClearancePaginatedResult>;
+    async fn list_deleted(
+        &self,
+        params: BankClearancePaginationParams,
+    ) -> Result<BankClearancePaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;

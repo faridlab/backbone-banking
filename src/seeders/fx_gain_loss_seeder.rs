@@ -36,7 +36,7 @@ impl Seeder for SeedFxGainLossSeeder {
     }
 
     fn order(&self) -> i32 {
-        9
+        7
     }
 
     async fn should_run(&self, pool: &PgPool) -> Result<bool> {

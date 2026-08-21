@@ -6,24 +6,22 @@
 
 pub mod crud_test_base;
 
-pub mod bank_api_test;
 pub mod bank_account_api_test;
+pub mod bank_api_test;
 pub mod bank_clearance_api_test;
 pub mod bank_reconciliation_api_test;
 pub mod bank_statement_import_api_test;
 pub mod bank_transaction_api_test;
-pub mod currency_api_test;
-pub mod exchange_rate_api_test;
 pub mod fx_gain_loss_api_test;
+pub mod reconcile_preset_api_test;
 
 // Re-exports for convenience
-pub use crud_test_base::*;
-pub use bank_api_test::*;
 pub use bank_account_api_test::*;
+pub use bank_api_test::*;
 pub use bank_clearance_api_test::*;
 pub use bank_reconciliation_api_test::*;
 pub use bank_statement_import_api_test::*;
 pub use bank_transaction_api_test::*;
-pub use currency_api_test::*;
-pub use exchange_rate_api_test::*;
+pub use crud_test_base::*;
 pub use fx_gain_loss_api_test::*;
+pub use reconcile_preset_api_test::*;

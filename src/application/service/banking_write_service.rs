@@ -145,20 +145,45 @@ pub struct ReconcileOutcome {
 #[derive(Debug)]
 pub enum BankingError {
     EmptyStatement,
-    BalanceMismatch { expected: Decimal, computed: Decimal },
+    BalanceMismatch {
+        expected: Decimal,
+        computed: Decimal,
+    },
     NegativeAmount,
     NonPositiveAmount,
-    OverAllocated { line_net: Decimal, already: Decimal, attempted: Decimal },
-    SettlementOverCleared { settlement_amount: Decimal, already_cleared: Decimal, attempted: Decimal },
+    OverAllocated {
+        line_net: Decimal,
+        already: Decimal,
+        attempted: Decimal,
+    },
+    SettlementOverCleared {
+        settlement_amount: Decimal,
+        already_cleared: Decimal,
+        attempted: Decimal,
+    },
     UnbalancedPost,
     UnsupportedCurrency(String),
     TransactionNotFound(Uuid),
     AccountNotFound(Uuid),
-    GlRejected { code: String, message: String },
+    GlRejected {
+        code: String,
+        message: String,
+    },
     /// The reconciliation-graph sink refused the clearing's edge (unposted payment journal, a
     /// non-reconcilable clearing account, or a clamp disagreement). Clearing is fail-closed on
     /// this: the clearance row and the allocation advance roll back with the refused edge.
-    ReconcileRefused { code: String, message: String },
+    ReconcileRefused {
+        code: String,
+        message: String,
+    },
+    PresetNotFound(Uuid),
+    PresetInactive(Uuid),
+    PresetMissingTolerance(Uuid),
+    PresetMissingDaysWindow(Uuid),
+    UnknownMatchOn(String),
+    /// The candidate-pool read refused: the payment schema is absent (standalone module database,
+    /// mis-composed host). Ordering ranks nothing rather than present fiction as candidates.
+    CandidatePoolRefused(String),
     Db(sqlx::Error),
 }
 
@@ -177,13 +202,21 @@ impl BankingError {
             BankingError::AccountNotFound(_) => "account_not_found".into(),
             BankingError::GlRejected { code, .. } => code.clone(),
             BankingError::ReconcileRefused { code, .. } => code.clone(),
+            BankingError::PresetNotFound(_) => "preset_not_found".into(),
+            BankingError::PresetInactive(_) => "preset_inactive".into(),
+            BankingError::PresetMissingTolerance(_) => "preset_missing_tolerance".into(),
+            BankingError::PresetMissingDaysWindow(_) => "preset_missing_days_window".into(),
+            BankingError::UnknownMatchOn(_) => "unknown_match_on".into(),
+            BankingError::CandidatePoolRefused(_) => "candidate_pool_refused".into(),
             BankingError::Db(_) => "internal_error".into(),
         }
     }
     pub fn http_status(&self) -> u16 {
         match self {
-            BankingError::TransactionNotFound(_) | BankingError::AccountNotFound(_) => 404,
-            BankingError::Db(_) => 500,
+            BankingError::TransactionNotFound(_)
+            | BankingError::AccountNotFound(_)
+            | BankingError::PresetNotFound(_) => 404,
+            BankingError::CandidatePoolRefused(_) | BankingError::Db(_) => 500,
             _ => 422,
         }
     }
@@ -193,14 +226,19 @@ impl std::fmt::Display for BankingError {
         match self {
             BankingError::GlRejected { code, message } => write!(f, "{code}: {message}"),
             BankingError::ReconcileRefused { code, message } => write!(f, "{code}: {message}"),
-            BankingError::BalanceMismatch { expected, computed } => write!(f, "balance_mismatch: expected {expected}, computed {computed}"),
+            BankingError::BalanceMismatch { expected, computed } => write!(
+                f,
+                "balance_mismatch: expected {expected}, computed {computed}"
+            ),
             other => write!(f, "{}", other.code()),
         }
     }
 }
 impl std::error::Error for BankingError {}
 impl From<sqlx::Error> for BankingError {
-    fn from(e: sqlx::Error) -> Self { BankingError::Db(e) }
+    fn from(e: sqlx::Error) -> Self {
+        BankingError::Db(e)
+    }
 }
 
 /// The repositories this service orchestrates. Bundled behind one `Arc` so the service stays cheap
@@ -234,6 +272,14 @@ pub struct BankingWriteService {
     pub(super) db_pool: PgPool,
     pub(super) repos: Arc<Repos>,
     pub(super) sink: Arc<dyn BankingEventSink>,
+    /// When set, a payment-matched `clear_transaction` stages `BankClearanceRecorded` into
+    /// `<schema>.outbox_events` **inside the clearance transaction** (crash-safe emission — the
+    /// payment module's bank-confirmation drift consumes it). When `None`, only the legacy in-proc
+    /// sink fires (existing behaviour). The relay drains the outbox to the real bus.
+    pub(super) outbox_schema: Option<String>,
+    /// The candidate pool the reconcile-preset ordering ranks. Defaults to the guarded
+    /// payment-header read; tests inject their own.
+    pub(super) candidates: Arc<dyn super::reconcile_preset_candidates::CandidatePoolPort>,
 }
 
 impl BankingWriteService {
@@ -242,7 +288,29 @@ impl BankingWriteService {
     }
     pub fn with_sink(db_pool: PgPool, sink: Arc<dyn BankingEventSink>) -> Self {
         let repos = Arc::new(Repos::new(&db_pool));
-        Self { db_pool, repos, sink }
+        Self {
+            db_pool,
+            repos,
+            sink,
+            outbox_schema: None,
+            candidates: Arc::new(super::reconcile_preset_candidates::PaymentPoolRead),
+        }
+    }
+    /// Enable crash-safe `BankClearanceRecorded` emission via the durable outbox in `schema`
+    /// (e.g. `"banking"`). Requires `backbone_outbox::outbox::migrate` to have created
+    /// `<schema>.outbox_events`.
+    pub fn with_outbox_schema(mut self, schema: impl Into<String>) -> Self {
+        self.outbox_schema = Some(schema.into());
+        self
+    }
+    /// Inject the reconcile-preset candidate-pool read (module tests inject a stub; the default
+    /// reads posted payment headers through a `to_regclass` guard).
+    pub fn with_candidate_port(
+        mut self,
+        port: Arc<dyn super::reconcile_preset_candidates::CandidatePoolPort>,
+    ) -> Self {
+        self.candidates = port;
+        self
     }
 
     // ---- masters ------------------------------------------------------------
@@ -254,15 +322,22 @@ impl BankingWriteService {
         company_scope::with_company_scope(Some(company), async move {
             let id = Uuid::new_v4();
             let country = b.country.unwrap_or_else(|| "ID".into());
-            self.repos.banks.insert_bank(&self.db_pool, &NewBankRow {
-                id,
-                company_id: b.company_id,
-                name: &b.name,
-                swift_bic: b.swift_bic.as_deref(),
-                country: &country,
-            }).await?;
+            self.repos
+                .banks
+                .insert_bank(
+                    &self.db_pool,
+                    &NewBankRow {
+                        id,
+                        company_id: b.company_id,
+                        name: &b.name,
+                        swift_bic: b.swift_bic.as_deref(),
+                        country: &country,
+                    },
+                )
+                .await?;
             Ok(id)
-        }).await
+        })
+        .await
     }
 
     pub async fn create_bank_account(&self, a: NewBankAccount) -> Result<Uuid, BankingError> {
@@ -272,19 +347,26 @@ impl BankingWriteService {
             let id = Uuid::new_v4();
             let currency = a.currency.unwrap_or_else(|| "IDR".into());
             let account_type = a.account_type.unwrap_or_else(|| "checking".into());
-            self.repos.bank_accounts.insert_bank_account(&self.db_pool, &NewBankAccountRow {
-                id,
-                company_id: a.company_id,
-                branch_id: a.branch_id,
-                bank_id: a.bank_id,
-                account_name: &a.account_name,
-                account_number: &a.account_number,
-                gl_account_id: a.gl_account_id,
-                clearing_account_id: a.clearing_account_id,
-                currency: &currency,
-                account_type: &account_type,
-            }).await?;
+            self.repos
+                .bank_accounts
+                .insert_bank_account(
+                    &self.db_pool,
+                    &NewBankAccountRow {
+                        id,
+                        company_id: a.company_id,
+                        branch_id: a.branch_id,
+                        bank_id: a.bank_id,
+                        account_name: &a.account_name,
+                        account_number: &a.account_number,
+                        gl_account_id: a.gl_account_id,
+                        clearing_account_id: a.clearing_account_id,
+                        currency: &currency,
+                        account_type: &account_type,
+                    },
+                )
+                .await?;
             Ok(id)
-        }).await
+        })
+        .await
     }
 }

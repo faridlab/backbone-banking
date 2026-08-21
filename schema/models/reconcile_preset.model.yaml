@@ -1,0 +1,89 @@
+# =============================================================================
+# Domain: Banking — Reconcile presets
+# Entity: ReconcilePreset
+# Description: A company-scoped matching preset that ORDERS candidate matches
+#   for an unreconciled statement line. Matching stays a read: the preset
+#   ranks candidates with reasons and a human (or a supervised job) confirms
+#   via the existing clear verb. A preset is strictly tenant-owned (no global
+#   rows) — a match rule that crosses companies would match one company's
+#   invoices against another's statement lines.
+# =============================================================================
+
+models:
+  - name: ReconcilePreset
+    collection: reconcile_presets
+    description: "An ordered matching preset for statement-line reconciliation"
+
+    fields:
+      id:
+        type: uuid
+        attributes: ["@id", "@default(uuid)"]
+        description: "Unique preset id"
+      company_id:
+        type: uuid
+        attributes: ["@required", "@exclude_from_foreign_key_check"]
+        description: "Books owner # logical FK to organization.Company.id. Strictly tenant-owned: NULL is forbidden (no global presets)"
+      name:
+        type: string
+        attributes: ["@required", "@max(80)"]
+        description: "Human-readable preset name (e.g. 'Reference-exact first')"
+      note:
+        type: string?
+        attributes: ["@max(255)"]
+        description: "What this preset is for"
+      priority:
+        type: int
+        attributes: ["@required", "@default(100)"]
+        description: "Evaluation order across presets — lower runs first"
+      match_on:
+        type: MatchOn
+        attributes: ["@required"]
+        description: "The signal this preset ranks candidates by"
+      tolerance_percent:
+        type: decimal?
+        attributes: ["@precision(5,2)", "@non_negative"]
+        description: "Required when match_on = amount_within_tolerance: candidate amount may deviate by at most this percent of the line amount"
+      days_window:
+        type: int?
+        attributes: ["@non_negative"]
+        description: "Required when match_on = days_window: candidate date may deviate by at most this many days from the line date"
+      status:
+        type: PresetStatus
+        attributes: ["@default(active)"]
+        description: "Lifecycle — inactive presets are skipped by candidate ordering"
+      metadata:
+        type: Metadata
+        attributes: ["@audit_metadata"]
+        description: "Audit metadata"
+
+    indexes:
+      - type: unique
+        fields: [company_id, name]
+        where: "deleted_at IS NULL"
+      - type: index
+        fields: [company_id, status, priority]
+
+enums:
+  - name: MatchOn
+    description: "The signal a reconcile preset ranks candidates by"
+    variants:
+      - name: reference_exact
+        description: "Statement reference equals the document reference"
+        default: true
+      - name: amount_exact
+        description: "Open amount equals the line amount exactly"
+      - name: amount_within_tolerance
+        description: "Open amount deviates within tolerance_percent of the line amount"
+      - name: party
+        description: "Same counterparty as the line's derived party"
+      - name: days_window
+        description: "Document date within days_window of the line date"
+
+  - name: PresetStatus
+    description: "Lifecycle of a reconcile preset"
+    variants:
+      - name: active
+        description: "Participates in candidate ordering"
+        default: true
+      - name: inactive
+        description: "Skipped; kept for history of past sessions"
