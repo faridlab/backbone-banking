@@ -101,6 +101,12 @@ impl CandidatePoolPort for PaymentPoolRead {
         // empty (the set_config-evaporation class). `fetch_all_rows_scoped` opens its own short
         // tx, binds `app.company_id` there, and commits (ADR-0008), so the pool read sees the
         // tenant the caller already proved.
+        //
+        // Join-key note: payment's `bank_account_id` is a GL ACCOUNT reference (its model says
+        // "Bank/Cash GL account"), not a banking bank-account id — comparing the two ids directly
+        // matches nothing, ever. A payment destined for this bank account touches one of ITS two
+        // GL accounts: a cash-style payment lands on the bank GL, a transfer sits in the clearing
+        // GL until a clearance moves it. The pool therefore matches payments whose GL is either.
         let rows = company_scope::with_company_scope(
             Some(company_id),
             company_scope::fetch_all_rows_scoped(
@@ -108,7 +114,12 @@ impl CandidatePoolPort for PaymentPoolRead {
                 sqlx::query(
                     r#"SELECT id, payment_number, paid_amount, posting_date, reference_no
                    FROM payment.payment_entries
-                   WHERE company_id=$1 AND bank_account_id=$2
+                   WHERE company_id=$1
+                     AND bank_account_id IN (
+                       SELECT gl_account_id FROM banking.bank_accounts WHERE id=$2 AND company_id=$1
+                       UNION
+                       SELECT clearing_account_id FROM banking.bank_accounts WHERE id=$2 AND company_id=$1
+                     )
                      AND posting_state='posted' AND status IN ('in_flight','paid')
                      AND (metadata->>'deleted_at') IS NULL"#,
                 )

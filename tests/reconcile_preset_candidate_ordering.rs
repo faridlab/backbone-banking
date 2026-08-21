@@ -148,8 +148,11 @@ impl ReconcileSink for OkEdge {
 // --- fixtures -------------------------------------------------------------------
 
 /// A bank + account whose GL legs are fabricated uuids (the ranking never posts; only the
-/// watermark-clear does, through the stub sinks).
-async fn fixture(_pool: &PgPool, banking: &BankingWriteService, company: Uuid) -> Uuid {
+/// watermark-clear does, through the stub sinks). Returns `(bank account id, its bank GL id)` —
+/// payments reference the GL leg, not the bank account: payment's model declares
+/// `bank_account_id` as a Bank/Cash GL ACCOUNT reference, and the pool matches a payment
+/// onto this bank account through either of its GL legs (bank or clearing).
+async fn fixture(_pool: &PgPool, banking: &BankingWriteService, company: Uuid) -> (Uuid, Uuid) {
     let bank = banking
         .create_bank(NewBank {
             company_id: company,
@@ -159,20 +162,22 @@ async fn fixture(_pool: &PgPool, banking: &BankingWriteService, company: Uuid) -
         })
         .await
         .unwrap();
-    banking
+    let gl = Uuid::new_v4();
+    let acct = banking
         .create_bank_account(NewBankAccount {
             company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
             account_number: uq("ACC"),
-            gl_account_id: Uuid::new_v4(),
+            gl_account_id: gl,
             clearing_account_id: Uuid::new_v4(),
             currency: None,
             account_type: None,
         })
         .await
-        .unwrap()
+        .unwrap();
+    (acct, gl)
 }
 
 /// One posted, in-flight payment against `bank_account` — the shape the candidate pool reads.
@@ -294,12 +299,12 @@ async fn ordering_is_deterministic_and_side_effect_free() {
     let pool = pool().await;
     let company = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone());
-    let acct = fixture(&pool, &banking, company).await;
+    let (acct, gl) = fixture(&pool, &banking, company).await;
 
     // Insertion order C, A, B — the ranking must not inherit it.
-    let c = payment(&pool, company, acct, "PE-C", "500000", 3, None).await;
-    let a = payment(&pool, company, acct, "PE-A", "500000", 5, None).await;
-    let b = payment(&pool, company, acct, "PE-B", "500000", 4, None).await;
+    let c = payment(&pool, company, gl, "PE-C", "500000", 3, None).await;
+    let a = payment(&pool, company, gl, "PE-A", "500000", 5, None).await;
+    let b = payment(&pool, company, gl, "PE-B", "500000", 4, None).await;
     let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
     let p = preset(
         &pool,
@@ -385,11 +390,11 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     let pool = pool().await;
     let company = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone());
-    let acct = fixture(&pool, &banking, company).await;
+    let (acct, gl) = fixture(&pool, &banking, company).await;
 
-    let with_ref = payment(&pool, company, acct, "PE-VA", "500000", 5, Some("VA-777")).await;
-    let other_ref = payment(&pool, company, acct, "PE-VB", "500000", 5, Some("VA-999")).await;
-    let no_ref = payment(&pool, company, acct, "PE-VC", "500000", 5, None).await;
+    let with_ref = payment(&pool, company, gl, "PE-VA", "500000", 5, Some("VA-777")).await;
+    let other_ref = payment(&pool, company, gl, "PE-VB", "500000", 5, Some("VA-999")).await;
+    let no_ref = payment(&pool, company, gl, "PE-VC", "500000", 5, None).await;
 
     // reference_exact: only the equal reference survives; the others are not "ranked lower" —
     // they are not candidates under this signal at all.
@@ -491,10 +496,10 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     let company = Uuid::new_v4();
     let stranger = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone());
-    let acct = fixture(&pool, &banking, company).await;
+    let (acct, gl) = fixture(&pool, &banking, company).await;
 
-    let near = payment(&pool, company, acct, "PE-N", "505000", 5, None).await; // +1.0% off the line
-    let far = payment(&pool, company, acct, "PE-F", "600000", 5, None).await; // +20% off the line
+    let near = payment(&pool, company, gl, "PE-N", "505000", 5, None).await; // +1.0% off the line
+    let far = payment(&pool, company, gl, "PE-F", "600000", 5, None).await; // +20% off the line
     let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
 
     // amount_within_tolerance @ 1.00%: the near payment admits (deviation exactly 1.0), the far
@@ -519,7 +524,7 @@ async fn tolerance_days_window_and_the_fence_refusals() {
 
     // days_window @ 3d: distance is all that matters — BOTH same-dated payments rank (the window
     // carries no amount signal), ordered by payment_number ascending; one dated 1 is 5d outside.
-    let out_window = payment(&pool, company, acct, "PE-D2", "500000", 1, None).await;
+    let out_window = payment(&pool, company, gl, "PE-D2", "500000", 1, None).await;
     let p_days = preset(
         &pool,
         company,
@@ -621,8 +626,8 @@ async fn party_match_on_ranks_nothing_and_says_so() {
     let pool = pool().await;
     let company = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone());
-    let acct = fixture(&pool, &banking, company).await;
-    let _ = payment(&pool, company, acct, "PE-P", "500000", 5, None).await;
+    let (acct, gl) = fixture(&pool, &banking, company).await;
+    let _ = payment(&pool, company, gl, "PE-P", "500000", 5, None).await;
     let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
     let p = preset(&pool, company, "by-party", "party", None, None, "active").await;
     let ranked = banking.order_candidates(company, p, l).await.unwrap();
@@ -658,7 +663,7 @@ async fn the_candidate_pool_is_an_injected_port() {
     let pool = pool().await;
     let company = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone()).with_candidate_port(Arc::new(StubPool));
-    let acct = fixture(&pool, &banking, company).await;
+    let (acct, _gl) = fixture(&pool, &banking, company).await; // pool comes from the stub
     let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
     let p = preset(
         &pool,
