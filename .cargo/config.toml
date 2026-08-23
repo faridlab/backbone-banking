@@ -3,7 +3,7 @@
 # Redirects the backbone-gl-posting git dep (declared in Cargo.toml) to the local framework
 # checkout — needed whenever the shared contract carries changes not yet on a pushed tag (the
 # git dep would resolve the stale tag and fail to compile against them). The other framework
-# crates stay on their branch = "main" resolutions. Cargo forbids `path` + `git` on one line, and
+# crates resolve from their tag pins in Cargo.toml. Cargo forbids `path` + `git` on one line, and
 # a committed [patch] to a missing path hard-errors in a standalone clone, so the override lives
 # here (local-only) rather than in committed Cargo.toml.
 
