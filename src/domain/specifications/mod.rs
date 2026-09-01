@@ -4,12 +4,12 @@
 //!
 //! Combinators (AND/OR/NOT) come from `backbone_core::Specification`.
 
-pub use backbone_core::{AndSpecification, NotSpecification, OrSpecification, Specification};
+pub use backbone_core::{Specification, AndSpecification, OrSpecification, NotSpecification};
 
+pub mod bank_specification;
 pub mod bank_account_specification;
 pub mod bank_clearance_specification;
 pub mod bank_reconciliation_specification;
-pub mod bank_specification;
 pub mod bank_statement_import_specification;
 pub mod bank_transaction_specification;
 pub mod fx_gain_loss_specification;

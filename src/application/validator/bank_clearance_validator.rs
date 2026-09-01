@@ -5,9 +5,9 @@
 //! Returns an `EntityValidator<BankClearance>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
+use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
+use backbone_core::{NonNegative};
 use crate::domain::entity::BankClearance;
-use backbone_core::NonNegative;
-use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
 
 /// Validator type alias for BankClearance entities.
 pub type BankClearanceValidator = EntityValidator<BankClearance>;
@@ -17,7 +17,7 @@ pub fn bank_clearance_validator() -> BankClearanceValidator {
     EntityValidator::new()
     // <<< CUSTOM RULES
     // END CUSTOM RULES
-    // No schema-derived rules — add custom rules above.
+        // No schema-derived rules — add custom rules above.
 }
 
 // <<< CUSTOM

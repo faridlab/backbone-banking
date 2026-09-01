@@ -18,12 +18,12 @@
 #![allow(unused_imports)]
 
 // Generated modules
-pub mod application;
 pub mod domain;
-pub mod exports;
 pub mod infrastructure;
+pub mod application;
 pub mod presentation;
 pub mod seeders;
+pub mod exports;
 
 // Re-exports for convenience - Domain entities
 pub use domain::entity::*;
@@ -32,10 +32,10 @@ pub use domain::entity::*;
 pub use infrastructure::persistence::*;
 
 // Re-exports - Application services
+pub use application::service::BankService;
 pub use application::service::BankAccountService;
 pub use application::service::BankClearanceService;
 pub use application::service::BankReconciliationService;
-pub use application::service::BankService;
 pub use application::service::BankStatementImportService;
 pub use application::service::BankTransactionService;
 pub use application::service::FxGainLossService;
@@ -44,9 +44,9 @@ pub use application::service::ReconcilePresetService;
 // Re-exports - Workflows
 pub use application::workflows::*;
 
+use std::sync::Arc;
 use axum::Router;
 use sqlx::PgPool;
-use std::sync::Arc;
 
 /// Banking module configuration
 ///
@@ -86,35 +86,25 @@ impl BankingModule {
     /// real deployment; use this only in trusted/admin/seeding contexts.
     pub fn all_crud_routes(&self) -> Router {
         use presentation::http::{
-            create_bank_account_routes, create_bank_clearance_routes,
-            create_bank_reconciliation_routes, create_bank_routes,
-            create_bank_statement_import_routes, create_bank_transaction_routes,
-            create_fx_gain_loss_routes, create_reconcile_preset_routes,
+            create_bank_routes,
+            create_bank_account_routes,
+            create_bank_clearance_routes,
+            create_bank_reconciliation_routes,
+            create_bank_statement_import_routes,
+            create_bank_transaction_routes,
+            create_fx_gain_loss_routes,
+            create_reconcile_preset_routes,
         };
 
         Router::new()
             .merge(create_bank_routes(self.bank_service.clone()))
-            .merge(create_bank_account_routes(
-                self.bank_account_service.clone(),
-            ))
-            .merge(create_bank_clearance_routes(
-                self.bank_clearance_service.clone(),
-            ))
-            .merge(create_bank_reconciliation_routes(
-                self.bank_reconciliation_service.clone(),
-            ))
-            .merge(create_bank_statement_import_routes(
-                self.bank_statement_import_service.clone(),
-            ))
-            .merge(create_bank_transaction_routes(
-                self.bank_transaction_service.clone(),
-            ))
-            .merge(create_fx_gain_loss_routes(
-                self.fx_gain_loss_service.clone(),
-            ))
-            .merge(create_reconcile_preset_routes(
-                self.reconcile_preset_service.clone(),
-            ))
+            .merge(create_bank_account_routes(self.bank_account_service.clone()))
+            .merge(create_bank_clearance_routes(self.bank_clearance_service.clone()))
+            .merge(create_bank_reconciliation_routes(self.bank_reconciliation_service.clone()))
+            .merge(create_bank_statement_import_routes(self.bank_statement_import_service.clone()))
+            .merge(create_bank_transaction_routes(self.bank_transaction_service.clone()))
+            .merge(create_fx_gain_loss_routes(self.fx_gain_loss_service.clone()))
+            .merge(create_reconcile_preset_routes(self.reconcile_preset_service.clone()))
     }
 
     /// Deprecated alias for [`Self::all_crud_routes`]. `routes()` reads like
@@ -122,9 +112,7 @@ impl BankingModule {
     /// mount exposes unguarded writes. Compose a guarded router (read + validated
     /// writes) for production, or call `all_crud_routes()` to opt into the full
     /// unguarded surface explicitly.
-    #[deprecated(
-        note = "mounts unvalidated generic CRUD; prefer readonly_routes() + validated writes, or all_crud_routes() for the full/unguarded surface"
-    )]
+    #[deprecated(note = "mounts unvalidated generic CRUD; prefer readonly_routes() + validated writes, or all_crud_routes() for the full/unguarded surface")]
     pub fn routes(&self) -> Router {
         self.all_crud_routes()
     }
@@ -136,35 +124,25 @@ impl BankingModule {
     /// merge validated write routes (or a write service's HTTP layer) onto it.
     pub fn readonly_routes(&self) -> Router {
         use presentation::http::{
-            create_bank_account_read_routes, create_bank_clearance_read_routes,
-            create_bank_read_routes, create_bank_reconciliation_read_routes,
-            create_bank_statement_import_read_routes, create_bank_transaction_read_routes,
-            create_fx_gain_loss_read_routes, create_reconcile_preset_read_routes,
+            create_bank_read_routes,
+            create_bank_account_read_routes,
+            create_bank_clearance_read_routes,
+            create_bank_reconciliation_read_routes,
+            create_bank_statement_import_read_routes,
+            create_bank_transaction_read_routes,
+            create_fx_gain_loss_read_routes,
+            create_reconcile_preset_read_routes,
         };
 
         Router::new()
             .merge(create_bank_read_routes(self.bank_service.clone()))
-            .merge(create_bank_account_read_routes(
-                self.bank_account_service.clone(),
-            ))
-            .merge(create_bank_clearance_read_routes(
-                self.bank_clearance_service.clone(),
-            ))
-            .merge(create_bank_reconciliation_read_routes(
-                self.bank_reconciliation_service.clone(),
-            ))
-            .merge(create_bank_statement_import_read_routes(
-                self.bank_statement_import_service.clone(),
-            ))
-            .merge(create_bank_transaction_read_routes(
-                self.bank_transaction_service.clone(),
-            ))
-            .merge(create_fx_gain_loss_read_routes(
-                self.fx_gain_loss_service.clone(),
-            ))
-            .merge(create_reconcile_preset_read_routes(
-                self.reconcile_preset_service.clone(),
-            ))
+            .merge(create_bank_account_read_routes(self.bank_account_service.clone()))
+            .merge(create_bank_clearance_read_routes(self.bank_clearance_service.clone()))
+            .merge(create_bank_reconciliation_read_routes(self.bank_reconciliation_service.clone()))
+            .merge(create_bank_statement_import_read_routes(self.bank_statement_import_service.clone()))
+            .merge(create_bank_transaction_read_routes(self.bank_transaction_service.clone()))
+            .merge(create_fx_gain_loss_read_routes(self.fx_gain_loss_service.clone()))
+            .merge(create_reconcile_preset_read_routes(self.reconcile_preset_service.clone()))
     }
 
     // <<< CUSTOM METHODS
@@ -179,7 +157,9 @@ pub struct BankingModuleBuilder {
 impl BankingModuleBuilder {
     /// Create a new builder
     pub fn new() -> Self {
-        Self { db_pool: None }
+        Self {
+            db_pool: None,
+        }
     }
 
     /// Set the database connection pool
@@ -193,8 +173,7 @@ impl BankingModuleBuilder {
 
     /// Build the module with configured dependencies
     pub fn build(self) -> anyhow::Result<BankingModule> {
-        let db_pool = self
-            .db_pool
+        let db_pool = self.db_pool
             .ok_or_else(|| anyhow::anyhow!("Database pool not configured"))?;
 
         // Bank service
@@ -203,47 +182,31 @@ impl BankingModuleBuilder {
 
         // BankAccount service
         let bank_account_repository = Arc::new(BankAccountRepository::new(db_pool.clone()));
-        let bank_account_service = Arc::new(BankAccountService::with_repository(
-            bank_account_repository.clone(),
-        ));
+        let bank_account_service = Arc::new(BankAccountService::with_repository(bank_account_repository.clone()));
 
         // BankClearance service
         let bank_clearance_repository = Arc::new(BankClearanceRepository::new(db_pool.clone()));
-        let bank_clearance_service = Arc::new(BankClearanceService::with_repository(
-            bank_clearance_repository.clone(),
-        ));
+        let bank_clearance_service = Arc::new(BankClearanceService::with_repository(bank_clearance_repository.clone()));
 
         // BankReconciliation service
-        let bank_reconciliation_repository =
-            Arc::new(BankReconciliationRepository::new(db_pool.clone()));
-        let bank_reconciliation_service = Arc::new(BankReconciliationService::with_repository(
-            bank_reconciliation_repository.clone(),
-        ));
+        let bank_reconciliation_repository = Arc::new(BankReconciliationRepository::new(db_pool.clone()));
+        let bank_reconciliation_service = Arc::new(BankReconciliationService::with_repository(bank_reconciliation_repository.clone()));
 
         // BankStatementImport service
-        let bank_statement_import_repository =
-            Arc::new(BankStatementImportRepository::new(db_pool.clone()));
-        let bank_statement_import_service = Arc::new(BankStatementImportService::with_repository(
-            bank_statement_import_repository.clone(),
-        ));
+        let bank_statement_import_repository = Arc::new(BankStatementImportRepository::new(db_pool.clone()));
+        let bank_statement_import_service = Arc::new(BankStatementImportService::with_repository(bank_statement_import_repository.clone()));
 
         // BankTransaction service
         let bank_transaction_repository = Arc::new(BankTransactionRepository::new(db_pool.clone()));
-        let bank_transaction_service = Arc::new(BankTransactionService::with_repository(
-            bank_transaction_repository.clone(),
-        ));
+        let bank_transaction_service = Arc::new(BankTransactionService::with_repository(bank_transaction_repository.clone()));
 
         // FxGainLoss service
         let fx_gain_loss_repository = Arc::new(FxGainLossRepository::new(db_pool.clone()));
-        let fx_gain_loss_service = Arc::new(FxGainLossService::with_repository(
-            fx_gain_loss_repository.clone(),
-        ));
+        let fx_gain_loss_service = Arc::new(FxGainLossService::with_repository(fx_gain_loss_repository.clone()));
 
         // ReconcilePreset service
         let reconcile_preset_repository = Arc::new(ReconcilePresetRepository::new(db_pool.clone()));
-        let reconcile_preset_service = Arc::new(ReconcilePresetService::with_repository(
-            reconcile_preset_repository.clone(),
-        ));
+        let reconcile_preset_service = Arc::new(ReconcilePresetService::with_repository(reconcile_preset_repository.clone()));
 
         // <<< CUSTOM
         // END CUSTOM

@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 

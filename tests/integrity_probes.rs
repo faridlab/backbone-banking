@@ -5,6 +5,7 @@
 //! IGT-1..IGT-3 the tenancy invariants on the guarded HTTP surface — the import derives its tenant
 //!              from a signed token, never from the request body.
 
+#![expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 use std::sync::Arc;
 
 use axum::body::Body;

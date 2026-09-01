@@ -14,6 +14,9 @@ user_owned:
   - "src/application/service/banking_events.rs"
   - "src/application/service/banking_gl.rs"
   - "src/application/service/banking_write_service.rs"
+  # Fail-closed IBAN validation (registry length/structure table, mod-97 checksum, named
+  # unknown-country escape; local-format account numbers pass unchanged).
+  - "src/application/service/iban_validation.rs"
   # The write surface, chunked out of banking_write_service.rs. Each is an `impl BankingWriteService`
   # block; the shared vocabulary (input structs, outcomes, errors) stays in banking_write_service.rs.
   - "src/application/service/banking_statement.rs"
@@ -41,6 +44,8 @@ user_owned:
   - "tests/banking_golden_cases.rs"
   - "tests/integrity_probes.rs"
   - "tests/clearing_seam.rs"
+  # IBAN fail-closed probes (valid/unknown/checksum/length/local/escape).
+  - "tests/iban_probes.rs"
   - "scripts/**"
   # Hand-authored behavior (services + their HTTP surface). Examples:
   # - "src/application/service/onboarding_service.rs"
@@ -63,3 +68,7 @@ user_owned:
   - "tests/reconcile_preset_candidate_ordering.rs"
   # Durable BankClearanceRecorded staging inside the clearance transaction.
   - "tests/clearance_event_staging.rs"
+  # The integration-test target root — a module-declaration stub made user-owned so its
+  # crate-root lint expectation (the expect_used instrumented allow) covers the generated
+  # scaffold under tests/integration/ without editing generator-owned files.
+  - "tests/integration_tests.rs"

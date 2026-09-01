@@ -24,6 +24,7 @@ fn d(s: &str) -> Decimal {
     Decimal::from_str_exact(s).unwrap()
 }
 
+#[expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 async fn pool() -> PgPool {
     let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         "postgresql://postgres:postgres@localhost:5433/backbone_banking".to_string()
@@ -127,6 +128,7 @@ async fn retired_tables_are_gone_and_shared_enum_types_survive() {
 /// HS256 token so the discriminator cannot be "unauthenticated": the control POST answers non-404
 /// through the same router + token, while the retired bases match no route at all.
 #[tokio::test]
+#[expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 async fn no_http_route_survives_for_the_retired_catalogue() {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};

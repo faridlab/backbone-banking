@@ -31,6 +31,7 @@ use crate::infrastructure::persistence::{
 };
 
 use super::banking_events::{BankingEventSink, LoggingSink};
+use super::iban_validation::{is_iban_shaped, normalize_iban, validate_iban_with, IbanError, IbanValidationPolicy};
 
 pub(super) fn money(v: Decimal) -> Decimal {
     v.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero)
@@ -184,6 +185,13 @@ pub enum BankingError {
     /// The candidate-pool read refused: the payment schema is absent (standalone module database,
     /// mis-composed host). Ordering ranks nothing rather than present fiction as candidates.
     CandidatePoolRefused(String),
+    /// An IBAN-shaped account number whose country is KNOWN but whose length/structure or
+    /// mod-97 checksum is wrong.
+    InvalidIban(String),
+    /// An IBAN-shaped account number claiming a country that is not in the reviewed IBAN
+    /// registry — refused fail-closed (distinct from `InvalidIban` so the escape-able
+    /// refusal is visible as its own error code).
+    IbanUnknownCountry(String),
     Db(sqlx::Error),
 }
 
@@ -208,6 +216,8 @@ impl BankingError {
             BankingError::PresetMissingDaysWindow(_) => "preset_missing_days_window".into(),
             BankingError::UnknownMatchOn(_) => "unknown_match_on".into(),
             BankingError::CandidatePoolRefused(_) => "candidate_pool_refused".into(),
+            BankingError::InvalidIban(_) => "invalid_iban".into(),
+            BankingError::IbanUnknownCountry(_) => "iban_unknown_country".into(),
             BankingError::Db(_) => "internal_error".into(),
         }
     }
@@ -280,6 +290,9 @@ pub struct BankingWriteService {
     /// The candidate pool the reconcile-preset ordering ranks. Defaults to the guarded
     /// payment-header read; tests inject their own.
     pub(super) candidates: Arc<dyn super::reconcile_preset_candidates::CandidatePoolPort>,
+    /// IBAN validation posture for `create_bank_account`. Default fail-closed for
+    /// IBAN-shaped numbers claiming unregistered countries (see `iban_validation`).
+    pub(super) iban_policy: IbanValidationPolicy,
 }
 
 impl BankingWriteService {
@@ -294,7 +307,15 @@ impl BankingWriteService {
             sink,
             outbox_schema: None,
             candidates: Arc::new(super::reconcile_preset_candidates::PaymentPoolRead),
+            iban_policy: IbanValidationPolicy::FAIL_CLOSED,
         }
+    }
+    /// Explicit IBAN validation posture for this service instance. Hosts wiring the named
+    /// escape pass `IbanValidationPolicy::ALLOW_UNKNOWN_COUNTRIES` (or
+    /// `IbanValidationPolicy::from_env()` to honor `BANKING_IBAN_ALLOW_UNKNOWN_COUNTRIES`).
+    pub fn with_iban_policy(mut self, policy: IbanValidationPolicy) -> Self {
+        self.iban_policy = policy;
+        self
     }
     /// Enable crash-safe `BankClearanceRecorded` emission via the durable outbox in `schema`
     /// (e.g. `"banking"`). Requires `backbone_outbox::outbox::migrate` to have created
@@ -344,6 +365,25 @@ impl BankingWriteService {
         // RLS scope (ADR-0008): company is on the DTO — same pattern as `create_bank`.
         let company = a.company_id;
         company_scope::with_company_scope(Some(company), async move {
+            // IBAN validation, fail-closed: a value that CLAIMS to be an IBAN (two letters
+            // + two digits) must carry a registered country, the right length/structure,
+            // and a valid mod-97 checksum. Unknown countries are refused with the distinct
+            // `iban_unknown_country` code (loudly logged; escape-able via the named config).
+            // Non-IBAN-shaped values are LOCAL account numbers (the field's pre-existing
+            // contract — Indonesian accounts are not IBAN-based) and pass through unchanged.
+            let account_number = if is_iban_shaped(&normalize_iban(&a.account_number)) {
+                match validate_iban_with(&self.iban_policy, &a.account_number) {
+                    Ok(canonical) => canonical,
+                    Err(IbanError::UnknownCountry(country)) => {
+                        return Err(BankingError::IbanUnknownCountry(country));
+                    }
+                    Err(e) => {
+                        return Err(BankingError::InvalidIban(format!("{} ({e})", a.account_number)));
+                    }
+                }
+            } else {
+                a.account_number.clone()
+            };
             let id = Uuid::new_v4();
             let currency = a.currency.unwrap_or_else(|| "IDR".into());
             let account_type = a.account_type.unwrap_or_else(|| "checking".into());
@@ -357,7 +397,7 @@ impl BankingWriteService {
                         branch_id: a.branch_id,
                         bank_id: a.bank_id,
                         account_name: &a.account_name,
-                        account_number: &a.account_number,
+                        account_number: &account_number,
                         gl_account_id: a.gl_account_id,
                         clearing_account_id: a.clearing_account_id,
                         currency: &currency,

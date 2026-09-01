@@ -5,9 +5,9 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -16,8 +16,8 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
-use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::BankAccount;
+use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::BankAccountStatus;
 use crate::domain::entity::BankAccountType;
 
@@ -34,18 +34,12 @@ use crate::domain::entity::BankAccountType;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankAccountDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "branch_id")]
     pub branch_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_id")]
     pub bank_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
@@ -56,16 +50,10 @@ pub struct CreateBankAccountDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(alias = "account_number")]
     pub account_number: String,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "gl_account_id")]
     pub gl_account_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "clearing_account_id")]
     pub clearing_account_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -92,18 +80,12 @@ pub struct CreateBankAccountDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankAccountDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "branch_id")]
     pub branch_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_id")]
     pub bank_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
@@ -114,16 +96,10 @@ pub struct UpdateBankAccountDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(alias = "account_number")]
     pub account_number: String,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "gl_account_id")]
     pub gl_account_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "clearing_account_id")]
     pub clearing_account_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -150,18 +126,12 @@ pub struct UpdateBankAccountDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankAccountDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "branch_id")]
     pub branch_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_id")]
     pub bank_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
@@ -172,16 +142,10 @@ pub struct PatchBankAccountDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "account_number")]
     pub account_number: Option<String>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "gl_account_id")]
     pub gl_account_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "clearing_account_id")]
     pub clearing_account_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 3)))]
@@ -200,17 +164,7 @@ pub struct PatchBankAccountDto {
 impl PatchBankAccountDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some()
-            || self.branch_id.is_some()
-            || self.bank_id.is_some()
-            || self.account_name.is_some()
-            || self.account_number.is_some()
-            || self.gl_account_id.is_some()
-            || self.clearing_account_id.is_some()
-            || self.currency.is_some()
-            || self.account_type.is_some()
-            || self.is_default.is_some()
-            || self.status.is_some()
+        self.company_id.is_some() || self.branch_id.is_some() || self.bank_id.is_some() || self.account_name.is_some() || self.account_number.is_some() || self.gl_account_id.is_some() || self.clearing_account_id.is_some() || self.currency.is_some() || self.account_type.is_some() || self.is_default.is_some() || self.status.is_some()
     }
 }
 
@@ -226,35 +180,20 @@ impl PatchBankAccountDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct BankAccountResponseDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub company_id: Uuid,
     pub branch_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub bank_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub account_name: String,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub account_number: String,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub gl_account_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub clearing_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub currency: String,

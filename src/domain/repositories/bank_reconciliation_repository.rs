@@ -5,8 +5,8 @@
 //! This trait defines the repository contract for the BankReconciliation aggregate.
 //! Implementation is in the infrastructure layer.
 
-use anyhow::Result;
 use async_trait::async_trait;
+use anyhow::Result;
 use uuid::Uuid;
 
 use crate::domain::entity::{BankReconciliation, ReconStatus};
@@ -53,10 +53,7 @@ pub struct BankReconciliationFilter {
 impl BankReconciliationFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some()
-            || self.bank_account_id.is_some()
-            || self.status.is_some()
-            || self.preset_id.is_some()
+        self.company_id.is_some() || self.bank_account_id.is_some() || self.status.is_some() || self.preset_id.is_some()
     }
 }
 
@@ -66,6 +63,7 @@ impl BankReconciliationFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait BankReconciliationRepository: Send + Sync {
+
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -80,11 +78,7 @@ pub trait BankReconciliationRepository: Send + Sync {
     async fn find_all(&self) -> Result<Vec<BankReconciliation>>;
 
     /// Update bank_reconciliation by ID
-    async fn update(
-        &self,
-        id: &str,
-        entity: &BankReconciliation,
-    ) -> Result<Option<BankReconciliation>>;
+    async fn update(&self, id: &str, entity: &BankReconciliation) -> Result<Option<BankReconciliation>>;
 
     /// Delete bank_reconciliation by ID
     async fn delete(&self, id: &str) -> Result<bool>;
@@ -94,17 +88,10 @@ pub trait BankReconciliationRepository: Send + Sync {
     // =========================================================================
 
     /// List bank_reconciliation with pagination
-    async fn list(
-        &self,
-        params: BankReconciliationPaginationParams,
-    ) -> Result<BankReconciliationPaginatedResult>;
+    async fn list(&self, params: BankReconciliationPaginationParams) -> Result<BankReconciliationPaginatedResult>;
 
     /// List bank_reconciliation with pagination and filters
-    async fn list_with_filters(
-        &self,
-        params: BankReconciliationPaginationParams,
-        filters: BankReconciliationFilter,
-    ) -> Result<BankReconciliationPaginatedResult>;
+    async fn list_with_filters(&self, params: BankReconciliationPaginationParams, filters: BankReconciliationFilter) -> Result<BankReconciliationPaginatedResult>;
 
     /// Count all bank_reconciliation entities
     async fn count(&self) -> Result<u64>;
@@ -126,10 +113,7 @@ pub trait BankReconciliationRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<BankReconciliation>>;
 
     /// List soft-deleted bank_reconciliation entities
-    async fn list_deleted(
-        &self,
-        params: BankReconciliationPaginationParams,
-    ) -> Result<BankReconciliationPaginatedResult>;
+    async fn list_deleted(&self, params: BankReconciliationPaginationParams) -> Result<BankReconciliationPaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;

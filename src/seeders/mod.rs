@@ -9,19 +9,19 @@ use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
 
+mod bank_seeder;
 mod bank_account_seeder;
 mod bank_clearance_seeder;
 mod bank_reconciliation_seeder;
-mod bank_seeder;
 mod bank_statement_import_seeder;
 mod bank_transaction_seeder;
 mod fx_gain_loss_seeder;
 mod reconcile_preset_seeder;
 
+pub use bank_seeder::SeedBankSeeder;
 pub use bank_account_seeder::SeedBankAccountSeeder;
 pub use bank_clearance_seeder::SeedBankClearanceSeeder;
 pub use bank_reconciliation_seeder::SeedBankReconciliationSeeder;
-pub use bank_seeder::SeedBankSeeder;
 pub use bank_statement_import_seeder::SeedBankStatementImportSeeder;
 pub use bank_transaction_seeder::SeedBankTransactionSeeder;
 pub use fx_gain_loss_seeder::SeedFxGainLossSeeder;

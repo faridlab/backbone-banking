@@ -4,24 +4,24 @@
 
 pub mod bank;
 pub mod bank_account;
-pub mod bank_account_status;
-pub mod bank_account_type;
 pub mod bank_clearance;
 pub mod bank_reconciliation;
 pub mod bank_statement_import;
-pub mod bank_status;
 pub mod bank_transaction;
-pub mod fx_direction;
 pub mod fx_gain_loss;
-pub mod import_status;
-pub mod match_method;
-pub mod match_on;
-pub mod matched_source_type;
-pub mod preset_status;
-pub mod recon_status;
 pub mod reconcile_preset;
+pub mod bank_status;
+pub mod bank_account_status;
+pub mod bank_account_type;
+pub mod matched_source_type;
+pub mod match_method;
+pub mod recon_status;
 pub mod source_format;
+pub mod import_status;
 pub mod txn_status;
+pub mod fx_direction;
+pub mod match_on;
+pub mod preset_status;
 
 // Re-exports
 pub use bank::Bank;
@@ -30,8 +30,6 @@ pub use bank::BankId;
 pub use bank_account::BankAccount;
 pub use bank_account::BankAccountBuilder;
 pub use bank_account::BankAccountId;
-pub use bank_account_status::BankAccountStatus;
-pub use bank_account_type::BankAccountType;
 pub use bank_clearance::BankClearance;
 pub use bank_clearance::BankClearanceBuilder;
 pub use bank_clearance::BankClearanceId;
@@ -41,25 +39,27 @@ pub use bank_reconciliation::BankReconciliationId;
 pub use bank_statement_import::BankStatementImport;
 pub use bank_statement_import::BankStatementImportBuilder;
 pub use bank_statement_import::BankStatementImportId;
-pub use bank_status::BankStatus;
 pub use bank_transaction::BankTransaction;
 pub use bank_transaction::BankTransactionBuilder;
 pub use bank_transaction::BankTransactionId;
-pub use fx_direction::FxDirection;
 pub use fx_gain_loss::FxGainLoss;
 pub use fx_gain_loss::FxGainLossBuilder;
 pub use fx_gain_loss::FxGainLossId;
-pub use import_status::ImportStatus;
-pub use match_method::MatchMethod;
-pub use match_on::MatchOn;
-pub use matched_source_type::MatchedSourceType;
-pub use preset_status::PresetStatus;
-pub use recon_status::ReconStatus;
 pub use reconcile_preset::ReconcilePreset;
 pub use reconcile_preset::ReconcilePresetBuilder;
 pub use reconcile_preset::ReconcilePresetId;
+pub use bank_status::BankStatus;
+pub use bank_account_status::BankAccountStatus;
+pub use bank_account_type::BankAccountType;
+pub use matched_source_type::MatchedSourceType;
+pub use match_method::MatchMethod;
+pub use recon_status::ReconStatus;
 pub use source_format::SourceFormat;
+pub use import_status::ImportStatus;
 pub use txn_status::TxnStatus;
+pub use fx_direction::FxDirection;
+pub use match_on::MatchOn;
+pub use preset_status::PresetStatus;
 
 // ==========================================================================
 // Entity Trait
@@ -88,9 +88,9 @@ pub trait Entity: Debug + Clone {
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 #[cfg(feature = "openapi")]
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 /// Audit metadata stored as JSONB in the database
 ///

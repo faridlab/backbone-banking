@@ -5,18 +5,17 @@
 //! Returns an `EntityValidator<FxGainLoss>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
+use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
+use backbone_core::{RequiredString};
 use crate::domain::entity::FxGainLoss;
-use backbone_core::RequiredString;
-use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
 
 /// Validator type alias for FxGainLoss entities.
 pub type FxGainLossValidator = EntityValidator<FxGainLoss>;
 
 /// Build a validator for FxGainLoss with all schema-defined field rules.
 pub fn fx_gain_loss_validator() -> FxGainLossValidator {
-    EntityValidator::new().rule(RequiredString::new("currency", |e: &FxGainLoss| {
-        &e.currency
-    }))
+    EntityValidator::new()
+        .rule(RequiredString::new("currency", |e: &FxGainLoss| &e.currency))
     // <<< CUSTOM RULES
     // END CUSTOM RULES
 }

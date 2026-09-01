@@ -5,9 +5,9 @@
 //! Returns an `EntityValidator<ReconcilePreset>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
-use crate::domain::entity::ReconcilePreset;
-use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
+use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
 use backbone_core::{NonNegative, OptionalNotBlank, RequiredString};
+use crate::domain::entity::ReconcilePreset;
 
 /// Validator type alias for ReconcilePreset entities.
 pub type ReconcilePresetValidator = EntityValidator<ReconcilePreset>;
@@ -16,9 +16,7 @@ pub type ReconcilePresetValidator = EntityValidator<ReconcilePreset>;
 pub fn reconcile_preset_validator() -> ReconcilePresetValidator {
     EntityValidator::new()
         .rule(RequiredString::new("name", |e: &ReconcilePreset| &e.name))
-        .rule(OptionalNotBlank::new("note", |e: &ReconcilePreset| {
-            e.note.as_deref()
-        }))
+        .rule(OptionalNotBlank::new("note", |e: &ReconcilePreset| e.note.as_deref()))
     // <<< CUSTOM RULES
     // END CUSTOM RULES
 }

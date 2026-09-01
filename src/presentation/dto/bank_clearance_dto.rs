@@ -5,10 +5,10 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
-use chrono::{DateTime, NaiveDate, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::{DateTime, Utc, NaiveDate};
+use rust_decimal::Decimal;
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -17,8 +17,8 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
-use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::BankClearance;
+use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::MatchMethod;
 use crate::domain::entity::MatchedSourceType;
 
@@ -35,24 +35,15 @@ use crate::domain::entity::MatchedSourceType;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankClearanceDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_transaction_id")]
     pub bank_transaction_id: Uuid,
     #[serde(alias = "matched_source_type")]
     pub matched_source_type: MatchedSourceType,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "matched_source_id")]
     pub matched_source_id: Uuid,
     #[serde(alias = "matched_amount")]
@@ -62,11 +53,7 @@ pub struct CreateBankClearanceDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "clearance_date")]
     pub clearance_date: NaiveDate,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "accounting_post_id"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "accounting_post_id")]
     pub accounting_post_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "journal_id")]
     pub journal_id: Option<Uuid>,
@@ -85,24 +72,15 @@ pub struct CreateBankClearanceDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankClearanceDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_transaction_id")]
     pub bank_transaction_id: Uuid,
     #[serde(alias = "matched_source_type")]
     pub matched_source_type: MatchedSourceType,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "matched_source_id")]
     pub matched_source_id: Uuid,
     #[serde(alias = "matched_amount")]
@@ -112,11 +90,7 @@ pub struct UpdateBankClearanceDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "clearance_date")]
     pub clearance_date: NaiveDate,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "accounting_post_id"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "accounting_post_id")]
     pub accounting_post_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "journal_id")]
     pub journal_id: Option<Uuid>,
@@ -135,24 +109,15 @@ pub struct UpdateBankClearanceDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankClearanceDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_transaction_id")]
     pub bank_transaction_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_source_type")]
     pub matched_source_type: Option<MatchedSourceType>,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_source_id")]
     pub matched_source_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_amount")]
@@ -171,15 +136,7 @@ pub struct PatchBankClearanceDto {
 impl PatchBankClearanceDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some()
-            || self.bank_transaction_id.is_some()
-            || self.matched_source_type.is_some()
-            || self.matched_source_id.is_some()
-            || self.matched_amount.is_some()
-            || self.match_method.is_some()
-            || self.clearance_date.is_some()
-            || self.accounting_post_id.is_some()
-            || self.journal_id.is_some()
+        self.company_id.is_some() || self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.matched_amount.is_some() || self.match_method.is_some() || self.clearance_date.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
     }
 }
 
@@ -195,26 +152,14 @@ impl PatchBankClearanceDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct BankClearanceResponseDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub company_id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub bank_transaction_id: Uuid,
     pub matched_source_type: MatchedSourceType,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub matched_source_id: Uuid,
     pub matched_amount: Decimal,
     pub match_method: MatchMethod,

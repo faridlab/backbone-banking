@@ -13,6 +13,7 @@
 //!
 //! Requires DATABASE_URL (:5433/backbone_banking with accounting + banking migrated).
 
+#![expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 use std::collections::HashMap;
 use std::sync::Arc;
 

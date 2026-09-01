@@ -7,9 +7,9 @@
 
 use backbone_core::GenericCrudService;
 
+use crate::presentation::dto::{CreateBankTransactionDto, UpdateBankTransactionDto};
 use crate::domain::entity::BankTransaction;
 use crate::infrastructure::persistence::BankTransactionRepository;
-use crate::presentation::dto::{CreateBankTransactionDto, UpdateBankTransactionDto};
 
 /// Application service for BankTransaction entities.
 ///

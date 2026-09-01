@@ -23,9 +23,7 @@ pub struct ReconcilePresetRepository(
 
 impl std::ops::Deref for ReconcilePresetRepository {
     type Target = backbone_orm::GenericCrudRepository<ReconcilePreset, backbone_orm::SoftDelete>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 impl ReconcilePresetRepository {

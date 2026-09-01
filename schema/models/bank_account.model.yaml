@@ -75,7 +75,7 @@ models:
       account_number:
         type: string
         attributes: ["@required", "@max(60)"]
-        description: "Account number / IBAN"
+        description: "Account number — local format, or IBAN (registry country + mod-97 checked fail-closed at the write path)"
       gl_account_id:
         type: uuid
         attributes: ["@required", "@exclude_from_foreign_key_check"]

@@ -5,19 +5,17 @@
 //! Returns an `EntityValidator<BankStatementImport>` pre-loaded with schema-derived
 //! field rules. Extend in the `// <<< CUSTOM` zone.
 
+use backbone_core::{EntityValidator, ValidationErrors, ValidationError};
+use backbone_core::{OptionalNotBlank};
 use crate::domain::entity::BankStatementImport;
-use backbone_core::OptionalNotBlank;
-use backbone_core::{EntityValidator, ValidationError, ValidationErrors};
 
 /// Validator type alias for BankStatementImport entities.
 pub type BankStatementImportValidator = EntityValidator<BankStatementImport>;
 
 /// Build a validator for BankStatementImport with all schema-defined field rules.
 pub fn bank_statement_import_validator() -> BankStatementImportValidator {
-    EntityValidator::new().rule(OptionalNotBlank::new(
-        "file_ref",
-        |e: &BankStatementImport| e.file_ref.as_deref(),
-    ))
+    EntityValidator::new()
+        .rule(OptionalNotBlank::new("file_ref", |e: &BankStatementImport| e.file_ref.as_deref()))
     // <<< CUSTOM RULES
     // END CUSTOM RULES
 }

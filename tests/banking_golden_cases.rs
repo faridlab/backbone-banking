@@ -5,6 +5,7 @@
 //! only — no reconciliation-graph edge — so the refuse-all sink doubles as the proof that banking
 //! never attempts one for them. Requires DATABASE_URL (:5433/backbone_banking).
 
+#![expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 use std::sync::{Arc, Mutex};
 
 use rust_decimal::Decimal;

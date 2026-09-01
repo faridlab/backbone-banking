@@ -21,11 +21,12 @@ use backbone_auth::middleware::AuthContext;
 use backbone_auth::AuthMiddleware;
 
 // Domain imports
-use crate::application::service::{BankService, ServiceError};
 use crate::domain::entity::*;
+use crate::application::service::{BankService, ServiceError};
 
 // DTO imports
-use crate::presentation::dto::{BankResponseDto, CreateBankDto, PatchBankDto, UpdateBankDto};
+use crate::presentation::dto::{CreateBankDto, UpdateBankDto, PatchBankDto, BankResponseDto};
+
 
 /// Application error type
 #[derive(Debug, thiserror::Error)]
@@ -108,7 +109,8 @@ impl axum::response::IntoResponse for BankError {
 /// ```
 pub fn create_bank_routes(service: Arc<BankService>) -> Router {
     BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::routes(
-        service, "/banks",
+        service,
+        "/banks",
     )
 }
 
@@ -156,35 +158,30 @@ pub fn create_protected_bank_routes<A: AuthMiddleware + Send + Sync + 'static>(
     use axum::response::IntoResponse;
 
     let auth_layer = auth.clone();
-    create_bank_routes(service).layer(middleware::from_fn(
-        move |mut req: axum::extract::Request, next: axum::middleware::Next| {
+    create_bank_routes(service)
+        .layer(middleware::from_fn(move |mut req: axum::extract::Request, next: axum::middleware::Next| {
             let auth = auth_layer.clone();
             async move {
-                let token = req
-                    .headers()
+                let token = req.headers()
                     .get(axum::http::header::AUTHORIZATION)
                     .and_then(|h| h.to_str().ok())
-                    .and_then(|raw| {
-                        raw.strip_prefix("Bearer ")
-                            .or_else(|| raw.strip_prefix("bearer "))
-                    })
+                    .and_then(|raw| raw.strip_prefix("Bearer ").or_else(|| raw.strip_prefix("bearer ")))
                     .unwrap_or("");
                 match auth.authenticate(token).await {
                     Ok(ctx) => {
                         req.extensions_mut().insert(ctx);
                         next.run(req).await
                     }
-                    Err(_) => (
-                        axum::http::StatusCode::UNAUTHORIZED,
-                        axum::Json(serde_json::json!({
-                            "success": false,
-                            "error": "unauthorized",
-                            "message": "Authentication required"
-                        })),
-                    )
-                        .into_response(),
+                    Err(_) => {
+                        (axum::http::StatusCode::UNAUTHORIZED,
+                         axum::Json(serde_json::json!({
+                             "success": false,
+                             "error": "unauthorized",
+                             "message": "Authentication required"
+                         }))
+                        ).into_response()
+                    }
                 }
             }
-        },
-    ))
+        }))
 }

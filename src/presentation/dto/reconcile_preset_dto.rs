@@ -5,10 +5,10 @@
 //! DTOs provide a clean separation between domain entities and API
 //! representations, with validation and OpenAPI documentation support.
 
-use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[cfg(feature = "openapi")]
 #[cfg(feature = "openapi")]
@@ -17,10 +17,10 @@ use utoipa::ToSchema;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
+use crate::domain::entity::ReconcilePreset;
 use crate::domain::entity::AuditMetadata;
 use crate::domain::entity::MatchOn;
 use crate::domain::entity::PresetStatus;
-use crate::domain::entity::ReconcilePreset;
 
 // =============================================================================
 // Create DTO
@@ -35,10 +35,7 @@ use crate::domain::entity::ReconcilePreset;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateReconcilePresetDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
@@ -51,17 +48,9 @@ pub struct CreateReconcilePresetDto {
     pub priority: i32,
     #[serde(alias = "match_on")]
     pub match_on: MatchOn,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "tolerance_percent"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "tolerance_percent")]
     pub tolerance_percent: Option<Decimal>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "days_window"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "days_window")]
     pub days_window: Option<i32>,
     pub status: PresetStatus,
 }
@@ -79,10 +68,7 @@ pub struct CreateReconcilePresetDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateReconcilePresetDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "company_id")]
     pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
@@ -95,17 +81,9 @@ pub struct UpdateReconcilePresetDto {
     pub priority: i32,
     #[serde(alias = "match_on")]
     pub match_on: MatchOn,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "tolerance_percent"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "tolerance_percent")]
     pub tolerance_percent: Option<Decimal>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "days_window"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "days_window")]
     pub days_window: Option<i32>,
     pub status: PresetStatus,
 }
@@ -123,10 +101,7 @@ pub struct UpdateReconcilePresetDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchReconcilePresetDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
     pub company_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
@@ -152,14 +127,7 @@ pub struct PatchReconcilePresetDto {
 impl PatchReconcilePresetDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some()
-            || self.name.is_some()
-            || self.note.is_some()
-            || self.priority.is_some()
-            || self.match_on.is_some()
-            || self.tolerance_percent.is_some()
-            || self.days_window.is_some()
-            || self.status.is_some()
+        self.company_id.is_some() || self.name.is_some() || self.note.is_some() || self.priority.is_some() || self.match_on.is_some() || self.tolerance_percent.is_some() || self.days_window.is_some() || self.status.is_some()
     }
 }
 
@@ -175,15 +143,9 @@ impl PatchReconcilePresetDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct ReconcilePresetResponseDto {
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "550e8400-e29b-41d4-a716-446655440000")
-    )]
+    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
@@ -227,12 +189,7 @@ pub struct ReconcilePresetListResponseDto {
 
 impl ReconcilePresetListResponseDto {
     /// Create a new list response from items and pagination info
-    pub fn new(
-        items: Vec<ReconcilePresetResponseDto>,
-        total: u64,
-        page: u32,
-        per_page: u32,
-    ) -> Self {
+    pub fn new(items: Vec<ReconcilePresetResponseDto>, total: u64, page: u32, per_page: u32) -> Self {
         let total_pages = if per_page > 0 {
             ((total as f64) / (per_page as f64)).ceil() as u32
         } else {

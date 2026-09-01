@@ -4,10 +4,10 @@
 //!
 //! Uses backbone-orm's `DatabaseOperations<T>` trait.
 
+mod bank_repository;
 mod bank_account_repository;
 mod bank_clearance_repository;
 mod bank_reconciliation_repository;
-mod bank_repository;
 mod bank_statement_import_repository;
 mod bank_transaction_repository;
 mod fx_gain_loss_repository;
@@ -29,10 +29,10 @@ pub use fx_gain_loss_repository::NewFxGainLossRow;
 // END CUSTOM
 
 // Re-exports
+pub use bank_repository::BankRepository;
 pub use bank_account_repository::BankAccountRepository;
 pub use bank_clearance_repository::BankClearanceRepository;
 pub use bank_reconciliation_repository::BankReconciliationRepository;
-pub use bank_repository::BankRepository;
 pub use bank_statement_import_repository::BankStatementImportRepository;
 pub use bank_transaction_repository::BankTransactionRepository;
 pub use fx_gain_loss_repository::FxGainLossRepository;
@@ -40,8 +40,9 @@ pub use reconcile_preset_repository::ReconcilePresetRepository;
 
 // Re-export backbone-orm types
 pub use backbone_orm::repository::{
-    DatabaseOperations, FilterCondition, FilterParams, PaginatedResult, PaginationInfo,
-    PaginationParams, PostgresRepository, SortDirection, SortParams,
+    DatabaseOperations, PostgresRepository,
+    PaginationParams, PaginationInfo, PaginatedResult,
+    FilterParams, FilterCondition, SortParams, SortDirection,
 };
 
 // Re-export custom persistence types

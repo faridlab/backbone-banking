@@ -1,11 +1,11 @@
-use chrono::{DateTime, NaiveDate, Utc};
-use rust_decimal::Decimal;
+use chrono::{DateTime, Utc, NaiveDate};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use rust_decimal::Decimal;
 
-use super::AuditMetadata;
 use super::ReconStatus;
+use super::AuditMetadata;
 
 /// Strongly-typed ID for BankReconciliation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,15 +13,9 @@ use super::ReconStatus;
 pub struct BankReconciliationId(pub Uuid);
 
 impl BankReconciliationId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-    pub fn generate() -> Self {
-        Self(Uuid::new_v4())
-    }
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
+    pub fn new(id: Uuid) -> Self { Self(id) }
+    pub fn generate() -> Self { Self(Uuid::new_v4()) }
+    pub fn into_inner(self) -> Uuid { self.0 }
 }
 
 impl std::fmt::Display for BankReconciliationId {
@@ -38,28 +32,20 @@ impl std::str::FromStr for BankReconciliationId {
 }
 
 impl From<Uuid> for BankReconciliationId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
+    fn from(id: Uuid) -> Self { Self(id) }
 }
 
 impl From<BankReconciliationId> for Uuid {
-    fn from(id: BankReconciliationId) -> Self {
-        id.0
-    }
+    fn from(id: BankReconciliationId) -> Self { id.0 }
 }
 
 impl AsRef<Uuid> for BankReconciliationId {
-    fn as_ref(&self) -> &Uuid {
-        &self.0
-    }
+    fn as_ref(&self) -> &Uuid { &self.0 }
 }
 
 impl std::ops::Deref for BankReconciliationId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -87,17 +73,7 @@ impl BankReconciliation {
     }
 
     /// Create a new BankReconciliation with required fields
-    pub fn new(
-        company_id: Uuid,
-        bank_account_id: Uuid,
-        from_date: NaiveDate,
-        to_date: NaiveDate,
-        statement_closing_balance: Decimal,
-        ledger_balance: Decimal,
-        computed_difference: Decimal,
-        unreconciled_count: i32,
-        status: ReconStatus,
-    ) -> Self {
+    pub fn new(company_id: Uuid, bank_account_id: Uuid, from_date: NaiveDate, to_date: NaiveDate, statement_closing_balance: Decimal, ledger_balance: Decimal, computed_difference: Decimal, unreconciled_count: i32, status: ReconStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -169,6 +145,7 @@ impl BankReconciliation {
         &self.status
     }
 
+
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -188,54 +165,34 @@ impl BankReconciliation {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.company_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
                 }
                 "bank_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.bank_account_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
                 }
                 "from_date" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.from_date = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.from_date = v; }
                 }
                 "to_date" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.to_date = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.to_date = v; }
                 }
                 "statement_closing_balance" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.statement_closing_balance = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.statement_closing_balance = v; }
                 }
                 "ledger_balance" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.ledger_balance = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.ledger_balance = v; }
                 }
                 "computed_difference" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.computed_difference = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.computed_difference = v; }
                 }
                 "unreconciled_count" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.unreconciled_count = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.unreconciled_count = v; }
                 }
                 "status" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.status = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
                 }
                 "preset_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.preset_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.preset_id = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -388,18 +345,10 @@ impl BankReconciliationBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankReconciliation, String> {
-        let company_id = self
-            .company_id
-            .ok_or_else(|| "company_id is required".to_string())?;
-        let bank_account_id = self
-            .bank_account_id
-            .ok_or_else(|| "bank_account_id is required".to_string())?;
-        let from_date = self
-            .from_date
-            .ok_or_else(|| "from_date is required".to_string())?;
-        let to_date = self
-            .to_date
-            .ok_or_else(|| "to_date is required".to_string())?;
+        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
+        let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
+        let from_date = self.from_date.ok_or_else(|| "from_date is required".to_string())?;
+        let to_date = self.to_date.ok_or_else(|| "to_date is required".to_string())?;
 
         Ok(BankReconciliation {
             id: Uuid::new_v4(),

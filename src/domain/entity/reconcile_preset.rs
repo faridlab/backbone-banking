@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use rust_decimal::Decimal;
 
-use super::AuditMetadata;
 use super::MatchOn;
 use super::PresetStatus;
+use super::AuditMetadata;
 
 /// Strongly-typed ID for ReconcilePreset
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,15 +14,9 @@ use super::PresetStatus;
 pub struct ReconcilePresetId(pub Uuid);
 
 impl ReconcilePresetId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-    pub fn generate() -> Self {
-        Self(Uuid::new_v4())
-    }
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
+    pub fn new(id: Uuid) -> Self { Self(id) }
+    pub fn generate() -> Self { Self(Uuid::new_v4()) }
+    pub fn into_inner(self) -> Uuid { self.0 }
 }
 
 impl std::fmt::Display for ReconcilePresetId {
@@ -39,28 +33,20 @@ impl std::str::FromStr for ReconcilePresetId {
 }
 
 impl From<Uuid> for ReconcilePresetId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
+    fn from(id: Uuid) -> Self { Self(id) }
 }
 
 impl From<ReconcilePresetId> for Uuid {
-    fn from(id: ReconcilePresetId) -> Self {
-        id.0
-    }
+    fn from(id: ReconcilePresetId) -> Self { id.0 }
 }
 
 impl AsRef<Uuid> for ReconcilePresetId {
-    fn as_ref(&self) -> &Uuid {
-        &self.0
-    }
+    fn as_ref(&self) -> &Uuid { &self.0 }
 }
 
 impl std::ops::Deref for ReconcilePresetId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -86,13 +72,7 @@ impl ReconcilePreset {
     }
 
     /// Create a new ReconcilePreset with required fields
-    pub fn new(
-        company_id: Uuid,
-        name: String,
-        priority: i32,
-        match_on: MatchOn,
-        status: PresetStatus,
-    ) -> Self {
+    pub fn new(company_id: Uuid, name: String, priority: i32, match_on: MatchOn, status: PresetStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -162,6 +142,7 @@ impl ReconcilePreset {
         &self.status
     }
 
+
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -193,44 +174,28 @@ impl ReconcilePreset {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.company_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
                 }
                 "name" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.name = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.name = v; }
                 }
                 "note" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.note = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.note = v; }
                 }
                 "priority" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.priority = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.priority = v; }
                 }
                 "match_on" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.match_on = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.match_on = v; }
                 }
                 "tolerance_percent" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.tolerance_percent = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.tolerance_percent = v; }
                 }
                 "days_window" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.days_window = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.days_window = v; }
                 }
                 "status" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.status = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -368,13 +333,9 @@ impl ReconcilePresetBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<ReconcilePreset, String> {
-        let company_id = self
-            .company_id
-            .ok_or_else(|| "company_id is required".to_string())?;
+        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let name = self.name.ok_or_else(|| "name is required".to_string())?;
-        let match_on = self
-            .match_on
-            .ok_or_else(|| "match_on is required".to_string())?;
+        let match_on = self.match_on.ok_or_else(|| "match_on is required".to_string())?;
 
         Ok(ReconcilePreset {
             id: Uuid::new_v4(),

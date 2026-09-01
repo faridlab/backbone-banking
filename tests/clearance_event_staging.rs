@@ -33,6 +33,7 @@ fn day(n: u32) -> chrono::NaiveDate {
 fn uq(p: &str) -> String {
     format!("{p}-{}", &Uuid::new_v4().simple().to_string()[..8])
 }
+#[expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 async fn pool() -> PgPool {
     let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         "postgresql://postgres:postgres@localhost:5433/backbone_banking".to_string()

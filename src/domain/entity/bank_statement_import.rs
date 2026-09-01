@@ -1,12 +1,12 @@
-use chrono::{DateTime, NaiveDate, Utc};
-use rust_decimal::Decimal;
+use chrono::{DateTime, Utc, NaiveDate};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use rust_decimal::Decimal;
 
-use super::AuditMetadata;
-use super::ImportStatus;
 use super::SourceFormat;
+use super::ImportStatus;
+use super::AuditMetadata;
 
 /// Strongly-typed ID for BankStatementImport
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,15 +14,9 @@ use super::SourceFormat;
 pub struct BankStatementImportId(pub Uuid);
 
 impl BankStatementImportId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-    pub fn generate() -> Self {
-        Self(Uuid::new_v4())
-    }
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
+    pub fn new(id: Uuid) -> Self { Self(id) }
+    pub fn generate() -> Self { Self(Uuid::new_v4()) }
+    pub fn into_inner(self) -> Uuid { self.0 }
 }
 
 impl std::fmt::Display for BankStatementImportId {
@@ -39,28 +33,20 @@ impl std::str::FromStr for BankStatementImportId {
 }
 
 impl From<Uuid> for BankStatementImportId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
+    fn from(id: Uuid) -> Self { Self(id) }
 }
 
 impl From<BankStatementImportId> for Uuid {
-    fn from(id: BankStatementImportId) -> Self {
-        id.0
-    }
+    fn from(id: BankStatementImportId) -> Self { id.0 }
 }
 
 impl AsRef<Uuid> for BankStatementImportId {
-    fn as_ref(&self) -> &Uuid {
-        &self.0
-    }
+    fn as_ref(&self) -> &Uuid { &self.0 }
 }
 
 impl std::ops::Deref for BankStatementImportId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -88,17 +74,7 @@ impl BankStatementImport {
     }
 
     /// Create a new BankStatementImport with required fields
-    pub fn new(
-        company_id: Uuid,
-        bank_account_id: Uuid,
-        source_format: SourceFormat,
-        statement_period_start: NaiveDate,
-        statement_period_end: NaiveDate,
-        opening_balance: Decimal,
-        closing_balance: Decimal,
-        status: ImportStatus,
-        row_count: i32,
-    ) -> Self {
+    pub fn new(company_id: Uuid, bank_account_id: Uuid, source_format: SourceFormat, statement_period_start: NaiveDate, statement_period_end: NaiveDate, opening_balance: Decimal, closing_balance: Decimal, status: ImportStatus, row_count: i32) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -170,6 +146,7 @@ impl BankStatementImport {
         &self.status
     }
 
+
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -189,54 +166,34 @@ impl BankStatementImport {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.company_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
                 }
                 "bank_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.bank_account_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
                 }
                 "source_format" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.source_format = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.source_format = v; }
                 }
                 "statement_period_start" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.statement_period_start = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.statement_period_start = v; }
                 }
                 "statement_period_end" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.statement_period_end = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.statement_period_end = v; }
                 }
                 "opening_balance" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.opening_balance = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.opening_balance = v; }
                 }
                 "closing_balance" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.closing_balance = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.closing_balance = v; }
                 }
                 "file_ref" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.file_ref = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.file_ref = v; }
                 }
                 "status" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.status = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.status = v; }
                 }
                 "row_count" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.row_count = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.row_count = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -389,18 +346,10 @@ impl BankStatementImportBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankStatementImport, String> {
-        let company_id = self
-            .company_id
-            .ok_or_else(|| "company_id is required".to_string())?;
-        let bank_account_id = self
-            .bank_account_id
-            .ok_or_else(|| "bank_account_id is required".to_string())?;
-        let statement_period_start = self
-            .statement_period_start
-            .ok_or_else(|| "statement_period_start is required".to_string())?;
-        let statement_period_end = self
-            .statement_period_end
-            .ok_or_else(|| "statement_period_end is required".to_string())?;
+        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
+        let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
+        let statement_period_start = self.statement_period_start.ok_or_else(|| "statement_period_start is required".to_string())?;
+        let statement_period_end = self.statement_period_end.ok_or_else(|| "statement_period_end is required".to_string())?;
 
         Ok(BankStatementImport {
             id: Uuid::new_v4(),

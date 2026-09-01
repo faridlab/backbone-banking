@@ -64,13 +64,7 @@ impl TestDataGenerator for BankStatementImportTestData {
 
     async fn seed_dependencies(&self, api: &ApiTest) -> Vec<(String, String)> {
         let mut deps: Vec<(String, String)> = Vec::new();
-        if let Some(id) = super::crud_test_base::create_and_get_id(
-            api,
-            "/api/v1/bank_accounts",
-            &super::bank_account_api_test::BankAccountTestData,
-        )
-        .await
-        {
+        if let Some(id) = super::crud_test_base::create_and_get_id(api, "/api/v1/bank_accounts", &super::bank_account_api_test::BankAccountTestData).await {
             deps.push(("bank_account_id".to_string(), id));
         }
         deps
@@ -88,8 +82,7 @@ pub struct BankStatementImportApiTest {
 
 impl BankStatementImportApiTest {
     pub fn new() -> Self {
-        let mut config =
-            CrudTestConfig::new("/api/v1/bank_statement_imports", "BankStatementImport");
+        let mut config = CrudTestConfig::new("/api/v1/bank_statement_imports", "BankStatementImport");
         config.supports_soft_delete = true;
         Self {
             inner: GenericCrudTest::new(config, BankStatementImportTestData),

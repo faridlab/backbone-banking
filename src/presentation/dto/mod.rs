@@ -5,9 +5,9 @@
 //! This module provides DTOs for the presentation layer,
 //! with validation and OpenAPI schema support.
 
+pub mod bank_dto;
 pub mod bank_account_dto;
 pub mod bank_clearance_dto;
-pub mod bank_dto;
 pub mod bank_reconciliation_dto;
 pub mod bank_statement_import_dto;
 pub mod bank_transaction_dto;
@@ -15,38 +15,69 @@ pub mod fx_gain_loss_dto;
 pub mod reconcile_preset_dto;
 
 // Re-exports
+pub use bank_dto::{
+    CreateBankDto,
+    UpdateBankDto,
+    PatchBankDto,
+    BankResponseDto,
+    BankListResponseDto,
+    BankSummaryDto,
+};
 pub use bank_account_dto::{
-    BankAccountListResponseDto, BankAccountResponseDto, BankAccountSummaryDto,
-    CreateBankAccountDto, PatchBankAccountDto, UpdateBankAccountDto,
+    CreateBankAccountDto,
+    UpdateBankAccountDto,
+    PatchBankAccountDto,
+    BankAccountResponseDto,
+    BankAccountListResponseDto,
+    BankAccountSummaryDto,
 };
 pub use bank_clearance_dto::{
-    BankClearanceListResponseDto, BankClearanceResponseDto, BankClearanceSummaryDto,
-    CreateBankClearanceDto, PatchBankClearanceDto, UpdateBankClearanceDto,
-};
-pub use bank_dto::{
-    BankListResponseDto, BankResponseDto, BankSummaryDto, CreateBankDto, PatchBankDto,
-    UpdateBankDto,
+    CreateBankClearanceDto,
+    UpdateBankClearanceDto,
+    PatchBankClearanceDto,
+    BankClearanceResponseDto,
+    BankClearanceListResponseDto,
+    BankClearanceSummaryDto,
 };
 pub use bank_reconciliation_dto::{
-    BankReconciliationListResponseDto, BankReconciliationResponseDto, BankReconciliationSummaryDto,
-    CreateBankReconciliationDto, PatchBankReconciliationDto, UpdateBankReconciliationDto,
+    CreateBankReconciliationDto,
+    UpdateBankReconciliationDto,
+    PatchBankReconciliationDto,
+    BankReconciliationResponseDto,
+    BankReconciliationListResponseDto,
+    BankReconciliationSummaryDto,
 };
 pub use bank_statement_import_dto::{
-    BankStatementImportListResponseDto, BankStatementImportResponseDto,
-    BankStatementImportSummaryDto, CreateBankStatementImportDto, PatchBankStatementImportDto,
+    CreateBankStatementImportDto,
     UpdateBankStatementImportDto,
+    PatchBankStatementImportDto,
+    BankStatementImportResponseDto,
+    BankStatementImportListResponseDto,
+    BankStatementImportSummaryDto,
 };
 pub use bank_transaction_dto::{
-    BankTransactionListResponseDto, BankTransactionResponseDto, BankTransactionSummaryDto,
-    CreateBankTransactionDto, PatchBankTransactionDto, UpdateBankTransactionDto,
+    CreateBankTransactionDto,
+    UpdateBankTransactionDto,
+    PatchBankTransactionDto,
+    BankTransactionResponseDto,
+    BankTransactionListResponseDto,
+    BankTransactionSummaryDto,
 };
 pub use fx_gain_loss_dto::{
-    CreateFxGainLossDto, FxGainLossListResponseDto, FxGainLossResponseDto, FxGainLossSummaryDto,
-    PatchFxGainLossDto, UpdateFxGainLossDto,
+    CreateFxGainLossDto,
+    UpdateFxGainLossDto,
+    PatchFxGainLossDto,
+    FxGainLossResponseDto,
+    FxGainLossListResponseDto,
+    FxGainLossSummaryDto,
 };
 pub use reconcile_preset_dto::{
-    CreateReconcilePresetDto, PatchReconcilePresetDto, ReconcilePresetListResponseDto,
-    ReconcilePresetResponseDto, ReconcilePresetSummaryDto, UpdateReconcilePresetDto,
+    CreateReconcilePresetDto,
+    UpdateReconcilePresetDto,
+    PatchReconcilePresetDto,
+    ReconcilePresetResponseDto,
+    ReconcilePresetListResponseDto,
+    ReconcilePresetSummaryDto,
 };
 
 // Common pagination types
@@ -72,12 +103,8 @@ pub struct PaginationParams {
     pub sort_order: Option<String>,
 }
 
-fn default_page() -> u32 {
-    1
-}
-fn default_per_page() -> u32 {
-    20
-}
+fn default_page() -> u32 { 1 }
+fn default_per_page() -> u32 { 20 }
 
 /// API response wrapper
 #[derive(Debug, Clone, Serialize)]
@@ -102,11 +129,7 @@ pub struct ApiError {
 
 impl<T> ApiResponse<T> {
     pub fn ok(data: T) -> Self {
-        Self {
-            success: true,
-            data: Some(data),
-            error: None,
-        }
+        Self { success: true, data: Some(data), error: None }
     }
 
     pub fn err(code: impl Into<String>, message: impl Into<String>) -> Self {

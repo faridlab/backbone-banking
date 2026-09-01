@@ -7,10 +7,10 @@
 pub mod error;
 pub use error::{ServiceError, ServiceResult};
 
+pub mod bank_service;
 pub mod bank_account_service;
 pub mod bank_clearance_service;
 pub mod bank_reconciliation_service;
-pub mod bank_service;
 pub mod bank_statement_import_service;
 pub mod bank_transaction_service;
 pub mod fx_gain_loss_service;
@@ -20,6 +20,9 @@ pub mod reconcile_preset_service;
 pub mod banking_events;
 pub mod banking_gl;
 pub mod banking_write_service;
+// Fail-closed IBAN validation for the bank-account write path (registry table, mod-97
+// checksum, named unknown-country escape; local-format account numbers pass unchanged).
+pub mod iban_validation;
 // The write surface, chunked: each is an `impl BankingWriteService` block over the vocabulary that
 // stays in `banking_write_service` (so the `banking_write_service::{NewClearance, ...}` import paths
 // are unchanged).
@@ -32,12 +35,16 @@ pub use reconcile_preset_candidates::{
 };
 pub mod fx_service;
 pub use fx_service::{ExchangeRateProvider, ExchangeRateSnapshot, FxError, FxResult, FxService};
+pub use iban_validation::{
+    is_iban_shaped, normalize_iban, validate_iban, validate_iban_with, IbanError,
+    IbanValidationPolicy, ALLOW_UNKNOWN_COUNTRIES_ENV,
+};
 // END CUSTOM
 
+pub use bank_service::BankService;
 pub use bank_account_service::BankAccountService;
 pub use bank_clearance_service::BankClearanceService;
 pub use bank_reconciliation_service::BankReconciliationService;
-pub use bank_service::BankService;
 pub use bank_statement_import_service::BankStatementImportService;
 pub use bank_transaction_service::BankTransactionService;
 pub use fx_gain_loss_service::FxGainLossService;

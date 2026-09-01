@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use rust_decimal::Decimal;
 
-use super::AuditMetadata;
 use super::FxDirection;
+use super::AuditMetadata;
 
 /// Strongly-typed ID for FxGainLoss
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,15 +13,9 @@ use super::FxDirection;
 pub struct FxGainLossId(pub Uuid);
 
 impl FxGainLossId {
-    pub fn new(id: Uuid) -> Self {
-        Self(id)
-    }
-    pub fn generate() -> Self {
-        Self(Uuid::new_v4())
-    }
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
+    pub fn new(id: Uuid) -> Self { Self(id) }
+    pub fn generate() -> Self { Self(Uuid::new_v4()) }
+    pub fn into_inner(self) -> Uuid { self.0 }
 }
 
 impl std::fmt::Display for FxGainLossId {
@@ -38,28 +32,20 @@ impl std::str::FromStr for FxGainLossId {
 }
 
 impl From<Uuid> for FxGainLossId {
-    fn from(id: Uuid) -> Self {
-        Self(id)
-    }
+    fn from(id: Uuid) -> Self { Self(id) }
 }
 
 impl From<FxGainLossId> for Uuid {
-    fn from(id: FxGainLossId) -> Self {
-        id.0
-    }
+    fn from(id: FxGainLossId) -> Self { id.0 }
 }
 
 impl AsRef<Uuid> for FxGainLossId {
-    fn as_ref(&self) -> &Uuid {
-        &self.0
-    }
+    fn as_ref(&self) -> &Uuid { &self.0 }
 }
 
 impl std::ops::Deref for FxGainLossId {
     type Target = Uuid;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -86,16 +72,7 @@ impl FxGainLoss {
     }
 
     /// Create a new FxGainLoss with required fields
-    pub fn new(
-        company_id: Uuid,
-        matched_source_id: Uuid,
-        currency: String,
-        original_rate: Decimal,
-        realised_rate: Decimal,
-        base_amount_delta: Decimal,
-        direction: FxDirection,
-        fx_account_id: Uuid,
-    ) -> Self {
+    pub fn new(company_id: Uuid, matched_source_id: Uuid, currency: String, original_rate: Decimal, realised_rate: Decimal, base_amount_delta: Decimal, direction: FxDirection, fx_account_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
             company_id,
@@ -161,6 +138,7 @@ impl FxGainLoss {
         self.metadata.deleted_by.as_ref()
     }
 
+
     // ==========================================================
     // Fluent Setters (with_* for optional fields)
     // ==========================================================
@@ -180,49 +158,31 @@ impl FxGainLoss {
         for (key, value) in fields {
             match key.as_str() {
                 "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.company_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
                 }
                 "bank_clearance_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.bank_clearance_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.bank_clearance_id = v; }
                 }
                 "matched_source_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.matched_source_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.matched_source_id = v; }
                 }
                 "currency" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.currency = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.currency = v; }
                 }
                 "original_rate" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.original_rate = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.original_rate = v; }
                 }
                 "realised_rate" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.realised_rate = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.realised_rate = v; }
                 }
                 "base_amount_delta" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.base_amount_delta = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.base_amount_delta = v; }
                 }
                 "direction" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.direction = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.direction = v; }
                 }
                 "fx_account_id" => {
-                    if let Ok(v) = serde_json::from_value(value) {
-                        self.fx_account_id = v;
-                    }
+                    if let Ok(v) = serde_json::from_value(value) { self.fx_account_id = v; }
                 }
                 _ => {} // ignore unknown fields
             }
@@ -369,30 +329,14 @@ impl FxGainLossBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<FxGainLoss, String> {
-        let company_id = self
-            .company_id
-            .ok_or_else(|| "company_id is required".to_string())?;
-        let matched_source_id = self
-            .matched_source_id
-            .ok_or_else(|| "matched_source_id is required".to_string())?;
-        let currency = self
-            .currency
-            .ok_or_else(|| "currency is required".to_string())?;
-        let original_rate = self
-            .original_rate
-            .ok_or_else(|| "original_rate is required".to_string())?;
-        let realised_rate = self
-            .realised_rate
-            .ok_or_else(|| "realised_rate is required".to_string())?;
-        let base_amount_delta = self
-            .base_amount_delta
-            .ok_or_else(|| "base_amount_delta is required".to_string())?;
-        let direction = self
-            .direction
-            .ok_or_else(|| "direction is required".to_string())?;
-        let fx_account_id = self
-            .fx_account_id
-            .ok_or_else(|| "fx_account_id is required".to_string())?;
+        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
+        let matched_source_id = self.matched_source_id.ok_or_else(|| "matched_source_id is required".to_string())?;
+        let currency = self.currency.ok_or_else(|| "currency is required".to_string())?;
+        let original_rate = self.original_rate.ok_or_else(|| "original_rate is required".to_string())?;
+        let realised_rate = self.realised_rate.ok_or_else(|| "realised_rate is required".to_string())?;
+        let base_amount_delta = self.base_amount_delta.ok_or_else(|| "base_amount_delta is required".to_string())?;
+        let direction = self.direction.ok_or_else(|| "direction is required".to_string())?;
+        let fx_account_id = self.fx_account_id.ok_or_else(|| "fx_account_id is required".to_string())?;
 
         Ok(FxGainLoss {
             id: Uuid::new_v4(),

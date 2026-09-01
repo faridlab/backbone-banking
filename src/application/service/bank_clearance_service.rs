@@ -7,9 +7,9 @@
 
 use backbone_core::GenericCrudService;
 
+use crate::presentation::dto::{CreateBankClearanceDto, UpdateBankClearanceDto};
 use crate::domain::entity::BankClearance;
 use crate::infrastructure::persistence::BankClearanceRepository;
-use crate::presentation::dto::{CreateBankClearanceDto, UpdateBankClearanceDto};
 
 /// Application service for BankClearance entities.
 ///

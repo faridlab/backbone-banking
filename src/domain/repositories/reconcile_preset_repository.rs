@@ -5,11 +5,11 @@
 //! This trait defines the repository contract for the ReconcilePreset aggregate.
 //! Implementation is in the infrastructure layer.
 
-use anyhow::Result;
 use async_trait::async_trait;
+use anyhow::Result;
 use uuid::Uuid;
 
-use crate::domain::entity::{MatchOn, PresetStatus, ReconcilePreset};
+use crate::domain::entity::{ReconcilePreset, MatchOn, PresetStatus};
 
 /// Pagination parameters for list queries
 #[derive(Debug, Clone, Default)]
@@ -54,11 +54,7 @@ pub struct ReconcilePresetFilter {
 impl ReconcilePresetFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some()
-            || self.name.is_some()
-            || self.note.is_some()
-            || self.match_on.is_some()
-            || self.status.is_some()
+        self.company_id.is_some() || self.name.is_some() || self.note.is_some() || self.match_on.is_some() || self.status.is_some()
     }
 }
 
@@ -68,6 +64,7 @@ impl ReconcilePresetFilter {
 /// Implementations should be in the infrastructure layer.
 #[async_trait]
 pub trait ReconcilePresetRepository: Send + Sync {
+
     // =========================================================================
     // Core CRUD Operations
     // =========================================================================
@@ -92,17 +89,10 @@ pub trait ReconcilePresetRepository: Send + Sync {
     // =========================================================================
 
     /// List reconcile_preset with pagination
-    async fn list(
-        &self,
-        params: ReconcilePresetPaginationParams,
-    ) -> Result<ReconcilePresetPaginatedResult>;
+    async fn list(&self, params: ReconcilePresetPaginationParams) -> Result<ReconcilePresetPaginatedResult>;
 
     /// List reconcile_preset with pagination and filters
-    async fn list_with_filters(
-        &self,
-        params: ReconcilePresetPaginationParams,
-        filters: ReconcilePresetFilter,
-    ) -> Result<ReconcilePresetPaginatedResult>;
+    async fn list_with_filters(&self, params: ReconcilePresetPaginationParams, filters: ReconcilePresetFilter) -> Result<ReconcilePresetPaginatedResult>;
 
     /// Count all reconcile_preset entities
     async fn count(&self) -> Result<u64>;
@@ -124,10 +114,7 @@ pub trait ReconcilePresetRepository: Send + Sync {
     async fn restore(&self, id: &str) -> Result<Option<ReconcilePreset>>;
 
     /// List soft-deleted reconcile_preset entities
-    async fn list_deleted(
-        &self,
-        params: ReconcilePresetPaginationParams,
-    ) -> Result<ReconcilePresetPaginatedResult>;
+    async fn list_deleted(&self, params: ReconcilePresetPaginationParams) -> Result<ReconcilePresetPaginatedResult>;
 
     /// Empty trash (permanently delete all soft-deleted entities)
     async fn empty_trash(&self) -> Result<u64>;

@@ -5,41 +5,62 @@
 //! DDD Repository traits - define persistence contracts for aggregates.
 //! Implementations should be in the infrastructure layer.
 
+
+pub mod bank_repository;
 pub mod bank_account_repository;
 pub mod bank_clearance_repository;
 pub mod bank_reconciliation_repository;
-pub mod bank_repository;
 pub mod bank_statement_import_repository;
 pub mod bank_transaction_repository;
 pub mod fx_gain_loss_repository;
 pub mod reconcile_preset_repository;
 
 // Re-exports
+pub use bank_repository::{
+    BankRepository,
+    BankPaginationParams,
+    BankPaginatedResult,
+    BankFilter,
+};
 pub use bank_account_repository::{
-    BankAccountFilter, BankAccountPaginatedResult, BankAccountPaginationParams,
     BankAccountRepository,
+    BankAccountPaginationParams,
+    BankAccountPaginatedResult,
+    BankAccountFilter,
 };
 pub use bank_clearance_repository::{
-    BankClearanceFilter, BankClearancePaginatedResult, BankClearancePaginationParams,
     BankClearanceRepository,
+    BankClearancePaginationParams,
+    BankClearancePaginatedResult,
+    BankClearanceFilter,
 };
 pub use bank_reconciliation_repository::{
-    BankReconciliationFilter, BankReconciliationPaginatedResult,
-    BankReconciliationPaginationParams, BankReconciliationRepository,
+    BankReconciliationRepository,
+    BankReconciliationPaginationParams,
+    BankReconciliationPaginatedResult,
+    BankReconciliationFilter,
 };
-pub use bank_repository::{BankFilter, BankPaginatedResult, BankPaginationParams, BankRepository};
 pub use bank_statement_import_repository::{
-    BankStatementImportFilter, BankStatementImportPaginatedResult,
-    BankStatementImportPaginationParams, BankStatementImportRepository,
+    BankStatementImportRepository,
+    BankStatementImportPaginationParams,
+    BankStatementImportPaginatedResult,
+    BankStatementImportFilter,
 };
 pub use bank_transaction_repository::{
-    BankTransactionFilter, BankTransactionPaginatedResult, BankTransactionPaginationParams,
     BankTransactionRepository,
+    BankTransactionPaginationParams,
+    BankTransactionPaginatedResult,
+    BankTransactionFilter,
 };
 pub use fx_gain_loss_repository::{
-    FxGainLossFilter, FxGainLossPaginatedResult, FxGainLossPaginationParams, FxGainLossRepository,
+    FxGainLossRepository,
+    FxGainLossPaginationParams,
+    FxGainLossPaginatedResult,
+    FxGainLossFilter,
 };
 pub use reconcile_preset_repository::{
-    ReconcilePresetFilter, ReconcilePresetPaginatedResult, ReconcilePresetPaginationParams,
     ReconcilePresetRepository,
+    ReconcilePresetPaginationParams,
+    ReconcilePresetPaginatedResult,
+    ReconcilePresetFilter,
 };
