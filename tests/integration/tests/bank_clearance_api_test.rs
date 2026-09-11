@@ -24,7 +24,6 @@ impl TestDataGenerator for BankClearanceTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": Uuid::new_v4().to_string(),
-            "company_id": Uuid::new_v4().to_string(),
             "bank_transaction_id": Uuid::new_v4().to_string(),
             "matched_source_type": "payment",
             "matched_source_id": Uuid::new_v4().to_string(),
@@ -41,7 +40,6 @@ impl TestDataGenerator for BankClearanceTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": id,
-            "company_id": Uuid::new_v4().to_string(),
             "bank_transaction_id": Uuid::new_v4().to_string(),
             "matched_source_type": "payment",
             "matched_source_id": Uuid::new_v4().to_string(),

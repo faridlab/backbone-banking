@@ -11,7 +11,7 @@ use anyhow::Result;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use crate::domain::entity::Bank;
 
@@ -44,7 +44,6 @@ impl BankRepository {
 /// caller, so it is not optional here.
 pub struct NewBankRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub name: &'a str,
     pub swift_bic: Option<&'a str>,
     pub country: &'a str,
@@ -55,19 +54,19 @@ pub struct NewBankRow<'a> {
 impl BankRepository {
     /// Register a bank.
     ///
-    /// A write outside any transaction: takes the pool and runs `execute_scoped` so the RLS fence
-    /// (ADR-0008) applies. The caller wraps this in `with_company_scope(Some(company))` — the company
-    /// is on the DTO, and that scope is what lets the INSERT's WITH CHECK pass under the non-superuser
-    /// app role.
+    /// A write outside any transaction: takes the pool and runs `org_scope::execute_scoped`, which
+    /// rides the request-dedicated connection carrying the composing service's org scope when one
+    /// is bound — the decorator-installed row-level fence decides the INSERT's WITH CHECK — and
+    /// executes plainly on the pool otherwise (unfenced by design, ADR-0029). The module invents
+    /// no scope of its own.
     pub async fn insert_bank(&self, pool: &PgPool, b: &NewBankRow<'_>) -> Result<(), sqlx::Error> {
-        company_scope::execute_scoped(
+        org_scope::execute_scoped(
             pool,
             sqlx::query(
-                r#"INSERT INTO banking.banks (id, company_id, name, swift_bic, country, status)
-                   VALUES ($1,$2,$3,$4,$5,'active')"#,
+                r#"INSERT INTO banking.banks (id, name, swift_bic, country, status)
+                   VALUES ($1,$2,$3,$4,'active')"#,
             )
             .bind(b.id)
-            .bind(b.company_id)
             .bind(b.name)
             .bind(b.swift_bic)
             .bind(b.country),

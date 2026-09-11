@@ -14,7 +14,7 @@ use rust_decimal::Decimal;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use crate::domain::entity::{BankTransaction, TxnStatus};
 
@@ -50,7 +50,6 @@ impl BankTransactionRepository {
 /// SERVER-rounded values (2dp half-up).
 pub struct NewBankTransactionRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub import_id: Uuid,
     pub txn_date: chrono::NaiveDate,
@@ -69,7 +68,6 @@ pub struct MatchBasisRow {
 
 /// A statement line's identity + match signals, as reconcile-preset candidate ordering reads it.
 pub struct CandidateLineBasisRow {
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub deposit: Decimal,
     pub withdrawal: Decimal,
@@ -80,7 +78,6 @@ pub struct CandidateLineBasisRow {
 /// A statement line joined to its bank account's GL + clearing accounts — everything the clearing
 /// engine needs to build the bank-side leg.
 pub struct ClearingLineRow {
-    pub company_id: Uuid,
     pub deposit: Decimal,
     pub withdrawal: Decimal,
     /// How much of this line has already been cleared — the line-level bound.
@@ -95,7 +92,6 @@ pub struct ClearingLineRow {
 /// A statement line joined to its bank account's GL account — the bank-charge path's narrower read
 /// (a charge never touches the clearing account).
 pub struct ChargeLineRow {
-    pub company_id: Uuid,
     pub deposit: Decimal,
     pub withdrawal: Decimal,
     pub allocated_amount: Decimal,
@@ -109,7 +105,8 @@ impl BankTransactionRepository {
     /// Insert one statement line as `unreconciled`.
     ///
     /// Takes the CALLER'S connection so it commits with its import header. The caller has already
-    /// bound the company on it (`bind_company_on`) — don't re-bind here.
+    /// relayed the ambient org scope onto it (`org_scope::bind_org_scope_on`) — don't re-bind here
+    /// (ADR-0029).
     pub async fn insert_transaction(
         &self,
         conn: &mut sqlx::PgConnection,
@@ -117,12 +114,11 @@ impl BankTransactionRepository {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO banking.bank_transactions
-                (id, company_id, bank_account_id, import_id, txn_date, description, reference_no,
+                (id, bank_account_id, import_id, txn_date, description, reference_no,
                  deposit, withdrawal, currency, status, allocated_amount)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'IDR','unreconciled'::txn_status,0)"#,
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'IDR','unreconciled'::txn_status,0)"#,
         )
         .bind(t.id)
-        .bind(t.company_id)
         .bind(t.bank_account_id)
         .bind(t.import_id)
         .bind(t.txn_date)
@@ -137,15 +133,16 @@ impl BankTransactionRepository {
 
     /// Read a line's amounts + reference for match proposal. `Ok(None)` = not found.
     ///
-    /// ID-only: identified by the line id alone — no company argument. This rides the
-    /// request-dedicated connection carrying the caller's `app.company_id`, so RLS fences the lookup
-    /// and another company's line is simply not found.
+    /// ID-only: identified by the line id alone — no tenant argument. This rides the
+    /// request-dedicated connection carrying the composing service's org scope, so the
+    /// decorator-installed row-level fence decides visibility and another unit's line is simply
+    /// not found (ADR-0029).
     pub async fn fetch_match_basis(
         &self,
         pool: &PgPool,
         bank_transaction_id: Uuid,
     ) -> Result<Option<MatchBasisRow>, sqlx::Error> {
-        let row = company_scope::fetch_optional_row_scoped(
+        let row = org_scope::fetch_optional_row_scoped(
             pool,
             sqlx::query(
                 "SELECT deposit, withdrawal, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL",
@@ -162,24 +159,23 @@ impl BankTransactionRepository {
 
     /// Read the line side of reconcile-preset candidate ordering: identity + the match signals
     /// (reference, amount, date). `Ok(None)` = not found. ID-only + scoped read — see
-    /// [`Self::fetch_match_basis`]; the caller compares the row's company against the token tenant.
+    /// [`Self::fetch_match_basis`].
     pub async fn fetch_candidate_basis(
         &self,
         pool: &PgPool,
         bank_transaction_id: Uuid,
     ) -> Result<Option<crate::infrastructure::persistence::CandidateLineBasisRow>, sqlx::Error>
     {
-        let row = company_scope::fetch_optional_row_scoped(
+        let row = org_scope::fetch_optional_row_scoped(
             pool,
             sqlx::query(
-                "SELECT company_id, bank_account_id, deposit, withdrawal, txn_date, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL",
+                "SELECT bank_account_id, deposit, withdrawal, txn_date, reference_no FROM banking.bank_transactions WHERE id=$1 AND (metadata->>'deleted_at') IS NULL",
             )
             .bind(bank_transaction_id),
         )
         .await?;
         Ok(row.map(
             |r| crate::infrastructure::persistence::CandidateLineBasisRow {
-                company_id: r.get("company_id"),
                 bank_account_id: r.get("bank_account_id"),
                 deposit: r.get("deposit"),
                 withdrawal: r.get("withdrawal"),
@@ -190,17 +186,17 @@ impl BankTransactionRepository {
     }
 
     /// Read a line joined to its account's GL + clearing accounts. `Ok(None)` = not found. ID-only +
-    /// scoped read — see [`Self::fetch_match_basis`]. The company on the returned row is what the
-    /// caller then binds onto the clearing transaction.
+    /// scoped read — see [`Self::fetch_match_basis`]. The caller relays the same ambient scope onto
+    /// its clearing transaction.
     pub async fn fetch_clearing_line(
         &self,
         pool: &PgPool,
         bank_transaction_id: Uuid,
     ) -> Result<Option<ClearingLineRow>, sqlx::Error> {
-        let row = company_scope::fetch_optional_row_scoped(
+        let row = org_scope::fetch_optional_row_scoped(
             pool,
             sqlx::query(
-                r#"SELECT t.company_id, t.bank_account_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency,
+                r#"SELECT t.bank_account_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency,
                           a.gl_account_id, a.clearing_account_id
                    FROM banking.bank_transactions t
                    JOIN banking.bank_accounts a ON a.id = t.bank_account_id
@@ -210,7 +206,6 @@ impl BankTransactionRepository {
         )
         .await?;
         Ok(row.map(|r| ClearingLineRow {
-            company_id: r.get("company_id"),
             deposit: r.get("deposit"),
             withdrawal: r.get("withdrawal"),
             allocated_amount: r.get("allocated_amount"),
@@ -227,10 +222,10 @@ impl BankTransactionRepository {
         pool: &PgPool,
         bank_transaction_id: Uuid,
     ) -> Result<Option<ChargeLineRow>, sqlx::Error> {
-        let row = company_scope::fetch_optional_row_scoped(
+        let row = org_scope::fetch_optional_row_scoped(
             pool,
             sqlx::query(
-                r#"SELECT t.company_id, t.deposit, t.withdrawal, t.allocated_amount, t.currency, a.gl_account_id
+                r#"SELECT t.deposit, t.withdrawal, t.allocated_amount, t.currency, a.gl_account_id
                    FROM banking.bank_transactions t JOIN banking.bank_accounts a ON a.id=t.bank_account_id
                    WHERE t.id=$1 AND (t.metadata->>'deleted_at') IS NULL"#,
             )
@@ -238,7 +233,6 @@ impl BankTransactionRepository {
         )
         .await?;
         Ok(row.map(|r| ChargeLineRow {
-            company_id: r.get("company_id"),
             deposit: r.get("deposit"),
             withdrawal: r.get("withdrawal"),
             allocated_amount: r.get("allocated_amount"),
@@ -257,8 +251,8 @@ impl BankTransactionRepository {
     /// not the allocation path) — the caller is expected to pick one of those two.
     ///
     /// Takes the CALLER'S connection so it commits with the clearance that justifies it — the
-    /// watermark and the clearance row must never disagree. The caller has already bound the company
-    /// on it — don't re-bind here.
+    /// watermark and the clearance row must never disagree. The caller has already relayed the
+    /// ambient org scope onto it (`org_scope::bind_org_scope_on`) — don't re-bind here.
     pub async fn set_allocation(
         &self,
         conn: &mut sqlx::PgConnection,
@@ -281,32 +275,33 @@ impl BankTransactionRepository {
     /// reconciliation close-gate's exception count.
     ///
     /// This count IS the assertion behind "the bank agrees with our books", so its scope is
-    /// LOAD-BEARING: it runs via `fetch_one_scalar_scoped`, and the caller wraps it in
-    /// `with_company_scope(Some(company))`. An unscoped count reads 0 rows through the RLS fence and
-    /// would wrongly close a session that still has open lines — a false attestation. The explicit
-    /// `company_id=$1` filter stays as defense-in-depth.
+    /// LOAD-BEARING: it rides the request-dedicated connection carrying the composing service's org
+    /// scope, so a decorated deployment's row-level fence decides which lines are counted — an
+    /// unscoped count under a live fence would read 0 rows and wrongly close a session that still
+    /// has open lines in another unit's books. An undecorated deployment is unfenced by design
+    /// (ADR-0029) and counts the account's lines plain.
     pub async fn count_open_in_period(
         &self,
         pool: &PgPool,
-        company_id: Uuid,
         bank_account_id: Uuid,
         from_date: chrono::NaiveDate,
         to_date: chrono::NaiveDate,
     ) -> Result<i64, sqlx::Error> {
-        company_scope::fetch_one_scalar_scoped(
+        let row = org_scope::fetch_optional_row_scoped(
             pool,
-            sqlx::query_scalar(
-                r#"SELECT count(*) FROM banking.bank_transactions
-                   WHERE company_id=$1 AND bank_account_id=$2 AND txn_date BETWEEN $3 AND $4
+            sqlx::query(
+                r#"SELECT count(*) AS open_lines FROM banking.bank_transactions
+                   WHERE bank_account_id=$1 AND txn_date BETWEEN $2 AND $3
                      AND status IN ('unreconciled'::txn_status,'partly_reconciled'::txn_status)
                      AND (metadata->>'deleted_at') IS NULL"#,
             )
-            .bind(company_id)
             .bind(bank_account_id)
             .bind(from_date)
             .bind(to_date),
         )
-        .await
+        .await?;
+        row.map(|r| r.get::<i64, _>("open_lines"))
+            .ok_or(sqlx::Error::RowNotFound)
     }
 }
 

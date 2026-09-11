@@ -14,10 +14,12 @@ version: 2
 schema: banking
 description: "banking domain module"
 
-# ADR-0014 company fence: every entity here is company-scoped and fenced strict —
-# accounts, statements, reconciliation and the banking-owned FX rows. (These FX rows
-# are per-company bank rates, distinct from corporate's global FX master.)
-company_fence: strict
+# Tenancy: none, by design (ADR-0029). The module is tenant-agnostic and reusable —
+# it ships no scoping column and no fence declaration. A composing backend-service
+# that wants these tables org-scoped declares them in its tenancy.yaml; the
+# decorator installs org_unit_id, the RLS policy, and the org-scoped per-unit
+# uniques (one live account number per bank within a unit, one live preset name
+# per unit) at composition time.
 
 config:
   database: postgresql
@@ -72,3 +74,4 @@ imports:
   - bank_statement.model.yaml
   - bank_reconciliation.model.yaml
   - fx.model.yaml
+  - reconcile_preset.model.yaml

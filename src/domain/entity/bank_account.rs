@@ -51,7 +51,6 @@ impl std::ops::Deref for BankAccountId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankAccount {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub branch_id: Option<Uuid>,
     pub bank_id: Uuid,
     pub account_name: String,
@@ -74,10 +73,9 @@ impl BankAccount {
     }
 
     /// Create a new BankAccount with required fields
-    pub fn new(company_id: Uuid, bank_id: Uuid, account_name: String, account_number: String, gl_account_id: Uuid, clearing_account_id: Uuid, currency: String, account_type: BankAccountType, is_default: bool, status: BankAccountStatus) -> Self {
+    pub fn new(bank_id: Uuid, account_name: String, account_number: String, gl_account_id: Uuid, clearing_account_id: Uuid, currency: String, account_type: BankAccountType, is_default: bool, status: BankAccountStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             branch_id: None,
             bank_id,
             account_name,
@@ -166,9 +164,6 @@ impl BankAccount {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "branch_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.branch_id = v; }
                 }
@@ -253,7 +248,6 @@ impl backbone_orm::EntityRepoMeta for BankAccount {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("branch_id".to_string(), "uuid".to_string());
         m.insert("bank_id".to_string(), "uuid".to_string());
         m.insert("gl_account_id".to_string(), "uuid".to_string());
@@ -265,9 +259,6 @@ impl backbone_orm::EntityRepoMeta for BankAccount {
     fn search_fields() -> &'static [&'static str] {
         &["account_name", "account_number", "currency"]
     }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
-    }
 }
 
 /// Builder for BankAccount entity
@@ -276,7 +267,6 @@ impl backbone_orm::EntityRepoMeta for BankAccount {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct BankAccountBuilder {
-    company_id: Option<Uuid>,
     branch_id: Option<Uuid>,
     bank_id: Option<Uuid>,
     account_name: Option<String>,
@@ -290,12 +280,6 @@ pub struct BankAccountBuilder {
 }
 
 impl BankAccountBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the branch_id field (optional)
     pub fn branch_id(mut self, value: Uuid) -> Self {
         self.branch_id = Some(value);
@@ -360,7 +344,6 @@ impl BankAccountBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankAccount, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let bank_id = self.bank_id.ok_or_else(|| "bank_id is required".to_string())?;
         let account_name = self.account_name.ok_or_else(|| "account_name is required".to_string())?;
         let account_number = self.account_number.ok_or_else(|| "account_number is required".to_string())?;
@@ -369,7 +352,6 @@ impl BankAccountBuilder {
 
         Ok(BankAccount {
             id: Uuid::new_v4(),
-            company_id,
             branch_id: self.branch_id,
             bank_id,
             account_name,

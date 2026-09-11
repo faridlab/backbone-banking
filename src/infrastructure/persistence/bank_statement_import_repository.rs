@@ -49,7 +49,6 @@ impl BankStatementImportRepository {
 /// balances carry the SERVER-rounded values (2dp half-up) the continuity check validated.
 pub struct NewStatementImportRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub source_format: &'a str,
     pub statement_period_start: chrono::NaiveDate,
@@ -65,9 +64,9 @@ pub struct NewStatementImportRow<'a> {
 impl BankStatementImportRepository {
     /// Insert a statement-import header as `imported`.
     ///
-    /// Takes the CALLER'S connection so the header and every statement line commit as one unit. The
-    /// caller has already bound the company on it (`bind_company_on`) — don't re-bind here. The
-    /// explicit `company_id` bind stays as defense-in-depth alongside the RLS fence (ADR-0008).
+    /// Takes the CALLER'S connection so the header and every statement line commit as one unit.
+    /// The caller has already relayed the ambient org scope onto it (`org_scope::bind_org_scope_on`)
+    /// — don't re-bind here (ADR-0029).
     pub async fn insert_import(
         &self,
         conn: &mut sqlx::PgConnection,
@@ -75,11 +74,11 @@ impl BankStatementImportRepository {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO banking.bank_statement_imports
-                (id, company_id, bank_account_id, source_format, statement_period_start, statement_period_end,
+                (id, bank_account_id, source_format, statement_period_start, statement_period_end,
                  opening_balance, closing_balance, file_ref, status, row_count)
-               VALUES ($1,$2,$3,$4::source_format,$5,$6,$7,$8,$9,'imported'::import_status,$10)"#,
+               VALUES ($1,$2,$3::source_format,$4,$5,$6,$7,$8,'imported'::import_status,$9)"#,
         )
-        .bind(i.id).bind(i.company_id).bind(i.bank_account_id).bind(i.source_format)
+        .bind(i.id).bind(i.bank_account_id).bind(i.source_format)
         .bind(i.statement_period_start).bind(i.statement_period_end)
         .bind(i.opening_balance).bind(i.closing_balance).bind(i.file_ref).bind(i.row_count)
         .execute(conn)

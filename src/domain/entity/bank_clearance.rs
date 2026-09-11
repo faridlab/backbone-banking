@@ -52,7 +52,6 @@ impl std::ops::Deref for BankClearanceId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankClearance {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_transaction_id: Uuid,
     pub matched_source_type: MatchedSourceType,
     pub matched_source_id: Uuid,
@@ -73,10 +72,9 @@ impl BankClearance {
     }
 
     /// Create a new BankClearance with required fields
-    pub fn new(company_id: Uuid, bank_transaction_id: Uuid, matched_source_type: MatchedSourceType, matched_source_id: Uuid, matched_amount: Decimal, match_method: MatchMethod, clearance_date: NaiveDate) -> Self {
+    pub fn new(bank_transaction_id: Uuid, matched_source_type: MatchedSourceType, matched_source_id: Uuid, matched_amount: Decimal, match_method: MatchMethod, clearance_date: NaiveDate) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             bank_transaction_id,
             matched_source_type,
             matched_source_id,
@@ -164,9 +162,6 @@ impl BankClearance {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "bank_transaction_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.bank_transaction_id = v; }
                 }
@@ -245,7 +240,6 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("bank_transaction_id".to_string(), "uuid".to_string());
         m.insert("matched_source_id".to_string(), "uuid".to_string());
         m.insert("accounting_post_id".to_string(), "uuid".to_string());
@@ -257,9 +251,6 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
     fn search_fields() -> &'static [&'static str] {
         &[]
     }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
-    }
 }
 
 /// Builder for BankClearance entity
@@ -268,7 +259,6 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct BankClearanceBuilder {
-    company_id: Option<Uuid>,
     bank_transaction_id: Option<Uuid>,
     matched_source_type: Option<MatchedSourceType>,
     matched_source_id: Option<Uuid>,
@@ -280,12 +270,6 @@ pub struct BankClearanceBuilder {
 }
 
 impl BankClearanceBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the bank_transaction_id field (required)
     pub fn bank_transaction_id(mut self, value: Uuid) -> Self {
         self.bank_transaction_id = Some(value);
@@ -338,7 +322,6 @@ impl BankClearanceBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankClearance, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let bank_transaction_id = self.bank_transaction_id.ok_or_else(|| "bank_transaction_id is required".to_string())?;
         let matched_source_type = self.matched_source_type.ok_or_else(|| "matched_source_type is required".to_string())?;
         let matched_source_id = self.matched_source_id.ok_or_else(|| "matched_source_id is required".to_string())?;
@@ -347,7 +330,6 @@ impl BankClearanceBuilder {
 
         Ok(BankClearance {
             id: Uuid::new_v4(),
-            company_id,
             bank_transaction_id,
             matched_source_type,
             matched_source_id,

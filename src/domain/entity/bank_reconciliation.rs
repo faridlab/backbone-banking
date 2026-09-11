@@ -51,7 +51,6 @@ impl std::ops::Deref for BankReconciliationId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankReconciliation {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub from_date: NaiveDate,
     pub to_date: NaiveDate,
@@ -73,10 +72,9 @@ impl BankReconciliation {
     }
 
     /// Create a new BankReconciliation with required fields
-    pub fn new(company_id: Uuid, bank_account_id: Uuid, from_date: NaiveDate, to_date: NaiveDate, statement_closing_balance: Decimal, ledger_balance: Decimal, computed_difference: Decimal, unreconciled_count: i32, status: ReconStatus) -> Self {
+    pub fn new(bank_account_id: Uuid, from_date: NaiveDate, to_date: NaiveDate, statement_closing_balance: Decimal, ledger_balance: Decimal, computed_difference: Decimal, unreconciled_count: i32, status: ReconStatus) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             from_date,
             to_date,
@@ -164,9 +162,6 @@ impl BankReconciliation {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "bank_account_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
                 }
@@ -248,7 +243,6 @@ impl backbone_orm::EntityRepoMeta for BankReconciliation {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("preset_id".to_string(), "uuid".to_string());
         m.insert("status".to_string(), "recon_status".to_string());
@@ -256,9 +250,6 @@ impl backbone_orm::EntityRepoMeta for BankReconciliation {
     }
     fn search_fields() -> &'static [&'static str] {
         &[]
-    }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
     }
 }
 
@@ -268,7 +259,6 @@ impl backbone_orm::EntityRepoMeta for BankReconciliation {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct BankReconciliationBuilder {
-    company_id: Option<Uuid>,
     bank_account_id: Option<Uuid>,
     from_date: Option<NaiveDate>,
     to_date: Option<NaiveDate>,
@@ -281,12 +271,6 @@ pub struct BankReconciliationBuilder {
 }
 
 impl BankReconciliationBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the bank_account_id field (required)
     pub fn bank_account_id(mut self, value: Uuid) -> Self {
         self.bank_account_id = Some(value);
@@ -345,14 +329,12 @@ impl BankReconciliationBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankReconciliation, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
         let from_date = self.from_date.ok_or_else(|| "from_date is required".to_string())?;
         let to_date = self.to_date.ok_or_else(|| "to_date is required".to_string())?;
 
         Ok(BankReconciliation {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             from_date,
             to_date,

@@ -94,8 +94,7 @@ async fn pool() -> PgPool {
 }
 
 /// Bank + clearing chart (the GL side of the invariant).
-async fn seed(pool: &PgPool) -> (Uuid, HashMap<&'static str, Uuid>) {
-    let company = Uuid::new_v4();
+async fn seed(pool: &PgPool) -> HashMap<&'static str, Uuid> {
     let coa: &[(&str, &str, bool)] = &[
         ("1190", "Dana Belum Disetor", true),
         ("1110", "Bank BCA", false),
@@ -104,11 +103,10 @@ async fn seed(pool: &PgPool) -> (Uuid, HashMap<&'static str, Uuid>) {
     for (code, name, rec) in coa {
         let id = Uuid::new_v4();
         sqlx::query(
-            r#"INSERT INTO accounting.accounts (id, company_id, account_number, account_code, name, account_type, account_subtype, normal_balance, is_header, is_detail, is_reconcilable, status)
-            VALUES ($1,$2,$3,$3,$4,'asset'::account_type,'current_asset'::account_subtype,'debit'::normal_balance,false,true,$5,'active'::account_status)"#,
+            r#"INSERT INTO accounting.accounts (id, account_number, account_code, name, account_type, account_subtype, normal_balance, is_header, is_detail, is_reconcilable, status)
+            VALUES ($1,$2,$2,$3,'asset'::account_type,'current_asset'::account_subtype,'debit'::normal_balance,false,true,$4,'active'::account_status)"#,
         )
         .bind(id)
-        .bind(company)
         .bind(code)
         .bind(name)
         .bind(rec)
@@ -117,7 +115,7 @@ async fn seed(pool: &PgPool) -> (Uuid, HashMap<&'static str, Uuid>) {
         .expect("seed acct");
         m.insert(*code, id);
     }
-    (company, m)
+    m
 }
 
 async fn balance(pool: &PgPool, account: Uuid) -> Decimal {
@@ -129,12 +127,18 @@ async fn balance(pool: &PgPool, account: Uuid) -> Decimal {
     .await
     .unwrap()
 }
-async fn journals_for_company(pool: &PgPool, company: Uuid) -> i64 {
-    sqlx::query_scalar("SELECT COUNT(*) FROM accounting.journals WHERE company_id=$1")
-        .bind(company)
-        .fetch_one(pool)
-        .await
-        .unwrap()
+/// Journals whose lines touch any of the given accounts — the tenant-free scope for
+/// "nothing reached the ledger" assertions (the tables carry no tenant column, ADR-0029).
+async fn journals_touching(pool: &PgPool, accounts: &[Uuid]) -> i64 {
+    sqlx::query_scalar(
+        "SELECT COUNT(DISTINCT j.id) FROM accounting.journals j
+         JOIN accounting.journal_lines jl ON jl.journal_id=j.id
+         WHERE jl.account_id = ANY($1)",
+    )
+    .bind(accounts)
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 /// BPI-1 — no draft lifecycle exists on the statement side: `txn_status` holds no draft/posted
@@ -144,7 +148,7 @@ async fn journals_for_company(pool: &PgPool, company: Uuid) -> i64 {
 #[tokio::test]
 async fn no_draft_lifecycle_exists_on_the_statement_side() {
     let pool = pool().await;
-    let (company, coa) = seed(&pool).await;
+    let coa = seed(&pool).await;
 
     // The line lifecycle is reconciliation-only: unreconciled / partly_reconciled / reconciled /
     // ignored. A draft or posted variant would smuggle in a posting state this side never owns.
@@ -176,7 +180,6 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
     let banking = BankingWriteService::new(pool.clone());
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -185,7 +188,6 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
         .unwrap();
     let acct = banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -199,7 +201,6 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
         .unwrap();
     banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -228,9 +229,9 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
         .unwrap();
 
     let lines: Vec<(Decimal, String)> = sqlx::query_as(
-        "SELECT allocated_amount, status::text FROM banking.bank_transactions WHERE company_id=$1",
+        "SELECT allocated_amount, status::text FROM banking.bank_transactions WHERE bank_account_id=$1",
     )
-    .bind(company)
+    .bind(acct)
     .fetch_all(&pool)
     .await
     .unwrap();
@@ -243,9 +244,9 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
         );
     }
     let header_status: String = sqlx::query_scalar(
-        "SELECT status::text FROM banking.bank_statement_imports WHERE company_id=$1",
+        "SELECT status::text FROM banking.bank_statement_imports WHERE bank_account_id=$1",
     )
-    .bind(company)
+    .bind(acct)
     .fetch_one(&pool)
     .await
     .unwrap();
@@ -260,15 +261,13 @@ async fn no_draft_lifecycle_exists_on_the_statement_side() {
 #[tokio::test]
 async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
     let pool = pool().await;
-    let (company, coa) = seed(&pool).await;
+    let coa = seed(&pool).await;
     let banking = BankingWriteService::new(pool.clone());
     let gl = GlAdapter {
         svc: PostingService::new(Arc::new(SqlxPostingRepository::new(pool.clone()))),
     };
-
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -277,7 +276,6 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         .unwrap();
     let acct = banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -291,7 +289,6 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         .unwrap();
     banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -319,9 +316,9 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         .await
         .unwrap();
     let ids: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT id FROM banking.bank_transactions WHERE company_id=$1 ORDER BY deposit DESC",
+        "SELECT id FROM banking.bank_transactions WHERE bank_account_id=$1 ORDER BY deposit DESC",
     )
-    .bind(company)
+    .bind(acct)
     .fetch_all(&pool)
     .await
     .unwrap();
@@ -330,7 +327,7 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
     // BPI-2: the import committed two lines and changed NOTHING in the ledger — no journal, no
     // balance, no graph edge. An uncleared line is evidence, not a move.
     assert_eq!(
-        journals_for_company(&pool, company).await,
+        journals_touching(&pool, &[coa["1110"], coa["1190"]]).await,
         0,
         "import creates no journal"
     );
@@ -345,9 +342,11 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         "clearing GL untouched by the import"
     );
     let edges: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM accounting.partial_reconciles WHERE company_id=$1",
+        "SELECT COUNT(*) FROM accounting.partial_reconciles pr
+         JOIN accounting.journal_lines jl ON jl.id IN (pr.debit_move_id, pr.credit_move_id)
+         WHERE jl.account_id = ANY($1)",
     )
-    .bind(company)
+    .bind(&[coa["1110"], coa["1190"]])
     .fetch_one(&pool)
     .await
     .unwrap();
@@ -382,9 +381,8 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         "clearance id is the deterministic uuid5 of its identity"
     );
     let journals: i64 = sqlx::query_scalar(
-        "SELECT COUNT(DISTINCT j.id) FROM accounting.journals j JOIN accounting.journal_lines jl ON jl.journal_id=j.id WHERE j.company_id=$1 AND jl.source_type='settlement' AND jl.source_id=$2",
+        "SELECT COUNT(DISTINCT j.id) FROM accounting.journals j JOIN accounting.journal_lines jl ON jl.journal_id=j.id WHERE jl.source_type='settlement' AND jl.source_id=$1",
     )
-    .bind(company)
     .bind(out.clearance_id)
     .fetch_one(&pool)
     .await
@@ -435,8 +433,12 @@ async fn uncleared_lines_are_gl_invisible_and_the_clear_posts_once() {
         "re-attempt refused by the settlement fence, got {e:?}"
     );
     let clearances: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
-            .bind(company)
+        sqlx::query_scalar(
+            "SELECT COUNT(*) FROM banking.bank_clearances c
+             JOIN banking.bank_transactions t ON t.id=c.bank_transaction_id
+             WHERE t.bank_account_id=$1",
+        )
+        .bind(acct)
             .fetch_one(&pool)
             .await
             .unwrap();

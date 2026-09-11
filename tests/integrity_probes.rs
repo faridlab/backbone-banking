@@ -2,15 +2,15 @@
 //! math. Requires DATABASE_URL (:5433/backbone_banking).
 //!
 //! IP-1..IP-3   the clearing invariants (service level).
-//! IGT-1..IGT-3 the tenancy invariants on the guarded HTTP surface — the import derives its tenant
-//!              from a signed token, never from the request body.
+//! IGT-1..IGT-3 the tenancy invariants on the guarded HTTP surface — the session is the one
+//!              `org_auth` resolves from a signed token against the tenant's organization tree,
+//!              never a request-body field.
 
 #![expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
-use std::sync::Arc;
 
 use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
-use backbone_auth::company::CompanyVerifier;
+use backbone_auth::org::OrgVerifier;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -36,16 +36,17 @@ struct TestClaims {
     sub: String,
     exp: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
-    company_id: Option<Uuid>,
+    org_unit_id: Option<Uuid>,
 }
 
-/// Mint an HS256 access token. `company_id = None` models a token that authenticates a user but
-/// carries no tenant — it must not be allowed to write.
-fn token(company_id: Option<Uuid>) -> String {
+/// Mint an HS256 org token. `org_unit_id = None` models a token that authenticates a user but
+/// names no acting unit — the org guard must refuse it (a writer without a resolvable session
+/// must never run).
+fn token(org_unit_id: Option<Uuid>) -> String {
     let claims = TestClaims {
         sub: "probe-user".into(),
         exp: 9_999_999_999,
-        company_id,
+        org_unit_id,
     };
     encode(
         &Header::new(Algorithm::HS256),
@@ -62,21 +63,25 @@ async fn module(pool: &PgPool) -> BankingModule {
         .unwrap()
 }
 fn app(pool: &PgPool, m: &BankingModule) -> axum::Router {
-    create_guarded_banking_routes(m, pool.clone(), CompanyVerifier::hs256(SECRET))
+    create_guarded_banking_routes(m, pool.clone(), OrgVerifier::hs256(SECRET))
 }
 
-/// POST a statement import with an optional bearer token.
+/// POST a statement import with an optional bearer token. The request carries the tenant-database
+/// extension `org_auth` reads — the composing service's tenant router provides it in a real
+/// deployment.
 async fn post_import(
     app: axum::Router,
+    pool: &PgPool,
     body: String,
     bearer: Option<String>,
 ) -> (StatusCode, String) {
-    post_import_to(app, "/bank-statements/import", body, bearer).await
+    post_import_to(app, pool, "/bank-statements/import", body, bearer).await
 }
 
 /// POST to an arbitrary path — lets a probe assert what the guard does NOT cover.
 async fn post_import_to(
     app: axum::Router,
+    pool: &PgPool,
     uri: &str,
     body: String,
     bearer: Option<String>,
@@ -88,10 +93,9 @@ async fn post_import_to(
     if let Some(t) = bearer {
         builder = builder.header(header::AUTHORIZATION, format!("Bearer {t}"));
     }
-    let resp = app
-        .oneshot(builder.body(Body::from(body)).unwrap())
-        .await
-        .unwrap();
+    let mut req = builder.body(Body::from(body)).unwrap();
+    req.extensions_mut().insert(pool.clone());
+    let resp = app.oneshot(req).await.unwrap();
     let status = resp.status();
     let bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024)
         .await
@@ -100,7 +104,7 @@ async fn post_import_to(
 }
 
 /// A well-formed import body (opening 0 → closing 500000 via one deposit), keyed by `file_ref`.
-/// Deliberately carries NO `companyId` — the tenant rides on the token.
+/// Carries no tenant field at all — the session is `org_auth`'s, never a body field.
 fn import_body(bank_account_id: Uuid, file_ref: &str) -> String {
     format!(
         r#"{{"bankAccountId":"{bank_account_id}","periodStart":"2026-07-01","periodEnd":"2026-07-31",
@@ -109,11 +113,10 @@ fn import_body(bank_account_id: Uuid, file_ref: &str) -> String {
     )
 }
 
-/// Create a bank account owned by `company`, so the import body can name a real account.
-async fn bank_account_for(w: &BankingWriteService, company: Uuid) -> Uuid {
+/// Create a bank account so the import body can name a real account.
+async fn bank_account_for(w: &BankingWriteService) -> Uuid {
     let bank = w
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -121,7 +124,6 @@ async fn bank_account_for(w: &BankingWriteService, company: Uuid) -> Uuid {
         .await
         .unwrap();
     w.create_bank_account(NewBankAccount {
-        company_id: company,
         branch_id: None,
         bank_id: bank,
         account_name: "Ops".into(),
@@ -206,10 +208,8 @@ impl ReconcileSink for NoEdgeSink {
 async fn over_clearing_is_refused() {
     let pool = pool().await;
     let w = BankingWriteService::new(pool.clone());
-    let company = Uuid::new_v4();
     let bank = w
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -218,7 +218,6 @@ async fn over_clearing_is_refused() {
         .unwrap();
     let acct = w
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -232,7 +231,6 @@ async fn over_clearing_is_refused() {
         .unwrap();
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -292,10 +290,8 @@ async fn over_clearing_is_refused() {
 async fn rejected_clear_writes_nothing() {
     let pool = pool().await;
     let w = BankingWriteService::new(pool.clone());
-    let company = Uuid::new_v4();
     let bank = w
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -304,7 +300,6 @@ async fn rejected_clear_writes_nothing() {
         .unwrap();
     let acct = w
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -318,7 +313,6 @@ async fn rejected_clear_writes_nothing() {
         .unwrap();
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -381,10 +375,8 @@ async fn rejected_clear_writes_nothing() {
 async fn non_idr_refused_at_clear() {
     let pool = pool().await;
     let w = BankingWriteService::new(pool.clone());
-    let company = Uuid::new_v4();
     let bank = w
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -393,7 +385,6 @@ async fn non_idr_refused_at_clear() {
         .unwrap();
     let acct = w
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -407,7 +398,6 @@ async fn non_idr_refused_at_clear() {
         .unwrap();
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -463,7 +453,7 @@ async fn tenant_guard_does_not_swallow_unmatched_routes() {
     let pool = pool().await;
     let m = module(&pool).await;
     let (status, _) =
-        post_import_to(app(&pool, &m), "/bank-statements/bulk", "[]".into(), None).await;
+        post_import_to(app(&pool, &m), &pool, "/bank-statements/bulk", "[]".into(), None).await;
     assert!(
         status == StatusCode::METHOD_NOT_ALLOWED || status == StatusCode::NOT_FOUND,
         "an unmounted path must not answer 401; got {status}"
@@ -477,8 +467,9 @@ async fn guarded_import_rejects_unauthenticated() {
     let pool = pool().await;
     let m = module(&pool).await;
     let w = BankingWriteService::new(pool.clone());
-    let acct = bank_account_for(&w, Uuid::new_v4()).await;
-    let (status, _) = post_import(app(&pool, &m), import_body(acct, &uq("FILE")), None).await;
+    let acct = bank_account_for(&w).await;
+    let (status, _) =
+        post_import(app(&pool, &m), &pool, import_body(acct, &uq("FILE")), None).await;
     assert_eq!(
         status,
         StatusCode::UNAUTHORIZED,
@@ -486,16 +477,17 @@ async fn guarded_import_rejects_unauthenticated() {
     );
 }
 
-// IGT-2: a token that authenticates a user but carries no `company_id` claim is rejected — a writer
-// that cannot name its tenant must never run.
+// IGT-2: a token that authenticates a user but carries no `org_unit_id` claim is rejected — a
+// writer with no resolvable session must never run.
 #[tokio::test]
-async fn guarded_import_rejects_token_without_company_id() {
+async fn guarded_import_rejects_token_without_org_unit() {
     let pool = pool().await;
     let m = module(&pool).await;
     let w = BankingWriteService::new(pool.clone());
-    let acct = bank_account_for(&w, Uuid::new_v4()).await;
+    let acct = bank_account_for(&w).await;
     let (status, _) = post_import(
         app(&pool, &m),
+        &pool,
         import_body(acct, &uq("FILE")),
         Some(token(None)),
     )
@@ -503,57 +495,64 @@ async fn guarded_import_rejects_token_without_company_id() {
     assert_eq!(
         status,
         StatusCode::UNAUTHORIZED,
-        "a token with no tenant must not write"
+        "a token with no acting unit must not write"
     );
 }
 
-// IGT-3: a `companyId` smuggled in the body is ignored — the persisted tenant is the token's. This is
-// the regression that motivated the change: the body must not be able to name the tenant whose cash
-// records a caller writes.
+// IGT-3: a `companyId` smuggled in the body cannot name a tenant — there is nothing left for it to
+// override. The module carries no tenancy of its own (ADR-0029): the import body has no tenant
+// field, the tables carry no tenant column, and the only tenancy that ever applies is the session
+// `org_auth` resolves — refused here fail-closed, since this probe's database holds no organization
+// tree for the token's unit.
 #[tokio::test]
-async fn body_company_id_cannot_override_the_token_tenant() {
+async fn body_company_id_cannot_name_the_tenant() {
     let pool = pool().await;
     let m = module(&pool).await;
     let w = BankingWriteService::new(pool.clone());
-    let token_company = Uuid::new_v4();
     let attacker_company = Uuid::new_v4();
-    let acct = bank_account_for(&w, token_company).await;
+    let acct = bank_account_for(&w).await;
     let file_ref = uq("FILE");
 
-    // Same well-formed body, plus a `companyId` the guarded surface must ignore.
+    // Same well-formed body, plus a `companyId` no code path reads any more.
     let body = format!(
         r#"{{"companyId":"{attacker_company}","bankAccountId":"{acct}","periodStart":"2026-07-01",
              "periodEnd":"2026-07-31","openingBalance":"0","closingBalance":"500000",
              "fileRef":"{file_ref}",
              "lines":[{{"txnDate":"2026-07-05","deposit":"500000","withdrawal":"0"}}]}}"#
     );
-    let (status, resp) = post_import(app(&pool, &m), body, Some(token(Some(token_company)))).await;
-    assert_eq!(status, StatusCode::CREATED, "got: {resp}");
 
-    let persisted: Uuid = sqlx::query_scalar(
-        "SELECT company_id FROM banking.bank_statement_imports WHERE file_ref = $1",
+    // A token naming a unit this database has no tree for: the guard refuses the session before any
+    // handler runs — a write can only ever happen inside a resolved org scope, never by body fiat.
+    let (status, resp) = post_import(
+        app(&pool, &m),
+        &pool,
+        body,
+        Some(token(Some(Uuid::new_v4()))),
     )
-    .bind(&file_ref)
-    .fetch_one(&pool)
-    .await
-    .expect("import row");
-    assert_eq!(
-        persisted, token_company,
-        "tenant must come from the token, not the body"
-    );
+    .await;
     assert_ne!(
-        persisted, attacker_company,
-        "the body's companyId must be ignored"
+        status,
+        StatusCode::CREATED,
+        "a session the guard could not resolve must never write, got: {resp}"
     );
 
-    // The derived transaction rows carry the token's tenant too — the hole was not merely on the header.
-    let txn_company: Uuid = sqlx::query_scalar(
-        "SELECT t.company_id FROM banking.bank_transactions t
-           JOIN banking.bank_statement_imports i ON i.id = t.import_id WHERE i.file_ref = $1",
-    )
-    .bind(&file_ref)
-    .fetch_one(&pool)
-    .await
-    .expect("transaction row");
-    assert_eq!(txn_company, token_company);
+    // And structurally: the statement tables carry no tenant column the body could have stamped.
+    for (table, column) in [
+        ("bank_statement_imports", "company_id"),
+        ("bank_transactions", "company_id"),
+    ] {
+        let hits: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM information_schema.columns \
+             WHERE table_schema='banking' AND table_name=$1 AND column_name=$2",
+        )
+        .bind(table)
+        .bind(column)
+        .fetch_one(&pool)
+        .await
+        .expect("column probe");
+        assert_eq!(
+            hits, 0,
+            "banking.{table} must carry no tenant column (ADR-0029)"
+        );
+    }
 }

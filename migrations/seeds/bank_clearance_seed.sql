@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.bank_clearances (
 --     id,
---     company_id,
 --     bank_transaction_id,
 --     matched_source_type,
 --     matched_source_id,

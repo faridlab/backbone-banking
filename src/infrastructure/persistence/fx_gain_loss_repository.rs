@@ -42,7 +42,6 @@ impl FxGainLossRepository {
 /// The exact row a realised-FX-gain/loss insert writes.
 pub struct NewFxGainLossRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
     pub matched_source_id: Uuid,
     pub currency: &'a str,
@@ -55,8 +54,8 @@ pub struct NewFxGainLossRow<'a> {
 
 /// FX gain/loss SQL. Lives here (not in the service) per the module's 4-layer rule.
 impl FxGainLossRepository {
-    /// Record a realised FX gain/loss on the caller's tx. The caller has already bound the company
-    /// on `conn`.
+    /// Record a realised FX gain/loss on the caller's tx. The caller has already relayed the
+    /// ambient org scope onto `conn` (ADR-0029).
     pub async fn insert_gain_loss(
         &self,
         conn: &mut PgConnection,
@@ -64,12 +63,11 @@ impl FxGainLossRepository {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO banking.fx_gain_losses
-                 (id, company_id, bank_clearance_id, matched_source_id, currency,
+                 (id, bank_clearance_id, matched_source_id, currency,
                   original_rate, realised_rate, base_amount_delta, direction, fx_account_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::fx_direction, $10)"#,
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8::fx_direction, $9)"#,
         )
         .bind(r.id)
-        .bind(r.company_id)
         .bind(r.bank_clearance_id)
         .bind(r.matched_source_id)
         .bind(r.currency)

@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.banks (
 --     id,
---     company_id,
 --     name,
 --     swift_bic,
 --     country,

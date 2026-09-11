@@ -7,7 +7,6 @@
 
 use async_trait::async_trait;
 use anyhow::Result;
-use uuid::Uuid;
 
 use crate::domain::entity::{ReconcilePreset, MatchOn, PresetStatus};
 
@@ -44,7 +43,6 @@ pub struct ReconcilePresetPaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct ReconcilePresetFilter {
-    pub company_id: Option<Uuid>,
     pub name: Option<String>,
     pub note: Option<String>,
     pub match_on: Option<MatchOn>,
@@ -54,7 +52,7 @@ pub struct ReconcilePresetFilter {
 impl ReconcilePresetFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.note.is_some() || self.match_on.is_some() || self.status.is_some()
+        self.name.is_some() || self.note.is_some() || self.match_on.is_some() || self.status.is_some()
     }
 }
 

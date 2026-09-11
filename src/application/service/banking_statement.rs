@@ -11,7 +11,7 @@
 //! `BankStatementImportRepository` / `BankTransactionRepository`, whose custom methods take this
 //! service's transaction so an import's header + lines commit as one unit.
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
@@ -46,17 +46,20 @@ impl BankingWriteService {
         }
         let id = Uuid::new_v4();
         let fmt = imp.source_format.clone().unwrap_or_else(|| "manual".into());
-        // RLS scope (ADR-0008): company is on the DTO — bind it explicitly onto the transaction we own,
-        // so both the import header and every line insert pass their WITH CHECK.
+        // Tenancy (ADR-0029): relay the AMBIENT request org scope onto this transaction when the
+        // composing service bound one, so the import header and every line insert evaluate under
+        // the decorator's row-level fences. An undecorated deployment has no ambient scope and
+        // skips this entirely (unfenced by design).
         let mut tx = self.db_pool.begin().await?;
-        company_scope::bind_company_on(&mut tx, imp.company_id).await?;
+        if let Some(scope) = org_scope::current_org_scope() {
+            org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+        }
         self.repos
             .imports
             .insert_import(
                 &mut tx,
                 &NewStatementImportRow {
                     id,
-                    company_id: imp.company_id,
                     bank_account_id: imp.bank_account_id,
                     source_format: &fmt,
                     statement_period_start: imp.period_start,
@@ -75,7 +78,6 @@ impl BankingWriteService {
                     &mut tx,
                     &NewBankTransactionRow {
                         id: Uuid::new_v4(),
-                        company_id: imp.company_id,
                         bank_account_id: imp.bank_account_id,
                         import_id: id,
                         txn_date: l.txn_date,
@@ -104,9 +106,9 @@ impl BankingWriteService {
         bank_transaction_id: Uuid,
         candidates: &[MatchCandidate],
     ) -> Result<Option<MatchCandidate>, BankingError> {
-        // RLS scope (ADR-0008), ID-only pattern: identified by the line id alone — no company arg. This
-        // rides the request-dedicated connection carrying the caller's `app.company_id`, so RLS fences
-        // the lookup and another company's line is simply not found.
+        // Tenancy (ADR-0029), ID-only pattern: identified by the line id alone. The read rides the
+        // request-dedicated connection carrying the composing service's org scope, so the decorator's
+        // row-level fence decides visibility — another unit's line is simply not found.
         let row = self
             .repos
             .transactions

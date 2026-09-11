@@ -18,10 +18,6 @@ models:
         type: uuid
         attributes: ["@id", "@default(uuid)"]
         description: "Unique bank id"
-      company_id:
-        type: uuid
-        attributes: ["@required", "@exclude_from_foreign_key_check"]
-        description: "Books owner # logical FK to organization.Company.id"
       name:
         type: string
         attributes: ["@required", "@max(140)"]
@@ -44,8 +40,7 @@ models:
         description: "Audit metadata"
 
     indexes:
-      - type: index
-        fields: [company_id, status]
+      # No tenancy indexes (ADR-0029): the module is tenant-agnostic.
 
   - name: BankAccount
     collection: bank_accounts
@@ -56,10 +51,6 @@ models:
         type: uuid
         attributes: ["@id", "@default(uuid)"]
         description: "Unique account id"
-      company_id:
-        type: uuid
-        attributes: ["@required", "@exclude_from_foreign_key_check"]
-        description: "Books owner # logical FK to organization.Company.id"
       branch_id:
         type: uuid?
         attributes: ["@exclude_from_foreign_key_check"]
@@ -106,11 +97,11 @@ models:
         description: "Audit metadata"
 
     indexes:
-      - type: unique
-        fields: [company_id, bank_id, account_number]
-        where: "deleted_at IS NULL"
-      - type: index
-        fields: [company_id, status]
+      # No tenancy indexes (ADR-0029): the module is tenant-agnostic. The per-unit
+      # one-live-account-number-per-bank unique — (org_unit_id, bank_id,
+      # account_number) among live rows — is installed by the composing service's
+      # tenancy decorator, not declared here. bank_id is a globally unique UUID, so
+      # the org-scoped form is exactly equivalent to the pre-strip per-company one.
 
 enums:
   - name: BankStatus

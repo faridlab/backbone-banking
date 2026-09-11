@@ -36,9 +36,6 @@ use crate::domain::entity::MatchedSourceType;
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankClearanceDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_transaction_id")]
     pub bank_transaction_id: Uuid,
     #[serde(alias = "matched_source_type")]
@@ -72,9 +69,6 @@ pub struct CreateBankClearanceDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankClearanceDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_transaction_id")]
     pub bank_transaction_id: Uuid,
@@ -110,9 +104,6 @@ pub struct UpdateBankClearanceDto {
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankClearanceDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_transaction_id")]
     pub bank_transaction_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_source_type")]
@@ -136,7 +127,7 @@ pub struct PatchBankClearanceDto {
 impl PatchBankClearanceDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.matched_amount.is_some() || self.match_method.is_some() || self.clearance_date.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
+        self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.matched_amount.is_some() || self.match_method.is_some() || self.clearance_date.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
     }
 }
 
@@ -154,8 +145,6 @@ impl PatchBankClearanceDto {
 pub struct BankClearanceResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub bank_transaction_id: Uuid,
     pub matched_source_type: MatchedSourceType,
@@ -224,9 +213,9 @@ impl BankClearanceListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct BankClearanceSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_transaction_id: Uuid,
     pub matched_source_type: MatchedSourceType,
+    pub matched_source_id: Uuid,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -238,7 +227,6 @@ impl From<BankClearance> for BankClearanceResponseDto {
     fn from(entity: BankClearance) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_transaction_id: entity.bank_transaction_id,
             matched_source_type: entity.matched_source_type,
             matched_source_id: entity.matched_source_id,
@@ -257,9 +245,9 @@ impl From<BankClearance> for BankClearanceSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_transaction_id: entity.bank_transaction_id,
             matched_source_type: entity.matched_source_type,
+            matched_source_id: entity.matched_source_id,
             created_at,
         }
     }
@@ -269,7 +257,6 @@ impl From<CreateBankClearanceDto> for BankClearance {
     fn from(dto: CreateBankClearanceDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             bank_transaction_id: dto.bank_transaction_id,
             matched_source_type: dto.matched_source_type,
             matched_source_id: dto.matched_source_id,
@@ -287,7 +274,6 @@ impl From<&BankClearance> for BankClearanceResponseDto {
     fn from(entity: &BankClearance) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             bank_transaction_id: entity.bank_transaction_id.clone(),
             matched_source_type: entity.matched_source_type.clone(),
             matched_source_id: entity.matched_source_id.clone(),
@@ -309,7 +295,6 @@ impl backbone_core::FromCreateDto<CreateBankClearanceDto> for BankClearance {
 
 impl backbone_core::ApplyUpdateDto<UpdateBankClearanceDto> for BankClearance {
     fn apply_update(mut self, dto: UpdateBankClearanceDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.bank_transaction_id = dto.bank_transaction_id;
         self.matched_source_type = dto.matched_source_type;
         self.matched_source_id = dto.matched_source_id;

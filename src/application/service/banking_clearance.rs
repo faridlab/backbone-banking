@@ -14,7 +14,7 @@
 //! `BankTransactionRepository` / `BankClearanceRepository`, whose methods take this service's
 //! transaction so the post + clearance + allocation advance commit as one unit.
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
@@ -31,6 +31,17 @@ use super::banking_gl::{
 use super::banking_write_service::{
     money, BankingError, BankingWriteService, ClearOutcome, NewCharge, NewClearance,
 };
+
+/// The legacy tenancy twin (ADR-0029): the cleared tables hold no company column, but the GL
+/// envelope, the reconcile-graph pair request, the durable outbox record, and the published
+/// events still carry a `company_id` lane for unstripped consumers. Echo the ambient org
+/// scope's legacy company id when the composing service bound one; nil otherwise. Nothing in
+/// this module keys a statement on it.
+fn legacy_company_echo() -> Uuid {
+    org_scope::current_org_scope()
+        .and_then(|s| s.legacy_company_id())
+        .unwrap_or(Uuid::nil())
+}
 
 impl BankingWriteService {
     /// Clear a matched statement line through the GL — the bank-side leg. received (deposit):
@@ -66,8 +77,9 @@ impl BankingWriteService {
         }
         let matched = money(c.matched_amount);
         // Load the line + its account's GL/clearing accounts.
-        // RLS scope (ADR-0008), ID-only pattern — see `propose_match`. Having read the line we bind its
-        // OWN company onto the clearing transaction below.
+        // Tenancy (ADR-0029), ID-only pattern — see `propose_match`. The read rides the ambient
+        // request org scope; having read the line we relay that same scope onto the clearing
+        // transaction below.
         let row = self
             .repos
             .transactions
@@ -78,7 +90,7 @@ impl BankingWriteService {
         if currency != "IDR" {
             return Err(BankingError::UnsupportedCurrency(currency));
         }
-        let company_id = row.company_id;
+        let company_id = legacy_company_echo();
         let deposit = row.deposit;
         let withdrawal = row.withdrawal;
         let allocated = row.allocated_amount;
@@ -101,22 +113,21 @@ impl BankingWriteService {
         // account. Serialize per settlement with an advisory lock so concurrent first-clears can't race
         // the phantom-insert, and hold the tx across the post so the check + write are one unit.
         let mut tx = self.db_pool.begin().await?;
-        // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction, so the
-        // already-cleared SUM sees the tenant's clearances and the clearance insert passes WITH CHECK.
-        company_scope::bind_company_on(&mut tx, company_id).await?;
+        // Tenancy (ADR-0029): relay the AMBIENT request org scope onto this transaction when the
+        // composing service bound one, so the already-cleared SUM and the clearance insert evaluate
+        // under the decorator's row-level fences. An undecorated deployment has no ambient scope
+        // and skips this entirely (unfenced by design).
+        if let Some(scope) = org_scope::current_org_scope() {
+            org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+        }
         self.repos
             .clearances
-            .lock_settlement(&mut tx, company_id, c.matched_source_id)
+            .lock_settlement(&mut tx, c.matched_source_id)
             .await?;
         let already_cleared = self
             .repos
             .clearances
-            .sum_cleared_against_settlement(
-                &mut tx,
-                company_id,
-                &c.matched_source_type,
-                c.matched_source_id,
-            )
+            .sum_cleared_against_settlement(&mut tx, &c.matched_source_type, c.matched_source_id)
             .await?;
         if already_cleared + matched > money(c.matched_source_amount) {
             return Err(BankingError::SettlementOverCleared {
@@ -152,6 +163,8 @@ impl BankingWriteService {
         };
         let env = AccountingPostEnvelope {
             idempotency_key: identity,
+            // The legacy tenancy twin (ADR-0029) — the composing host's GL ACL maps it onto
+            // accounting's `PostingRequest.company_id`, which keeps the same legacy lane.
             company_id,
             branch_id: None,
             source_type: "settlement".into(),
@@ -189,6 +202,9 @@ impl BankingWriteService {
                         .reconcile_pair_on(
                             &mut *tx,
                             &ReconcilePairRequest {
+                                // The legacy tenancy twin (ADR-0029) — the shared
+                                // `backbone_gl_posting` wire shape keeps its `company_id` lane
+                                // for unstripped producers; nothing keys the edge on it.
                                 company_id,
                                 debit,
                                 credit,
@@ -221,7 +237,6 @@ impl BankingWriteService {
                         &mut tx,
                         &NewClearanceRow {
                             id: clearance_id,
-                            company_id,
                             bank_transaction_id: c.bank_transaction_id,
                             matched_source_type: &c.matched_source_type,
                             matched_source_id: c.matched_source_id,
@@ -251,6 +266,9 @@ impl BankingWriteService {
                 // consumer dedups on the event id.
                 if let Some(schema) = self.outbox_schema.clone() {
                     if c.matched_source_type == "payment" {
+                        // `company_id` in the payload and on the outbox record is the legacy
+                        // tenancy twin (ADR-0029): the consumer (payment's bank-confirmation
+                        // drift) keeps the lane; nothing keys delivery on it.
                         let payload = serde_json::json!({
                             "payment_id": c.matched_source_id.to_string(),
                             "company_id": company_id.to_string(),
@@ -320,8 +338,8 @@ impl BankingWriteService {
             return Err(BankingError::NonPositiveAmount);
         }
         let amount = money(ch.amount);
-        // RLS scope (ADR-0008), ID-only pattern — see `propose_match`; the charge tx below binds the
-        // line's own company.
+        // Tenancy (ADR-0029), ID-only pattern — see `propose_match`; the charge tx below relays
+        // the ambient request org scope.
         let row = self
             .repos
             .transactions
@@ -332,7 +350,7 @@ impl BankingWriteService {
         if currency != "IDR" {
             return Err(BankingError::UnsupportedCurrency(currency));
         }
-        let company_id = row.company_id;
+        let company_id = legacy_company_echo();
         let allocated = row.allocated_amount;
         let line_net = row.deposit + row.withdrawal;
         let bank_acct = row.gl_account_id;
@@ -346,6 +364,7 @@ impl BankingWriteService {
         let clearance_id = Uuid::new_v4();
         let env = AccountingPostEnvelope {
             idempotency_key: format!("bankchg:{}:{}", ch.bank_transaction_id, clearance_id),
+            // The legacy tenancy twin (ADR-0029) — see `clear_transaction`.
             company_id,
             branch_id: None,
             source_type: "settlement".into(),
@@ -367,15 +386,16 @@ impl BankingWriteService {
         match sink.post(&env).await {
             Ok(ack) => {
                 let mut tx = self.db_pool.begin().await?;
-                // RLS scope (ADR-0008): bind the line's own company (read above) onto this transaction.
-                company_scope::bind_company_on(&mut tx, company_id).await?;
+                // Tenancy (ADR-0029): relay the AMBIENT request org scope — see `clear_transaction`.
+                if let Some(scope) = org_scope::current_org_scope() {
+                    org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+                }
                 self.repos
                     .clearances
                     .insert_charge_clearance(
                         &mut tx,
                         &NewChargeClearanceRow {
                             id: clearance_id,
-                            company_id,
                             bank_transaction_id: ch.bank_transaction_id,
                             charge_account_id: ch.charge_account_id,
                             matched_amount: amount,

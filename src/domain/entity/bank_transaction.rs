@@ -51,7 +51,6 @@ impl std::ops::Deref for BankTransactionId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankTransaction {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub import_id: Uuid,
     pub txn_date: NaiveDate,
@@ -75,10 +74,9 @@ impl BankTransaction {
     }
 
     /// Create a new BankTransaction with required fields
-    pub fn new(company_id: Uuid, bank_account_id: Uuid, import_id: Uuid, txn_date: NaiveDate, deposit: Decimal, withdrawal: Decimal, currency: String, status: TxnStatus, allocated_amount: Decimal) -> Self {
+    pub fn new(bank_account_id: Uuid, import_id: Uuid, txn_date: NaiveDate, deposit: Decimal, withdrawal: Decimal, currency: String, status: TxnStatus, allocated_amount: Decimal) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             import_id,
             txn_date,
@@ -180,9 +178,6 @@ impl BankTransaction {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "bank_account_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
                 }
@@ -270,7 +265,6 @@ impl backbone_orm::EntityRepoMeta for BankTransaction {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("import_id".to_string(), "uuid".to_string());
         m.insert("status".to_string(), "txn_status".to_string());
@@ -278,9 +272,6 @@ impl backbone_orm::EntityRepoMeta for BankTransaction {
     }
     fn search_fields() -> &'static [&'static str] {
         &["currency"]
-    }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
     }
     fn relations() -> &'static [(&'static str, &'static str, &'static str)] {
         &[("import", "bank_statement_imports", "importId")]
@@ -293,7 +284,6 @@ impl backbone_orm::EntityRepoMeta for BankTransaction {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct BankTransactionBuilder {
-    company_id: Option<Uuid>,
     bank_account_id: Option<Uuid>,
     import_id: Option<Uuid>,
     txn_date: Option<NaiveDate>,
@@ -308,12 +298,6 @@ pub struct BankTransactionBuilder {
 }
 
 impl BankTransactionBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the bank_account_id field (required)
     pub fn bank_account_id(mut self, value: Uuid) -> Self {
         self.bank_account_id = Some(value);
@@ -384,14 +368,12 @@ impl BankTransactionBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankTransaction, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
         let import_id = self.import_id.ok_or_else(|| "import_id is required".to_string())?;
         let txn_date = self.txn_date.ok_or_else(|| "txn_date is required".to_string())?;
 
         Ok(BankTransaction {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             import_id,
             txn_date,

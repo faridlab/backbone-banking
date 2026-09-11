@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.reconcile_presets (
 --     id,
---     company_id,
 --     name,
 --     note,
 --     priority,
@@ -32,10 +31,10 @@
 
 -- The three baseline presets every tenant starts from (reference-exact outranks
 -- amount-exact; tolerance matching runs last of the deterministic signals).
--- Applied per company at workspace dev-seed time (a preset is strictly
--- tenant-owned — there is no global row to seed here):
+-- Applied per org unit at composing-service dev-seed time (a preset is strictly
+-- unit-owned — there is no global row to seed here):
 --
--- INSERT INTO banking.reconcile_presets (id, company_id, name, note, priority, match_on, tolerance_percent, status, metadata) VALUES
---     (gen_random_uuid(), :company_id, 'Reference exact',        'Statement reference equals the document reference', 10, 'reference_exact',         NULL,    'active', '{}'::jsonb),
---     (gen_random_uuid(), :company_id, 'Amount exact',           'Open amount equals the line amount exactly',        20, 'amount_exact',            NULL,    'active', '{}'::jsonb),
---     (gen_random_uuid(), :company_id, 'Amount within tolerance','Open amount within 0.5% of the line amount',        30, 'amount_within_tolerance', 0.50,    'active', '{}'::jsonb);
+-- INSERT INTO banking.reconcile_presets (id, name, note, priority, match_on, tolerance_percent, status, metadata) VALUES
+--     (gen_random_uuid(), 'Reference exact',        'Statement reference equals the document reference', 10, 'reference_exact',         NULL,    'active', '{}'::jsonb),
+--     (gen_random_uuid(), 'Amount exact',           'Open amount equals the line amount exactly',        20, 'amount_exact',            NULL,    'active', '{}'::jsonb),
+--     (gen_random_uuid(), 'Amount within tolerance','Open amount within 0.5% of the line amount',        30, 'amount_within_tolerance', 0.50,    'active', '{}'::jsonb);

@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.bank_reconciliations (
 --     id,
---     company_id,
 --     bank_account_id,
 --     from_date,
 --     to_date,

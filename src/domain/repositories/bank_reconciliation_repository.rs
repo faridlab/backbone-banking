@@ -44,7 +44,6 @@ pub struct BankReconciliationPaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct BankReconciliationFilter {
-    pub company_id: Option<Uuid>,
     pub bank_account_id: Option<Uuid>,
     pub status: Option<ReconStatus>,
     pub preset_id: Option<Uuid>,
@@ -53,7 +52,7 @@ pub struct BankReconciliationFilter {
 impl BankReconciliationFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.status.is_some() || self.preset_id.is_some()
+        self.bank_account_id.is_some() || self.status.is_some() || self.preset_id.is_some()
     }
 }
 

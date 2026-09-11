@@ -31,6 +31,8 @@ pub struct BankTransactionCleared {
     pub bank_transaction_id: Uuid,
     pub matched_source_type: String,
     pub matched_source_id: Uuid,
+    /// The legacy tenancy twin (ADR-0029) — carried in the payload for unstripped consumers;
+    /// echoes the ambient org scope's legacy company id (nil when none is bound).
     pub company_id: Uuid,
     pub journal_id: Uuid,
     pub post_id: Uuid,
@@ -49,6 +51,7 @@ pub struct BankReconciliationClosed {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BankChargeRecognized {
     pub bank_transaction_id: Uuid,
+    /// The legacy tenancy twin (ADR-0029) — see `BankTransactionCleared::company_id`.
     pub company_id: Uuid,
     pub amount: Decimal,
     pub journal_id: Uuid,

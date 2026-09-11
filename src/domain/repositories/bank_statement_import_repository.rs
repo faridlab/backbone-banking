@@ -44,7 +44,6 @@ pub struct BankStatementImportPaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct BankStatementImportFilter {
-    pub company_id: Option<Uuid>,
     pub bank_account_id: Option<Uuid>,
     pub source_format: Option<SourceFormat>,
     pub file_ref: Option<String>,
@@ -54,7 +53,7 @@ pub struct BankStatementImportFilter {
 impl BankStatementImportFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.source_format.is_some() || self.file_ref.is_some() || self.status.is_some()
+        self.bank_account_id.is_some() || self.source_format.is_some() || self.file_ref.is_some() || self.status.is_some()
     }
 }
 

@@ -2,10 +2,17 @@
 //!
 //! Hand-authored (user-owned). Read documents + **validated import** (a statement with balance
 //! continuity checked); generic create/update/delete CRUD is NOT mounted, so a caller cannot write a
-//! statement whose lines don't reconcile or bypass the clearing path. The import derives its tenant
-//! from a signed Bearer token (`CompanyContext`) rather than the request body. Matching + clearing +
-//! reconciliation need a `GlPostSink` / supplied candidates (a composition layer), so they are
-//! service/job-driven, not HTTP routes.
+//! statement whose lines don't reconcile or bypass the clearing path. The import is ID-only — the
+//! session is the one `org_auth` resolved from the Bearer token, never a request-body field.
+//! Matching + clearing + reconciliation need a `GlPostSink` / supplied candidates (a composition
+//! layer), so they are service/job-driven, not HTTP routes.
+//!
+//! Tenancy (ADR-0029): the module carries no tenancy of its own. `org_auth` verifies the Bearer
+//! token, resolves the session's org scope against the request's tenant tree, and runs every
+//! handler inside that scope — the module's statements ride the request-dedicated connection it
+//! binds, and the composing service's tenancy decorator does the actual row-level fencing. The
+//! guard reads the tenant database from the `backbone_orm::PgPool` request extension, so this
+//! surface must be mounted inside the composing service's tenant router.
 
 use std::sync::Arc;
 
@@ -17,7 +24,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use backbone_auth::company::{company_auth, CompanyContext, CompanyVerifier};
+use backbone_auth::org::{org_auth, OrgVerifier};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -83,8 +90,8 @@ impl From<LineBody> for NewStatementLine {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportBody {
-    // No `company_id`: the tenant is derived from the signed token via `CompanyContext`, never from the
-    // request body — a client must not be able to name the company whose bank statement it imports.
+    // ID-only: the session is the one `org_auth` resolved and bound for the request, never a body
+    // field — a client must not be able to name the tenant whose bank statement it imports.
     bank_account_id: Uuid,
     #[serde(default)]
     source_format: Option<String>,
@@ -100,11 +107,9 @@ struct ImportBody {
 }
 async fn import_statement(
     State(svc): State<Arc<BankingWriteService>>,
-    tenant: CompanyContext,
     Json(b): Json<ImportBody>,
 ) -> axum::response::Response {
     let imp = NewStatementImport {
-        company_id: tenant.company_id,
         bank_account_id: b.bank_account_id,
         source_format: b.source_format,
         period_start: b.period_start,
@@ -137,18 +142,15 @@ struct CandidateBody {
 }
 
 /// `GET /reconcile-presets/:id/candidates?txn_id=<line>` — the ordered candidate list for one
-/// statement line under one preset. Tenant = the token's company; both the preset and the line are
-/// fence-read and refused as not-found when they belong to another tenant.
+/// statement line under one preset. ID-only: the session is the one `org_auth` resolved; both the
+/// preset and the line are fence-read, and another unit's rows are indistinguishable from absence —
+/// refused as not-found (the decorator's row-level fence, ADR-0029).
 async fn preset_candidates(
     State(svc): State<Arc<BankingWriteService>>,
-    tenant: CompanyContext,
     Path(preset_id): Path<Uuid>,
     Query(q): Query<CandidatesQuery>,
 ) -> axum::response::Response {
-    match svc
-        .order_candidates(tenant.company_id, preset_id, q.txn_id)
-        .await
-    {
+    match svc.order_candidates(preset_id, q.txn_id).await {
         Ok(list) => (
             StatusCode::OK,
             Json(
@@ -169,34 +171,37 @@ async fn preset_candidates(
     }
 }
 
-fn write_routes(svc: Arc<BankingWriteService>, verifier: CompanyVerifier) -> Router {
+fn write_routes(svc: Arc<BankingWriteService>, verifier: OrgVerifier) -> Router {
     Router::new()
         .route("/bank-statements/import", post(import_statement))
         // Preset-driven candidate ordering — a READ (side-effect-free by construction; the ordering
         // probe pins it), mounted beside the import because it shares the write service's injected
         // candidate-pool port. The operator confirms a candidate through the clear verb, not here.
         .route("/reconcile-presets/:id/candidates", get(preset_candidates))
-        // The import is tenant-scoped: `company_auth` rejects a request whose token is absent, invalid,
-        // or carries no `company_id`, so the writer only ever runs with a proven tenant.
+        // The import is scope-bound: `org_auth` rejects a request whose token is absent, invalid,
+        // or names a unit outside this tenant's tree, and runs the handler inside the resolved org
+        // scope — a handler only ever executes with a proven, fenced session.
         //
         // `route_layer`, not `layer`: `layer` would also wrap this router's fallback, so once merged
         // every *unmatched* path (e.g. the generic CRUD paths this surface deliberately does not mount)
         // would answer 401 instead of 404 — leaking "auth required" for routes that do not exist, and
         // masking the CRUD-bypass probes.
-        .route_layer(from_fn_with_state(verifier, company_auth))
+        .route_layer(from_fn_with_state(verifier, org_auth))
         .with_state(svc)
 }
 
-/// Mount the banking module: read documents + validated, tenant-scoped statement import. Generic
+/// Mount the banking module: read documents + validated, scope-fenced statement import. Generic
 /// mutation is not mounted; matching/clearing/reconciliation are service/job-driven.
 /// **Prefer this over `BankingModule::all_crud_routes()` for any real deployment.**
 ///
-/// The composing service builds one [`CompanyVerifier`] from its JWT secret and passes it here; the
-/// import derives `company_id` from the token, so no tenant crosses the wire in a body.
+/// The composing service builds one [`OrgVerifier`] from its JWT secret and passes it here; the
+/// surface derives its session from the token, so no tenant crosses the wire in a body. Mount
+/// inside the tenant router with the `backbone_orm::PgPool` request extension attached —
+/// `org_auth` resolves the scope against that pool.
 pub fn create_guarded_banking_routes(
     m: &BankingModule,
     pool: PgPool,
-    verifier: CompanyVerifier,
+    verifier: OrgVerifier,
 ) -> Router {
     let write = Arc::new(BankingWriteService::new(pool));
     Router::new()

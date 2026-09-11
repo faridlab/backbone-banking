@@ -36,9 +36,6 @@ use crate::domain::entity::SourceFormat;
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankStatementImportDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[serde(alias = "source_format")]
@@ -75,9 +72,6 @@ pub struct CreateBankStatementImportDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankStatementImportDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
@@ -116,9 +110,6 @@ pub struct UpdateBankStatementImportDto {
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankStatementImportDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_account_id")]
     pub bank_account_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "source_format")]
@@ -146,7 +137,7 @@ pub struct PatchBankStatementImportDto {
 impl PatchBankStatementImportDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.source_format.is_some() || self.statement_period_start.is_some() || self.statement_period_end.is_some() || self.opening_balance.is_some() || self.closing_balance.is_some() || self.file_ref.is_some() || self.status.is_some() || self.row_count.is_some()
+        self.bank_account_id.is_some() || self.source_format.is_some() || self.statement_period_start.is_some() || self.statement_period_end.is_some() || self.opening_balance.is_some() || self.closing_balance.is_some() || self.file_ref.is_some() || self.status.is_some() || self.row_count.is_some()
     }
 }
 
@@ -164,8 +155,6 @@ impl PatchBankStatementImportDto {
 pub struct BankStatementImportResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub bank_account_id: Uuid,
     pub source_format: SourceFormat,
@@ -236,9 +225,9 @@ impl BankStatementImportListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct BankStatementImportSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub source_format: SourceFormat,
+    pub statement_period_start: NaiveDate,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -250,7 +239,6 @@ impl From<BankStatementImport> for BankStatementImportResponseDto {
     fn from(entity: BankStatementImport) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_account_id: entity.bank_account_id,
             source_format: entity.source_format,
             statement_period_start: entity.statement_period_start,
@@ -270,9 +258,9 @@ impl From<BankStatementImport> for BankStatementImportSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_account_id: entity.bank_account_id,
             source_format: entity.source_format,
+            statement_period_start: entity.statement_period_start,
             created_at,
         }
     }
@@ -282,7 +270,6 @@ impl From<CreateBankStatementImportDto> for BankStatementImport {
     fn from(dto: CreateBankStatementImportDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             bank_account_id: dto.bank_account_id,
             source_format: dto.source_format,
             statement_period_start: dto.statement_period_start,
@@ -301,7 +288,6 @@ impl From<&BankStatementImport> for BankStatementImportResponseDto {
     fn from(entity: &BankStatementImport) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             bank_account_id: entity.bank_account_id.clone(),
             source_format: entity.source_format.clone(),
             statement_period_start: entity.statement_period_start.clone(),
@@ -324,7 +310,6 @@ impl backbone_core::FromCreateDto<CreateBankStatementImportDto> for BankStatemen
 
 impl backbone_core::ApplyUpdateDto<UpdateBankStatementImportDto> for BankStatementImport {
     fn apply_update(mut self, dto: UpdateBankStatementImportDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.bank_account_id = dto.bank_account_id;
         self.source_format = dto.source_format;
         self.statement_period_start = dto.statement_period_start;

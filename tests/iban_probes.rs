@@ -34,7 +34,6 @@ fn uq(p: &str) -> String {
 
 async fn bank_id(pool: &PgPool, svc: &BankingWriteService) -> Uuid {
     svc.create_bank(NewBank {
-        company_id: Uuid::nil(),
         name: uq("IBAN Bank"),
         swift_bic: None,
         country: Some("ID".into()),
@@ -45,7 +44,6 @@ async fn bank_id(pool: &PgPool, svc: &BankingWriteService) -> Uuid {
 
 fn account(bank: Uuid, number: &str) -> NewBankAccount {
     NewBankAccount {
-        company_id: Uuid::nil(),
         branch_id: None,
         bank_id: bank,
         account_name: "Test Account".into(),

@@ -17,7 +17,6 @@ models:
     description: "A realised FX gain/loss recognised on bank clearance of a foreign-currency settlement"
     fields:
       id: { type: uuid, attributes: ["@id", "@default(uuid)"] }
-      company_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"] }
       bank_clearance_id: { type: uuid?, attributes: ["@exclude_from_foreign_key_check"], description: "The clearance that triggered the realisation # logical FK" }
       matched_source_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"], description: "The settled document id" }
       currency: { type: string, attributes: ["@required", "@max(3)"], description: "The foreign currency" }
@@ -28,8 +27,8 @@ models:
       fx_account_id: { type: uuid, attributes: ["@required", "@exclude_from_foreign_key_check"], description: "FX Gain or FX Loss GL account" }
       metadata: { type: Metadata, attributes: ["@audit_metadata"] }
     indexes:
-      - type: index
-        fields: [company_id, matched_source_id]
+      # No tenancy indexes (ADR-0029): the module is tenant-agnostic. Reads walk
+      # matched_source_id; the per-unit read path is the decorator's org fence.
 
 enums:
   - name: FxDirection

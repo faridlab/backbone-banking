@@ -24,7 +24,6 @@ impl TestDataGenerator for ReconcilePresetTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": Uuid::new_v4().to_string(),
-            "company_id": Uuid::new_v4().to_string(),
             "name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "note": null,
             "priority": 1,
@@ -40,7 +39,6 @@ impl TestDataGenerator for ReconcilePresetTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": id,
-            "company_id": Uuid::new_v4().to_string(),
             "name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
             "note": null,
             "priority": 1,

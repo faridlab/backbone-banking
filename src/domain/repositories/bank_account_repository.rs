@@ -44,7 +44,6 @@ pub struct BankAccountPaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct BankAccountFilter {
-    pub company_id: Option<Uuid>,
     pub branch_id: Option<Uuid>,
     pub bank_id: Option<Uuid>,
     pub account_name: Option<String>,
@@ -60,7 +59,7 @@ pub struct BankAccountFilter {
 impl BankAccountFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.branch_id.is_some() || self.bank_id.is_some() || self.account_name.is_some() || self.account_number.is_some() || self.gl_account_id.is_some() || self.clearing_account_id.is_some() || self.currency.is_some() || self.account_type.is_some() || self.is_default.is_some() || self.status.is_some()
+        self.branch_id.is_some() || self.bank_id.is_some() || self.account_name.is_some() || self.account_number.is_some() || self.gl_account_id.is_some() || self.clearing_account_id.is_some() || self.currency.is_some() || self.account_type.is_some() || self.is_default.is_some() || self.status.is_some()
     }
 }
 

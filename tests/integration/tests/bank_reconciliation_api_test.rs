@@ -24,7 +24,6 @@ impl TestDataGenerator for BankReconciliationTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": Uuid::new_v4().to_string(),
-            "company_id": Uuid::new_v4().to_string(),
             "bank_account_id": Uuid::new_v4().to_string(),
             "from_date": Utc::now().format("%Y-%m-%d").to_string(),
             "to_date": Utc::now().format("%Y-%m-%d").to_string(),
@@ -42,7 +41,6 @@ impl TestDataGenerator for BankReconciliationTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": id,
-            "company_id": Uuid::new_v4().to_string(),
             "bank_account_id": Uuid::new_v4().to_string(),
             "from_date": Utc::now().format("%Y-%m-%d").to_string(),
             "to_date": Utc::now().format("%Y-%m-%d").to_string(),

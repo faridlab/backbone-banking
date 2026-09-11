@@ -2963,16 +2963,12 @@ components:
       type: object
       required:
         - id
-        - company_id
         - name
         - country
         - status
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         name:
@@ -3006,15 +3002,11 @@ components:
     CreateBankRequest:
       type: object
       required:
-        - company_id
         - name
         - country
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 140
@@ -3033,15 +3025,11 @@ components:
     UpdateBankRequest:
       type: object
       required:
-        - company_id
         - name
         - country
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 140
@@ -3060,9 +3048,6 @@ components:
     PatchBankRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 140
@@ -3092,7 +3077,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - bank_id
         - account_name
         - account_number
@@ -3105,9 +3089,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         branch_id:
@@ -3157,7 +3138,6 @@ components:
     CreateBankAccountRequest:
       type: object
       required:
-        - company_id
         - bank_id
         - account_name
         - account_number
@@ -3169,9 +3149,6 @@ components:
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         branch_id:
           nullable: true
           type: string
@@ -3206,7 +3183,6 @@ components:
     UpdateBankAccountRequest:
       type: object
       required:
-        - company_id
         - bank_id
         - account_name
         - account_number
@@ -3218,9 +3194,6 @@ components:
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         branch_id:
           nullable: true
           type: string
@@ -3255,9 +3228,6 @@ components:
     PatchBankAccountRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         branch_id:
           nullable: true
           type: string
@@ -3303,7 +3273,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - bank_transaction_id
         - matched_source_type
         - matched_source_id
@@ -3313,9 +3282,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         bank_transaction_id:
@@ -3360,7 +3326,6 @@ components:
     CreateBankClearanceRequest:
       type: object
       required:
-        - company_id
         - bank_transaction_id
         - matched_source_type
         - matched_source_id
@@ -3369,9 +3334,6 @@ components:
         - clearance_date
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_transaction_id:
           type: string
           format: uuid
@@ -3401,7 +3363,6 @@ components:
     UpdateBankClearanceRequest:
       type: object
       required:
-        - company_id
         - bank_transaction_id
         - matched_source_type
         - matched_source_id
@@ -3410,9 +3371,6 @@ components:
         - clearance_date
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_transaction_id:
           type: string
           format: uuid
@@ -3442,9 +3400,6 @@ components:
     PatchBankClearanceRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_transaction_id:
           type: string
           format: uuid
@@ -3485,7 +3440,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - bank_account_id
         - from_date
         - to_date
@@ -3497,9 +3451,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         bank_account_id:
@@ -3545,7 +3496,6 @@ components:
     CreateBankReconciliationRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - from_date
         - to_date
@@ -3556,9 +3506,6 @@ components:
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3589,7 +3536,6 @@ components:
     UpdateBankReconciliationRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - from_date
         - to_date
@@ -3600,9 +3546,6 @@ components:
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3633,9 +3576,6 @@ components:
     PatchBankReconciliationRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3677,7 +3617,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - bank_account_id
         - source_format
         - statement_period_start
@@ -3689,9 +3628,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         bank_account_id:
@@ -3737,7 +3673,6 @@ components:
     CreateBankStatementImportRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - source_format
         - statement_period_start
@@ -3748,9 +3683,6 @@ components:
         - row_count
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3781,7 +3713,6 @@ components:
     UpdateBankStatementImportRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - source_format
         - statement_period_start
@@ -3792,9 +3723,6 @@ components:
         - row_count
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3825,9 +3753,6 @@ components:
     PatchBankStatementImportRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3869,7 +3794,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - bank_account_id
         - import_id
         - txn_date
@@ -3881,9 +3805,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         bank_account_id:
@@ -3937,7 +3858,6 @@ components:
     CreateBankTransactionRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - import_id
         - txn_date
@@ -3948,9 +3868,6 @@ components:
         - allocated_amount
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -3989,7 +3906,6 @@ components:
     UpdateBankTransactionRequest:
       type: object
       required:
-        - company_id
         - bank_account_id
         - import_id
         - txn_date
@@ -4000,9 +3916,6 @@ components:
         - allocated_amount
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -4041,9 +3954,6 @@ components:
     PatchBankTransactionRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_account_id:
           type: string
           format: uuid
@@ -4093,7 +4003,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - matched_source_id
         - currency
         - original_rate
@@ -4104,9 +4013,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         bank_clearance_id:
@@ -4149,7 +4055,6 @@ components:
     CreateFxGainLossRequest:
       type: object
       required:
-        - company_id
         - matched_source_id
         - currency
         - original_rate
@@ -4159,9 +4064,6 @@ components:
         - fx_account_id
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_clearance_id:
           nullable: true
           type: string
@@ -4189,7 +4091,6 @@ components:
     UpdateFxGainLossRequest:
       type: object
       required:
-        - company_id
         - matched_source_id
         - currency
         - original_rate
@@ -4199,9 +4100,6 @@ components:
         - fx_account_id
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_clearance_id:
           nullable: true
           type: string
@@ -4229,9 +4127,6 @@ components:
     PatchFxGainLossRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         bank_clearance_id:
           nullable: true
           type: string
@@ -4270,7 +4165,6 @@ components:
       type: object
       required:
         - id
-        - company_id
         - name
         - priority
         - match_on
@@ -4278,9 +4172,6 @@ components:
         - metadata
       properties:
         id:
-          type: string
-          format: uuid
-        company_id:
           type: string
           format: uuid
         name:
@@ -4323,16 +4214,12 @@ components:
     CreateReconcilePresetRequest:
       type: object
       required:
-        - company_id
         - name
         - priority
         - match_on
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 80
@@ -4360,16 +4247,12 @@ components:
     UpdateReconcilePresetRequest:
       type: object
       required:
-        - company_id
         - name
         - priority
         - match_on
         - status
         - metadata
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 80
@@ -4397,9 +4280,6 @@ components:
     PatchReconcilePresetRequest:
       type: object
       properties:
-        company_id:
-          type: string
-          format: uuid
         name:
           type: string
           maxLength: 80

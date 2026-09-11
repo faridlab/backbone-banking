@@ -51,7 +51,6 @@ impl std::ops::Deref for FxGainLossId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct FxGainLoss {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
     pub matched_source_id: Uuid,
     pub currency: String,
@@ -72,10 +71,9 @@ impl FxGainLoss {
     }
 
     /// Create a new FxGainLoss with required fields
-    pub fn new(company_id: Uuid, matched_source_id: Uuid, currency: String, original_rate: Decimal, realised_rate: Decimal, base_amount_delta: Decimal, direction: FxDirection, fx_account_id: Uuid) -> Self {
+    pub fn new(matched_source_id: Uuid, currency: String, original_rate: Decimal, realised_rate: Decimal, base_amount_delta: Decimal, direction: FxDirection, fx_account_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             bank_clearance_id: None,
             matched_source_id,
             currency,
@@ -157,9 +155,6 @@ impl FxGainLoss {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "bank_clearance_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.bank_clearance_id = v; }
                 }
@@ -238,7 +233,6 @@ impl backbone_orm::EntityRepoMeta for FxGainLoss {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("bank_clearance_id".to_string(), "uuid".to_string());
         m.insert("matched_source_id".to_string(), "uuid".to_string());
         m.insert("fx_account_id".to_string(), "uuid".to_string());
@@ -248,9 +242,6 @@ impl backbone_orm::EntityRepoMeta for FxGainLoss {
     fn search_fields() -> &'static [&'static str] {
         &["currency"]
     }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
-    }
 }
 
 /// Builder for FxGainLoss entity
@@ -259,7 +250,6 @@ impl backbone_orm::EntityRepoMeta for FxGainLoss {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct FxGainLossBuilder {
-    company_id: Option<Uuid>,
     bank_clearance_id: Option<Uuid>,
     matched_source_id: Option<Uuid>,
     currency: Option<String>,
@@ -271,12 +261,6 @@ pub struct FxGainLossBuilder {
 }
 
 impl FxGainLossBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the bank_clearance_id field (optional)
     pub fn bank_clearance_id(mut self, value: Uuid) -> Self {
         self.bank_clearance_id = Some(value);
@@ -329,7 +313,6 @@ impl FxGainLossBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<FxGainLoss, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let matched_source_id = self.matched_source_id.ok_or_else(|| "matched_source_id is required".to_string())?;
         let currency = self.currency.ok_or_else(|| "currency is required".to_string())?;
         let original_rate = self.original_rate.ok_or_else(|| "original_rate is required".to_string())?;
@@ -340,7 +323,6 @@ impl FxGainLossBuilder {
 
         Ok(FxGainLoss {
             id: Uuid::new_v4(),
-            company_id,
             bank_clearance_id: self.bank_clearance_id,
             matched_source_id,
             currency,

@@ -103,14 +103,12 @@ impl ReconcileSink for OkEdge {
     }
 }
 
-/// A bank account + one imported deposit line; returns (company, line). The outbox is enabled on
+/// A bank account + one imported deposit line; returns (line, service). The outbox is enabled on
 /// the service — every clear through it stages (or refuses to stage, which is the point).
-async fn fixture(pool: &PgPool, amount: &str, on: u32) -> (Uuid, Uuid, BankingWriteService) {
+async fn fixture(pool: &PgPool, amount: &str, on: u32) -> (Uuid, BankingWriteService) {
     let banking = BankingWriteService::new(pool.clone()).with_outbox_schema("banking");
-    let company = Uuid::new_v4();
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -119,7 +117,6 @@ async fn fixture(pool: &PgPool, amount: &str, on: u32) -> (Uuid, Uuid, BankingWr
         .unwrap();
     let acct = banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -133,7 +130,6 @@ async fn fixture(pool: &PgPool, amount: &str, on: u32) -> (Uuid, Uuid, BankingWr
         .unwrap();
     let import = banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -157,12 +153,14 @@ async fn fixture(pool: &PgPool, amount: &str, on: u32) -> (Uuid, Uuid, BankingWr
             .fetch_one(pool)
             .await
             .unwrap();
-    (company, line, banking)
+    (line, banking)
 }
 
+/// The staged rows for one statement line — the outbox record's payload names it, which isolates
+/// concurrent fixtures without a tenant key (the module is tenant-agnostic, ADR-0029).
 async fn staged(
     pool: &PgPool,
-    company: Uuid,
+    line: Uuid,
 ) -> Vec<(
     String,
     String,
@@ -170,21 +168,22 @@ async fn staged(
     Option<chrono::DateTime<chrono::Utc>>,
 )> {
     sqlx::query_as(
-        "SELECT event_type, aggregate_type, aggregate_id, published_at FROM banking.outbox_events WHERE company_id=$1",
+        "SELECT event_type, aggregate_type, aggregate_id, published_at FROM banking.outbox_events WHERE payload->>'bank_transaction_id'=$1",
     )
-    .bind(company)
+    .bind(line.to_string())
     .fetch_all(pool)
     .await
     .unwrap()
 }
 
 /// CES-1 — a payment-matched clear stages exactly one unpublished `BankClearanceRecorded` carrying
-/// the drift's full vocabulary: which payment, which tenant, how much, and which journal proves it.
+/// the drift's full vocabulary: which payment, how much, and which journal proves it (plus the
+/// legacy tenant lane, nil here — no org scope is bound in a bare test).
 #[tokio::test]
 async fn a_payment_matched_clear_stages_the_confirmation_event() {
     let pool = pool().await;
     migrate_outbox(&pool).await;
-    let (company, line, banking) = fixture(&pool, "500000", 6).await;
+    let (line, banking) = fixture(&pool, "500000", 6).await;
     let payment = Uuid::new_v4();
 
     let out = banking
@@ -204,7 +203,7 @@ async fn a_payment_matched_clear_stages_the_confirmation_event() {
         .await
         .unwrap();
 
-    let rows = staged(&pool, company).await;
+    let rows = staged(&pool, line).await;
     assert_eq!(rows.len(), 1, "exactly one staged event");
     let (ev, agg, agg_id, published) = &rows[0];
     assert_eq!(ev, "BankClearanceRecorded");
@@ -220,9 +219,9 @@ async fn a_payment_matched_clear_stages_the_confirmation_event() {
     );
 
     let payload = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT payload FROM banking.outbox_events WHERE company_id=$1",
+        "SELECT payload FROM banking.outbox_events WHERE payload->>'bank_transaction_id'=$1",
     )
-    .bind(company)
+    .bind(line.to_string())
     .fetch_one(&pool)
     .await
     .unwrap();
@@ -230,9 +229,11 @@ async fn a_payment_matched_clear_stages_the_confirmation_event() {
         payload["payment_id"].as_str(),
         Some(payment.to_string().as_str())
     );
+    // The legacy tenant lane (ADR-0029): nil when no org scope is bound — nothing keys delivery on
+    // it, and the composing service's scope would fill it in a decorated deployment.
     assert_eq!(
         payload["company_id"].as_str(),
-        Some(company.to_string().as_str())
+        Some(Uuid::nil().to_string().as_str())
     );
     assert_eq!(
         payload["bank_transaction_id"].as_str(),
@@ -258,7 +259,7 @@ async fn non_payment_clears_and_charges_stage_nothing() {
     migrate_outbox(&pool).await;
 
     // A non-payment clear (an invoice): commits, stages nothing.
-    let (company, line, banking) = fixture(&pool, "300000", 6).await;
+    let (line, banking) = fixture(&pool, "300000", 6).await;
     banking
         .clear_transaction(
             NewClearance {
@@ -276,12 +277,12 @@ async fn non_payment_clears_and_charges_stage_nothing() {
         .await
         .unwrap();
     assert!(
-        staged(&pool, company).await.is_empty(),
+        staged(&pool, line).await.is_empty(),
         "an invoice-matched clear stages no confirmation"
     );
 
     // A bank charge: commits, stages nothing.
-    let (company2, line2, banking2) = fixture(&pool, "150000", 7).await;
+    let (line2, banking2) = fixture(&pool, "150000", 7).await;
     banking2
         .recognize_bank_charge(
             NewCharge {
@@ -295,7 +296,7 @@ async fn non_payment_clears_and_charges_stage_nothing() {
         .await
         .unwrap();
     assert!(
-        staged(&pool, company2).await.is_empty(),
+        staged(&pool, line2).await.is_empty(),
         "a bank charge stages no confirmation"
     );
 }
@@ -309,7 +310,7 @@ async fn a_refused_clear_stages_nothing() {
     migrate_outbox(&pool).await;
 
     // Bound refusal: attempt to clear MORE than the line holds.
-    let (company, line, banking) = fixture(&pool, "100000", 6).await;
+    let (line, banking) = fixture(&pool, "100000", 6).await;
     let e = banking
         .clear_transaction(
             NewClearance {
@@ -328,7 +329,7 @@ async fn a_refused_clear_stages_nothing() {
         .unwrap_err();
     assert!(matches!(e, BankingError::OverAllocated { .. }));
     assert!(
-        staged(&pool, company).await.is_empty(),
+        staged(&pool, line).await.is_empty(),
         "a bound-refused clear stages nothing"
     );
 
@@ -352,12 +353,12 @@ async fn a_refused_clear_stages_nothing() {
         .unwrap_err();
     assert!(matches!(e, BankingError::GlRejected { .. }));
     assert!(
-        staged(&pool, company).await.is_empty(),
+        staged(&pool, line).await.is_empty(),
         "a GL-refused clear stages nothing"
     );
     let clearances: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
-            .bind(company)
+        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE bank_transaction_id=$1")
+            .bind(line)
             .fetch_one(&pool)
             .await
             .unwrap();

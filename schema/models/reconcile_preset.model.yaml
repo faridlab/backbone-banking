@@ -1,12 +1,14 @@
 # =============================================================================
 # Domain: Banking — Reconcile presets
 # Entity: ReconcilePreset
-# Description: A company-scoped matching preset that ORDERS candidate matches
+# Description: An org-scoped matching preset that ORDERS candidate matches
 #   for an unreconciled statement line. Matching stays a read: the preset
 #   ranks candidates with reasons and a human (or a supervised job) confirms
-#   via the existing clear verb. A preset is strictly tenant-owned (no global
-#   rows) — a match rule that crosses companies would match one company's
-#   invoices against another's statement lines.
+#   via the existing clear verb. A preset is strictly owned by its org unit
+#   (no global rows) — a match rule that crosses tenants would match one
+#   tenant's invoices against another's statement lines. Tenancy: none, by
+#   design (ADR-0029) — the composing service's tenancy decorator owns the
+#   org axis, including the per-unit one-live-name unique.
 # =============================================================================
 
 models:
@@ -19,10 +21,6 @@ models:
         type: uuid
         attributes: ["@id", "@default(uuid)"]
         description: "Unique preset id"
-      company_id:
-        type: uuid
-        attributes: ["@required", "@exclude_from_foreign_key_check"]
-        description: "Books owner # logical FK to organization.Company.id. Strictly tenant-owned: NULL is forbidden (no global presets)"
       name:
         type: string
         attributes: ["@required", "@max(80)"]
@@ -57,11 +55,10 @@ models:
         description: "Audit metadata"
 
     indexes:
-      - type: unique
-        fields: [company_id, name]
-        where: "deleted_at IS NULL"
-      - type: index
-        fields: [company_id, status, priority]
+      # No tenancy indexes (ADR-0029): the module is tenant-agnostic. The per-unit
+      # one-live-preset-name unique and the (status, priority) ordering read are
+      # org_unit_id-leading forms installed by the composing service's tenancy
+      # decorator, not declared here.
 
 enums:
   - name: MatchOn

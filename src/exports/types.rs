@@ -49,7 +49,6 @@ impl From<BankId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankDto {
     pub id: BankId,
-    pub company_id: Uuid,
     pub name: String,
     pub swift_bic: Option<String>,
     pub country: String,
@@ -109,7 +108,6 @@ impl From<BankAccountId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankAccountDto {
     pub id: BankAccountId,
-    pub company_id: Uuid,
     pub branch_id: Option<Uuid>,
     pub bank_id: Uuid,
     pub account_name: String,
@@ -175,7 +173,6 @@ impl From<BankClearanceId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankClearanceDto {
     pub id: BankClearanceId,
-    pub company_id: Uuid,
     pub bank_transaction_id: Uuid,
     pub matched_source_type: MatchedSourceType,
     pub matched_source_id: Uuid,
@@ -237,7 +234,6 @@ impl From<BankReconciliationId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankReconciliationDto {
     pub id: BankReconciliationId,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub from_date: NaiveDate,
     pub to_date: NaiveDate,
@@ -301,7 +297,6 @@ impl From<BankStatementImportId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankStatementImportDto {
     pub id: BankStatementImportId,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub source_format: SourceFormat,
     pub statement_period_start: NaiveDate,
@@ -365,7 +360,6 @@ impl From<BankTransactionId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BankTransactionDto {
     pub id: BankTransactionId,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub import_id: Uuid,
     pub txn_date: NaiveDate,
@@ -431,7 +425,6 @@ impl From<FxGainLossId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxGainLossDto {
     pub id: FxGainLossId,
-    pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
     pub matched_source_id: Uuid,
     pub currency: String,
@@ -493,7 +486,6 @@ impl From<ReconcilePresetId> for Uuid {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReconcilePresetDto {
     pub id: ReconcilePresetId,
-    pub company_id: Uuid,
     pub name: String,
     pub note: Option<String>,
     pub priority: i32,

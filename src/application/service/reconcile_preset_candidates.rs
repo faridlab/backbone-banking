@@ -23,7 +23,7 @@ use rust_decimal::{Decimal, RoundingStrategy};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use super::banking_write_service::{BankingError, BankingWriteService};
 
@@ -51,7 +51,6 @@ pub struct RankedCandidate {
 /// The line side of the ordering, read from banking's own statement tables.
 #[derive(Debug, Clone)]
 pub struct CandidateLineBasis {
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub deposit: Decimal,
     pub withdrawal: Decimal,
@@ -66,7 +65,6 @@ pub trait CandidatePoolPort: Send + Sync {
     async fn open_candidates(
         &self,
         pool: &PgPool,
-        company_id: Uuid,
         bank_account_id: Uuid,
     ) -> Result<Vec<OpenCandidate>, BankingError>;
 }
@@ -82,7 +80,6 @@ impl CandidatePoolPort for PaymentPoolRead {
     async fn open_candidates(
         &self,
         pool: &PgPool,
-        company_id: Uuid,
         bank_account_id: Uuid,
     ) -> Result<Vec<OpenCandidate>, BankingError> {
         let present: Option<String> =
@@ -96,39 +93,40 @@ impl CandidatePoolPort for PaymentPoolRead {
                 "payment.payment_entries is absent — the candidate pool cannot be read".into(),
             ));
         }
-        // RLS note: a raw pool fetch under `with_company_scope` binds nothing on the connection —
-        // the fence on payment.payment_entries then filters every row out and the pool reads as
-        // empty (the set_config-evaporation class). `fetch_all_rows_scoped` opens its own short
-        // tx, binds `app.company_id` there, and commits (ADR-0008), so the pool read sees the
-        // tenant the caller already proved.
+        // Tenancy (ADR-0029): relay the AMBIENT request org scope onto a short transaction and
+        // read there. A raw pool fetch binds nothing on the connection, so whichever fence the
+        // payment schema carries (its legacy company lane today, its decorator's org fence after
+        // its own strip) would filter every row and the pool would read as empty — the ambient
+        // scope binds all the fence variables the remote schema evaluates. No scope bound
+        // (undecorated deployment) reads unfenced, by design.
         //
         // Join-key note: payment's `bank_account_id` is a GL ACCOUNT reference (its model says
         // "Bank/Cash GL account"), not a banking bank-account id — comparing the two ids directly
         // matches nothing, ever. A payment destined for this bank account touches one of ITS two
         // GL accounts: a cash-style payment lands on the bank GL, a transfer sits in the clearing
         // GL until a clearance moves it. The pool therefore matches payments whose GL is either.
-        let rows = company_scope::with_company_scope(
-            Some(company_id),
-            company_scope::fetch_all_rows_scoped(
-                pool,
-                sqlx::query(
-                    r#"SELECT id, payment_number, paid_amount, posting_date, reference_no
+        let mut tx = pool.begin().await.map_err(BankingError::Db)?;
+        if let Some(scope) = org_scope::current_org_scope() {
+            org_scope::bind_org_scope_on(&mut tx, &scope)
+                .await
+                .map_err(BankingError::Db)?;
+        }
+        let rows = sqlx::query(
+            r#"SELECT id, payment_number, paid_amount, posting_date, reference_no
                    FROM payment.payment_entries
-                   WHERE company_id=$1
-                     AND bank_account_id IN (
-                       SELECT gl_account_id FROM banking.bank_accounts WHERE id=$2 AND company_id=$1
+                   WHERE bank_account_id IN (
+                       SELECT gl_account_id FROM banking.bank_accounts WHERE id=$1
                        UNION
-                       SELECT clearing_account_id FROM banking.bank_accounts WHERE id=$2 AND company_id=$1
+                       SELECT clearing_account_id FROM banking.bank_accounts WHERE id=$1
                      )
                      AND posting_state='posted' AND status IN ('in_flight','paid')
                      AND (metadata->>'deleted_at') IS NULL"#,
-                )
-                .bind(company_id)
-                .bind(bank_account_id),
-            ),
         )
+        .bind(bank_account_id)
+        .fetch_all(&mut *tx)
         .await
         .map_err(BankingError::Db)?;
+        tx.commit().await.map_err(BankingError::Db)?;
         Ok(rows
             .into_iter()
             .map(|r| OpenCandidate {
@@ -149,33 +147,24 @@ impl BankingWriteService {
     /// pin).
     pub async fn order_candidates(
         &self,
-        company_id: Uuid,
         preset_id: Uuid,
         line_id: Uuid,
     ) -> Result<Vec<RankedCandidate>, BankingError> {
-        // Preset (tenant-fenced read): company_id explicit — the route's token tenant. The read
-        // must ride the scoped helper, not a raw pool fetch: the fence on reconcile_presets would
-        // otherwise filter the row out and `fetch_one` would surface RowNotFound — which maps to
-        // a generic 500 instead of the 404 a missing preset owes the caller.
-        let preset = company_scope::with_company_scope(
-            Some(company_id),
-            company_scope::fetch_optional_row_scoped(
-                &self.db_pool,
-                sqlx::query(
-                    r#"SELECT company_id, name, match_on::text AS mo, tolerance_percent, days_window, status::text AS st
+        // Preset (fenced read, ADR-0029): the read rides the request-dedicated connection carrying
+        // the composing service's org scope, so the decorator's row-level fence decides visibility —
+        // another unit's preset is indistinguishable from absence, which maps to the 404 a missing
+        // preset owes the caller (not the 500 a RowNotFound would surface).
+        let preset = org_scope::fetch_optional_row_scoped(
+            &self.db_pool,
+            sqlx::query(
+                r#"SELECT name, match_on::text AS mo, tolerance_percent, days_window, status::text AS st
                    FROM banking.reconcile_presets WHERE id=$1 AND (metadata->>'deleted_at') IS NULL"#,
-                )
-                .bind(preset_id),
-            ),
+            )
+            .bind(preset_id),
         )
         .await
         .map_err(BankingError::Db)?
         .ok_or(BankingError::PresetNotFound(preset_id))?;
-        let preset_company: Uuid = preset.get("company_id");
-        if preset_company != company_id {
-            // Strict fence: another tenant's preset is indistinguishable from absence.
-            return Err(BankingError::PresetNotFound(preset_id));
-        }
         let preset_status: String = preset.get("st");
         if preset_status != "active" {
             return Err(BankingError::PresetInactive(preset_id));
@@ -185,18 +174,14 @@ impl BankingWriteService {
         let tolerance: Option<Decimal> = preset.get("tolerance_percent");
         let days_window: Option<i32> = preset.get("days_window");
 
-        // Line (tenant-fenced read).
+        // Line (fenced read, same discipline).
         let row = self
             .repos
             .transactions
             .fetch_candidate_basis(&self.db_pool, line_id)
             .await?
             .ok_or(BankingError::TransactionNotFound(line_id))?;
-        if row.company_id != company_id {
-            return Err(BankingError::TransactionNotFound(line_id));
-        }
         let line = CandidateLineBasis {
-            company_id: row.company_id,
             bank_account_id: row.bank_account_id,
             deposit: row.deposit,
             withdrawal: row.withdrawal,
@@ -207,13 +192,13 @@ impl BankingWriteService {
         // Pool + per-candidate already-cleared (banking's own table — same sum the clear verb uses).
         let pool_rows = self
             .candidates
-            .open_candidates(&self.db_pool, company_id, line.bank_account_id)
+            .open_candidates(&self.db_pool, line.bank_account_id)
             .await?;
         let ids: Vec<Uuid> = pool_rows.iter().map(|c| c.payment_id).collect();
         let cleared = self
             .repos
             .clearances
-            .sums_cleared_for_payments(&self.db_pool, company_id, &ids)
+            .sums_cleared_for_payments(&self.db_pool, &ids)
             .await?;
 
         let line_amount = if line.deposit > Decimal::ZERO {

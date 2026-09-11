@@ -11,7 +11,7 @@ use anyhow::Result;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use crate::domain::entity::BankAccount;
 
@@ -48,7 +48,6 @@ impl BankAccountRepository {
 /// `currency`/`account_type` are already defaulted by the caller, so they are not optional here.
 pub struct NewBankAccountRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub branch_id: Option<Uuid>,
     pub bank_id: Uuid,
     pub account_name: &'a str,
@@ -66,23 +65,22 @@ pub struct NewBankAccountRow<'a> {
 impl BankAccountRepository {
     /// Register a bank account.
     ///
-    /// A write outside any transaction: takes the pool and runs `execute_scoped` so the RLS fence
-    /// (ADR-0008) applies. The caller wraps this in `with_company_scope(Some(company))` — see
-    /// [`super::BankRepository::insert_bank`].
+    /// A write outside any transaction: takes the pool and runs `org_scope::execute_scoped` — the
+    /// same ambient-scope discipline as [`super::BankRepository::insert_bank`] (ADR-0029).
     pub async fn insert_bank_account(
         &self,
         pool: &PgPool,
         a: &NewBankAccountRow<'_>,
     ) -> Result<(), sqlx::Error> {
-        company_scope::execute_scoped(
+        org_scope::execute_scoped(
             pool,
             sqlx::query(
                 r#"INSERT INTO banking.bank_accounts
-                    (id, company_id, branch_id, bank_id, account_name, account_number, gl_account_id,
+                    (id, branch_id, bank_id, account_name, account_number, gl_account_id,
                      clearing_account_id, currency, account_type, is_default, status)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::bank_account_type,false,'active')"#,
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::bank_account_type,false,'active')"#,
             )
-            .bind(a.id).bind(a.company_id).bind(a.branch_id).bind(a.bank_id).bind(a.account_name)
+            .bind(a.id).bind(a.branch_id).bind(a.bank_id).bind(a.account_name)
             .bind(a.account_number).bind(a.gl_account_id).bind(a.clearing_account_id)
             .bind(a.currency).bind(a.account_type),
         )

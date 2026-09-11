@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.fx_gain_losses (
 --     id,
---     company_id,
 --     bank_clearance_id,
 --     matched_source_id,
 --     currency,

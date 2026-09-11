@@ -35,9 +35,6 @@ use crate::domain::entity::PresetStatus;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateReconcilePresetDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
@@ -68,9 +65,6 @@ pub struct CreateReconcilePresetDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateReconcilePresetDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
@@ -101,9 +95,6 @@ pub struct UpdateReconcilePresetDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchReconcilePresetDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 80)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,7 +118,7 @@ pub struct PatchReconcilePresetDto {
 impl PatchReconcilePresetDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.note.is_some() || self.priority.is_some() || self.match_on.is_some() || self.tolerance_percent.is_some() || self.days_window.is_some() || self.status.is_some()
+        self.name.is_some() || self.note.is_some() || self.priority.is_some() || self.match_on.is_some() || self.tolerance_percent.is_some() || self.days_window.is_some() || self.status.is_some()
     }
 }
 
@@ -145,8 +136,6 @@ impl PatchReconcilePresetDto {
 pub struct ReconcilePresetResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
     pub note: Option<String>,
@@ -213,9 +202,9 @@ impl ReconcilePresetListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct ReconcilePresetSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub name: String,
     pub note: Option<String>,
+    pub priority: i32,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -227,7 +216,6 @@ impl From<ReconcilePreset> for ReconcilePresetResponseDto {
     fn from(entity: ReconcilePreset) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             name: entity.name,
             note: entity.note,
             priority: entity.priority,
@@ -245,9 +233,9 @@ impl From<ReconcilePreset> for ReconcilePresetSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             name: entity.name,
             note: entity.note,
+            priority: entity.priority,
             created_at,
         }
     }
@@ -257,7 +245,6 @@ impl From<CreateReconcilePresetDto> for ReconcilePreset {
     fn from(dto: CreateReconcilePresetDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             name: dto.name,
             note: dto.note,
             priority: dto.priority,
@@ -274,7 +261,6 @@ impl From<&ReconcilePreset> for ReconcilePresetResponseDto {
     fn from(entity: &ReconcilePreset) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             name: entity.name.clone(),
             note: entity.note.clone(),
             priority: entity.priority.clone(),
@@ -295,7 +281,6 @@ impl backbone_core::FromCreateDto<CreateReconcilePresetDto> for ReconcilePreset 
 
 impl backbone_core::ApplyUpdateDto<UpdateReconcilePresetDto> for ReconcilePreset {
     fn apply_update(mut self, dto: UpdateReconcilePresetDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.name = dto.name;
         self.note = dto.note;
         self.priority = dto.priority;

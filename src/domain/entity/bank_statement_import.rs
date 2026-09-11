@@ -52,7 +52,6 @@ impl std::ops::Deref for BankStatementImportId {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankStatementImport {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub source_format: SourceFormat,
     pub statement_period_start: NaiveDate,
@@ -74,10 +73,9 @@ impl BankStatementImport {
     }
 
     /// Create a new BankStatementImport with required fields
-    pub fn new(company_id: Uuid, bank_account_id: Uuid, source_format: SourceFormat, statement_period_start: NaiveDate, statement_period_end: NaiveDate, opening_balance: Decimal, closing_balance: Decimal, status: ImportStatus, row_count: i32) -> Self {
+    pub fn new(bank_account_id: Uuid, source_format: SourceFormat, statement_period_start: NaiveDate, statement_period_end: NaiveDate, opening_balance: Decimal, closing_balance: Decimal, status: ImportStatus, row_count: i32) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             source_format,
             statement_period_start,
@@ -165,9 +163,6 @@ impl BankStatementImport {
     pub fn apply_patch(&mut self, fields: std::collections::HashMap<String, serde_json::Value>) {
         for (key, value) in fields {
             match key.as_str() {
-                "company_id" => {
-                    if let Ok(v) = serde_json::from_value(value) { self.company_id = v; }
-                }
                 "bank_account_id" => {
                     if let Ok(v) = serde_json::from_value(value) { self.bank_account_id = v; }
                 }
@@ -249,7 +244,6 @@ impl backbone_orm::EntityRepoMeta for BankStatementImport {
     fn column_types() -> std::collections::HashMap<String, String> {
         let mut m = std::collections::HashMap::new();
         m.insert("id".to_string(), "uuid".to_string());
-        m.insert("company_id".to_string(), "uuid".to_string());
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("source_format".to_string(), "source_format".to_string());
         m.insert("status".to_string(), "import_status".to_string());
@@ -257,9 +251,6 @@ impl backbone_orm::EntityRepoMeta for BankStatementImport {
     }
     fn search_fields() -> &'static [&'static str] {
         &[]
-    }
-    fn company_field() -> Option<&'static str> {
-        Some("company_id")
     }
 }
 
@@ -269,7 +260,6 @@ impl backbone_orm::EntityRepoMeta for BankStatementImport {
 /// System fields (id, metadata, timestamps) are auto-initialized.
 #[derive(Debug, Clone, Default)]
 pub struct BankStatementImportBuilder {
-    company_id: Option<Uuid>,
     bank_account_id: Option<Uuid>,
     source_format: Option<SourceFormat>,
     statement_period_start: Option<NaiveDate>,
@@ -282,12 +272,6 @@ pub struct BankStatementImportBuilder {
 }
 
 impl BankStatementImportBuilder {
-    /// Set the company_id field (required)
-    pub fn company_id(mut self, value: Uuid) -> Self {
-        self.company_id = Some(value);
-        self
-    }
-
     /// Set the bank_account_id field (required)
     pub fn bank_account_id(mut self, value: Uuid) -> Self {
         self.bank_account_id = Some(value);
@@ -346,14 +330,12 @@ impl BankStatementImportBuilder {
     ///
     /// Returns Err if any required field without a default is missing.
     pub fn build(self) -> Result<BankStatementImport, String> {
-        let company_id = self.company_id.ok_or_else(|| "company_id is required".to_string())?;
         let bank_account_id = self.bank_account_id.ok_or_else(|| "bank_account_id is required".to_string())?;
         let statement_period_start = self.statement_period_start.ok_or_else(|| "statement_period_start is required".to_string())?;
         let statement_period_end = self.statement_period_end.ok_or_else(|| "statement_period_end is required".to_string())?;
 
         Ok(BankStatementImport {
             id: Uuid::new_v4(),
-            company_id,
             bank_account_id,
             source_format: self.source_format.unwrap_or_default(),
             statement_period_start,

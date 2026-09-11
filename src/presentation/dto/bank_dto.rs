@@ -33,9 +33,6 @@ use crate::domain::entity::BankStatus;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
@@ -61,9 +58,6 @@ pub struct CreateBankDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
@@ -89,9 +83,6 @@ pub struct UpdateBankDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
     #[cfg_attr(feature = "validation", validate(length(max = 140)))]
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -110,7 +101,7 @@ pub struct PatchBankDto {
 impl PatchBankDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.status.is_some()
+        self.name.is_some() || self.swift_bic.is_some() || self.country.is_some() || self.status.is_some()
     }
 }
 
@@ -128,8 +119,6 @@ impl PatchBankDto {
 pub struct BankResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     pub name: String,
     pub swift_bic: Option<String>,
@@ -193,9 +182,9 @@ impl BankListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct BankSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub name: String,
     pub swift_bic: Option<String>,
+    pub country: String,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -207,7 +196,6 @@ impl From<Bank> for BankResponseDto {
     fn from(entity: Bank) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             name: entity.name,
             swift_bic: entity.swift_bic,
             country: entity.country,
@@ -222,9 +210,9 @@ impl From<Bank> for BankSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             name: entity.name,
             swift_bic: entity.swift_bic,
+            country: entity.country,
             created_at,
         }
     }
@@ -234,7 +222,6 @@ impl From<CreateBankDto> for Bank {
     fn from(dto: CreateBankDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             name: dto.name,
             swift_bic: dto.swift_bic,
             country: dto.country,
@@ -248,7 +235,6 @@ impl From<&Bank> for BankResponseDto {
     fn from(entity: &Bank) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             name: entity.name.clone(),
             swift_bic: entity.swift_bic.clone(),
             country: entity.country.clone(),
@@ -266,7 +252,6 @@ impl backbone_core::FromCreateDto<CreateBankDto> for Bank {
 
 impl backbone_core::ApplyUpdateDto<UpdateBankDto> for Bank {
     fn apply_update(mut self, dto: UpdateBankDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.name = dto.name;
         self.swift_bic = dto.swift_bic;
         self.country = dto.country;

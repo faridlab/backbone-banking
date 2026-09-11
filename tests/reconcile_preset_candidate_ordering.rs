@@ -25,6 +25,20 @@ use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use std::future::Future;
+
+/// Drive a payment settlement verb inside the org request scope the composition layer always
+/// binds (ADR-0029) — those verbs read the legacy company twin off the ambient scope.
+async fn in_org_scope<R>(pool: &PgPool, f: impl Future<Output = R>) -> R {
+    backbone_orm::org_scope::with_org_request_scope(
+        pool,
+        backbone_orm::org_scope::OrgScope::for_company_unit(Uuid::new_v4()),
+        f,
+    )
+    .await
+    .expect("bind org request scope")
+}
+
 use backbone_banking::application::service::banking_gl::{
     AccountingPostEnvelope as BankEnv, GlPostAck as BankAck, GlPostRejected as BankRej,
     GlPostSink as BankSink, ReconcileEdgeAck, ReconcilePairRequest, ReconcileRejected,
@@ -153,10 +167,9 @@ impl ReconcileSink for OkEdge {
 /// payments reference the GL leg, not the bank account: payment's model declares
 /// `bank_account_id` as a Bank/Cash GL ACCOUNT reference, and the pool matches a payment
 /// onto this bank account through either of its GL legs (bank or clearing).
-async fn fixture(_pool: &PgPool, banking: &BankingWriteService, company: Uuid) -> (Uuid, Uuid) {
+async fn fixture(_pool: &PgPool, banking: &BankingWriteService, _company: Uuid) -> (Uuid, Uuid) {
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -166,7 +179,6 @@ async fn fixture(_pool: &PgPool, banking: &BankingWriteService, company: Uuid) -
     let gl = Uuid::new_v4();
     let acct = banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -196,7 +208,6 @@ async fn payment(
     let id = w
         .create_payment(NewPayment {
             payment_number: format!("{number}-{}", &Uuid::new_v4().simple().to_string()[..8]),
-            company_id: company,
             branch_id: None,
             payment_type: "receive".into(),
             party_type: Some("customer".into()),
@@ -221,7 +232,7 @@ async fn payment(
         })
         .await
         .unwrap();
-    w.post_payment(id, &PayOkGl).await.unwrap();
+    in_org_scope(&pool, w.post_payment(id, &PayOkGl)).await.unwrap();
     id
 }
 
@@ -229,7 +240,6 @@ async fn payment(
 async fn line(
     pool: &PgPool,
     banking: &BankingWriteService,
-    company: Uuid,
     acct: Uuid,
     amount: &str,
     on: u32,
@@ -237,7 +247,6 @@ async fn line(
 ) -> Uuid {
     let import = banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -264,7 +273,6 @@ async fn line(
 
 async fn preset(
     pool: &PgPool,
-    company: Uuid,
     name: &str,
     match_on: &str,
     tolerance: Option<Decimal>,
@@ -273,11 +281,10 @@ async fn preset(
 ) -> Uuid {
     let id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO banking.reconcile_presets (id, company_id, name, match_on, tolerance_percent, days_window, status)
-         VALUES ($1,$2,$3,$4::match_on,$5,$6,$7::preset_status)",
+        "INSERT INTO banking.reconcile_presets (id, name, match_on, tolerance_percent, days_window, status)
+         VALUES ($1,$2,$3::match_on,$4,$5,$6::preset_status)",
     )
     .bind(id)
-    .bind(company)
     .bind(name)
     .bind(match_on)
     .bind(tolerance)
@@ -306,10 +313,9 @@ async fn ordering_is_deterministic_and_side_effect_free() {
     let c = payment(&pool, company, gl, "PE-C", "500000", 3, None).await;
     let a = payment(&pool, company, gl, "PE-A", "500000", 5, None).await;
     let b = payment(&pool, company, gl, "PE-B", "500000", 4, None).await;
-    let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
+    let l = line(&pool, &banking, acct, "500000", 6, None).await;
     let p = preset(
         &pool,
-        company,
         "exact",
         "amount_exact",
         None,
@@ -320,7 +326,7 @@ async fn ordering_is_deterministic_and_side_effect_free() {
 
     // The side-effect-free probe: snapshot everything the ranking could possibly move, then
     // assert none of it moved (below, after both calls).
-    let first = banking.order_candidates(company, p, l).await.unwrap();
+    let first = banking.order_candidates(p, l).await.unwrap();
     assert_eq!(
         first.iter().map(|c| c.payment_id).collect::<Vec<_>>(),
         vec![a, b, c],
@@ -335,7 +341,7 @@ async fn ordering_is_deterministic_and_side_effect_free() {
         "the reason names its preset"
     );
 
-    let second = banking.order_candidates(company, p, l).await.unwrap();
+    let second = banking.order_candidates(p, l).await.unwrap();
     assert_eq!(
         first, second,
         "the same committed state yields the identical list"
@@ -354,17 +360,23 @@ async fn ordering_is_deterministic_and_side_effect_free() {
         (Decimal::ZERO, "unreconciled".to_string()),
         "no watermark advance"
     );
-    let clearances: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
-            .bind(company)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(clearances, 0, "ranking writes no clearance");
-    let pays: Vec<(String, String)> = sqlx::query_as(
-        "SELECT status::text, posting_state::text FROM payment.payment_entries WHERE company_id=$1 ORDER BY id",
+    let clearances: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM banking.bank_clearances c
+         JOIN banking.bank_transactions t ON t.id = c.bank_transaction_id
+         WHERE t.bank_account_id=$1",
     )
-    .bind(company)
+    .bind(acct)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(clearances, 0, "ranking writes no clearance");
+    // ID-only, per ADR-0029: payment_entries carries no tenant column, so the drift check pins
+    // exactly the payments this test minted.
+    let pays: Vec<(String, String)> = sqlx::query_as(
+        "SELECT status::text, posting_state::text FROM payment.payment_entries \
+         WHERE id = ANY($1) ORDER BY id",
+    )
+    .bind(&[a, b, c])
     .fetch_all(&pool)
     .await
     .unwrap();
@@ -399,10 +411,9 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
 
     // reference_exact: only the equal reference survives; the others are not "ranked lower" —
     // they are not candidates under this signal at all.
-    let l_ref = line(&pool, &banking, company, acct, "500000", 6, Some("VA-777")).await;
+    let l_ref = line(&pool, &banking, acct, "500000", 6, Some("VA-777")).await;
     let p_ref = preset(
         &pool,
-        company,
         "by-ref",
         "reference_exact",
         None,
@@ -411,7 +422,7 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     )
     .await;
     let ranked = banking
-        .order_candidates(company, p_ref, l_ref)
+        .order_candidates(p_ref, l_ref)
         .await
         .unwrap();
     assert_eq!(ranked.len(), 1);
@@ -426,9 +437,9 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     );
 
     // A line whose reference matches nobody → the honest empty list (no fiction).
-    let l_miss = line(&pool, &banking, company, acct, "500000", 6, Some("VA-000")).await;
+    let l_miss = line(&pool, &banking, acct, "500000", 6, Some("VA-000")).await;
     assert!(banking
-        .order_candidates(company, p_ref, l_miss)
+        .order_candidates(p_ref, l_miss)
         .await
         .unwrap()
         .is_empty());
@@ -437,10 +448,9 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     // amount_exact against the OPEN amount: clear 200k of the 500k payment through the real verb,
     // then a 300k line ranks it at open 300k. Before the clear, a 300k line would rank nothing
     // (open 500000 ≠ 300000) — ordering and clearing share one watermark.
-    let l300_before = line(&pool, &banking, company, acct, "300000", 7, None).await;
+    let l300_before = line(&pool, &banking, acct, "300000", 7, None).await;
     let p_amt = preset(
         &pool,
-        company,
         "by-amt",
         "amount_exact",
         None,
@@ -450,14 +460,14 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     .await;
     assert!(
         banking
-            .order_candidates(company, p_amt, l300_before)
+            .order_candidates(p_amt, l300_before)
             .await
             .unwrap()
             .is_empty(),
         "open 500000 does not equal the 300000 line — nothing ranks yet"
     );
 
-    let l200 = line(&pool, &banking, company, acct, "200000", 7, None).await;
+    let l200 = line(&pool, &banking, acct, "200000", 7, None).await;
     banking
         .clear_transaction(
             NewClearance {
@@ -476,7 +486,7 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
         .unwrap();
 
     let ranked = banking
-        .order_candidates(company, p_amt, l300_before)
+        .order_candidates(p_amt, l300_before)
         .await
         .unwrap();
     assert_eq!(ranked.len(), 1);
@@ -488,26 +498,24 @@ async fn reference_outranks_and_amount_matches_the_open_watermark() {
     );
 }
 
-/// RPO-3 — tolerance + days-window arms, and the fence refusals: another tenant's preset is
-/// indistinguishable from absence (404-class), an inactive preset refuses, and the arms that need
-/// a parameter refuse when it is missing.
+/// RPO-3 — tolerance + days-window arms, and the fence refusals: a preset outside the caller's
+/// fence is indistinguishable from absence (not-found), an inactive preset refuses, and the arms
+/// that need a parameter refuse when it is missing.
 #[tokio::test]
 async fn tolerance_days_window_and_the_fence_refusals() {
     let pool = pool().await;
     let company = Uuid::new_v4();
-    let stranger = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone());
     let (acct, gl) = fixture(&pool, &banking, company).await;
 
     let near = payment(&pool, company, gl, "PE-N", "505000", 5, None).await; // +1.0% off the line
     let far = payment(&pool, company, gl, "PE-F", "600000", 5, None).await; // +20% off the line
-    let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
+    let l = line(&pool, &banking, acct, "500000", 6, None).await;
 
     // amount_within_tolerance @ 1.00%: the near payment admits (deviation exactly 1.0), the far
     // one does not.
     let p_tol = preset(
         &pool,
-        company,
         "tol",
         "amount_within_tolerance",
         Some(d("1.00")),
@@ -515,7 +523,7 @@ async fn tolerance_days_window_and_the_fence_refusals() {
         "active",
     )
     .await;
-    let ranked = banking.order_candidates(company, p_tol, l).await.unwrap();
+    let ranked = banking.order_candidates(p_tol, l).await.unwrap();
     assert_eq!(
         ranked.iter().map(|c| c.payment_id).collect::<Vec<_>>(),
         vec![near]
@@ -528,7 +536,6 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     let out_window = payment(&pool, company, gl, "PE-D2", "500000", 1, None).await;
     let p_days = preset(
         &pool,
-        company,
         "days",
         "days_window",
         None,
@@ -536,7 +543,7 @@ async fn tolerance_days_window_and_the_fence_refusals() {
         "active",
     )
     .await;
-    let ranked = banking.order_candidates(company, p_days, l).await.unwrap();
+    let ranked = banking.order_candidates(p_days, l).await.unwrap();
     let ids: Vec<Uuid> = ranked.iter().map(|c| c.payment_id).collect();
     assert!(
         ids.contains(&near) && ids.contains(&far),
@@ -550,20 +557,14 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     );
     assert!(ranked.iter().all(|c| c.score == 70));
 
-    // Fence: a preset belonging to another tenant is not-found — never readable, never rankable.
-    let foreign = preset(
-        &pool,
-        stranger,
-        "foreign",
-        "amount_exact",
-        None,
-        None,
-        "active",
-    )
-    .await;
+    // Fence: a preset the caller's scope never holds is not-found — the module is ID-only, and
+    // under the composing service's fence a preset outside the caller's unit tree is
+    // indistinguishable from absence (never readable, never rankable). This bare database mounts
+    // no fence, so the probe orders under an id nothing seeded: the same not-found refusal.
+    let unseeded = Uuid::new_v4();
     assert!(matches!(
         banking
-            .order_candidates(company, foreign, l)
+            .order_candidates(unseeded, l)
             .await
             .unwrap_err(),
         BankingError::PresetNotFound(_)
@@ -571,7 +572,6 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     // Inactive presets refuse — a retired rule must not keep ordering.
     let off = preset(
         &pool,
-        company,
         "off",
         "amount_exact",
         None,
@@ -580,13 +580,12 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     )
     .await;
     assert!(matches!(
-        banking.order_candidates(company, off, l).await.unwrap_err(),
+        banking.order_candidates(off, l).await.unwrap_err(),
         BankingError::PresetInactive(_)
     ));
     // The arms that need their parameter refuse when it is missing.
     let no_tol = preset(
         &pool,
-        company,
         "no-tol",
         "amount_within_tolerance",
         None,
@@ -596,14 +595,13 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     .await;
     assert!(matches!(
         banking
-            .order_candidates(company, no_tol, l)
+            .order_candidates(no_tol, l)
             .await
             .unwrap_err(),
         BankingError::PresetMissingTolerance(_)
     ));
     let no_days = preset(
         &pool,
-        company,
         "no-days",
         "days_window",
         None,
@@ -613,7 +611,7 @@ async fn tolerance_days_window_and_the_fence_refusals() {
     .await;
     assert!(matches!(
         banking
-            .order_candidates(company, no_days, l)
+            .order_candidates(no_days, l)
             .await
             .unwrap_err(),
         BankingError::PresetMissingDaysWindow(_)
@@ -629,9 +627,9 @@ async fn party_match_on_ranks_nothing_and_says_so() {
     let banking = BankingWriteService::new(pool.clone());
     let (acct, gl) = fixture(&pool, &banking, company).await;
     let _ = payment(&pool, company, gl, "PE-P", "500000", 5, None).await;
-    let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
-    let p = preset(&pool, company, "by-party", "party", None, None, "active").await;
-    let ranked = banking.order_candidates(company, p, l).await.unwrap();
+    let l = line(&pool, &banking, acct, "500000", 6, None).await;
+    let p = preset(&pool, "by-party", "party", None, None, "active").await;
+    let ranked = banking.order_candidates(p, l).await.unwrap();
     assert!(
         ranked.is_empty(),
         "party ranks nothing while no counterparty rides a line"
@@ -648,7 +646,6 @@ async fn the_candidate_pool_is_an_injected_port() {
         async fn open_candidates(
             &self,
             _pool: &PgPool,
-            _company_id: Uuid,
             _bank_account_id: Uuid,
         ) -> Result<Vec<OpenCandidate>, BankingError> {
             Ok(vec![OpenCandidate {
@@ -665,10 +662,9 @@ async fn the_candidate_pool_is_an_injected_port() {
     let company = Uuid::new_v4();
     let banking = BankingWriteService::new(pool.clone()).with_candidate_port(Arc::new(StubPool));
     let (acct, _gl) = fixture(&pool, &banking, company).await; // pool comes from the stub
-    let l = line(&pool, &banking, company, acct, "500000", 6, None).await;
+    let l = line(&pool, &banking, acct, "500000", 6, None).await;
     let p = preset(
         &pool,
-        company,
         "stub-exact",
         "amount_exact",
         None,
@@ -677,7 +673,7 @@ async fn the_candidate_pool_is_an_injected_port() {
     )
     .await;
 
-    let ranked = banking.order_candidates(company, p, l).await.unwrap();
+    let ranked = banking.order_candidates(p, l).await.unwrap();
     assert_eq!(ranked.len(), 1);
     assert_eq!(
         ranked[0].payment_number, "STUB-1",

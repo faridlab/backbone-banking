@@ -24,7 +24,6 @@ impl TestDataGenerator for BankAccountTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": Uuid::new_v4().to_string(),
-            "company_id": Uuid::new_v4().to_string(),
             "branch_id": null,
             "bank_id": Uuid::new_v4().to_string(),
             "account_name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
@@ -43,7 +42,6 @@ impl TestDataGenerator for BankAccountTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": id,
-            "company_id": Uuid::new_v4().to_string(),
             "branch_id": null,
             "bank_id": Uuid::new_v4().to_string(),
             "account_name": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),

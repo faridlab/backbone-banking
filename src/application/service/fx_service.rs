@@ -31,6 +31,10 @@ pub struct ExchangeRateSnapshot {
 #[async_trait::async_trait]
 pub trait ExchangeRateProvider: Send + Sync {
     /// Resolve the latest spot rate `from → to` effective on or before `date`.
+    ///
+    /// `company_id` is the legacy tenancy twin input (ADR-0029): the composing host implements
+    /// this port over the rate engine's own owner (corporate's FX service), whose resolution may
+    /// still be keyed per company. Nothing in this module keys a statement on the value.
     async fn spot(
         &self,
         company_id: Uuid,
@@ -86,7 +90,6 @@ impl FxService {
     /// Records an `FxGainLoss` row and returns the result.
     pub async fn compute_fx_gain_loss(
         &self,
-        company_id: Uuid,
         bank_clearance_id: Option<Uuid>,
         matched_source_id: Uuid,
         currency: &str,
@@ -104,8 +107,12 @@ impl FxService {
             "loss"
         };
 
+        // Tenancy (ADR-0029): relay the AMBIENT request org scope onto this transaction when the
+        // composing service bound one; an undecorated deployment skips this (unfenced by design).
         let mut tx = self.db_pool.begin().await?;
-        backbone_orm::company_scope::bind_company_on(&mut tx, company_id).await?;
+        if let Some(scope) = backbone_orm::org_scope::current_org_scope() {
+            backbone_orm::org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+        }
         let id = Uuid::new_v4();
         let gain_losses = FxGainLossRepository::new(self.db_pool.clone());
         gain_losses
@@ -113,7 +120,6 @@ impl FxService {
                 &mut *tx,
                 &NewFxGainLossRow {
                     id,
-                    company_id,
                     bank_clearance_id,
                     matched_source_id,
                     currency,

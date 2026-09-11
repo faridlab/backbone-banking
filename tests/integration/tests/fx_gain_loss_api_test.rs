@@ -24,7 +24,6 @@ impl TestDataGenerator for FxGainLossTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": Uuid::new_v4().to_string(),
-            "company_id": Uuid::new_v4().to_string(),
             "bank_clearance_id": null,
             "matched_source_id": Uuid::new_v4().to_string(),
             "currency": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),
@@ -41,7 +40,6 @@ impl TestDataGenerator for FxGainLossTestData {
         let now = Utc::now().to_rfc3339();
         json!({
             "id": id,
-            "company_id": Uuid::new_v4().to_string(),
             "bank_clearance_id": null,
             "matched_source_id": Uuid::new_v4().to_string(),
             "currency": format!("Test {}", Uuid::new_v4().to_string().split('-').next().unwrap()),

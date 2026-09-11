@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.bank_transactions (
 --     id,
---     company_id,
 --     bank_account_id,
 --     import_id,
 --     txn_date,

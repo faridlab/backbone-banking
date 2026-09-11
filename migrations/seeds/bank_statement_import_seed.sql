@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.bank_statement_imports (
 --     id,
---     company_id,
 --     bank_account_id,
 --     source_format,
 --     statement_period_start,

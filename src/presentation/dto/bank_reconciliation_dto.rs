@@ -35,9 +35,6 @@ use crate::domain::entity::ReconStatus;
 #[serde(rename_all = "camelCase")]
 pub struct CreateBankReconciliationDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -73,9 +70,6 @@ pub struct CreateBankReconciliationDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBankReconciliationDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
@@ -113,9 +107,6 @@ pub struct UpdateBankReconciliationDto {
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankReconciliationDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_account_id")]
     pub bank_account_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -142,7 +133,7 @@ pub struct PatchBankReconciliationDto {
 impl PatchBankReconciliationDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_account_id.is_some() || self.from_date.is_some() || self.to_date.is_some() || self.statement_closing_balance.is_some() || self.ledger_balance.is_some() || self.computed_difference.is_some() || self.unreconciled_count.is_some() || self.status.is_some() || self.preset_id.is_some()
+        self.bank_account_id.is_some() || self.from_date.is_some() || self.to_date.is_some() || self.statement_closing_balance.is_some() || self.ledger_balance.is_some() || self.computed_difference.is_some() || self.unreconciled_count.is_some() || self.status.is_some() || self.preset_id.is_some()
     }
 }
 
@@ -160,8 +151,6 @@ impl PatchBankReconciliationDto {
 pub struct BankReconciliationResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub bank_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
@@ -232,9 +221,9 @@ impl BankReconciliationListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct BankReconciliationSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub from_date: NaiveDate,
+    pub to_date: NaiveDate,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -246,7 +235,6 @@ impl From<BankReconciliation> for BankReconciliationResponseDto {
     fn from(entity: BankReconciliation) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_account_id: entity.bank_account_id,
             from_date: entity.from_date,
             to_date: entity.to_date,
@@ -266,9 +254,9 @@ impl From<BankReconciliation> for BankReconciliationSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_account_id: entity.bank_account_id,
             from_date: entity.from_date,
+            to_date: entity.to_date,
             created_at,
         }
     }
@@ -278,7 +266,6 @@ impl From<CreateBankReconciliationDto> for BankReconciliation {
     fn from(dto: CreateBankReconciliationDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             bank_account_id: dto.bank_account_id,
             from_date: dto.from_date,
             to_date: dto.to_date,
@@ -297,7 +284,6 @@ impl From<&BankReconciliation> for BankReconciliationResponseDto {
     fn from(entity: &BankReconciliation) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             bank_account_id: entity.bank_account_id.clone(),
             from_date: entity.from_date.clone(),
             to_date: entity.to_date.clone(),
@@ -320,7 +306,6 @@ impl backbone_core::FromCreateDto<CreateBankReconciliationDto> for BankReconcili
 
 impl backbone_core::ApplyUpdateDto<UpdateBankReconciliationDto> for BankReconciliation {
     fn apply_update(mut self, dto: UpdateBankReconciliationDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.bank_account_id = dto.bank_account_id;
         self.from_date = dto.from_date;
         self.to_date = dto.to_date;

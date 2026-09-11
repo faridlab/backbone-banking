@@ -19,6 +19,20 @@ use rust_decimal::Decimal;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
+use std::future::Future;
+
+/// Drive a payment settlement verb inside the org request scope the composition layer always
+/// binds (ADR-0029) — those verbs read the legacy company twin off the ambient scope.
+async fn in_org_scope<R>(pool: &PgPool, f: impl Future<Output = R>) -> R {
+    backbone_orm::org_scope::with_org_request_scope(
+        pool,
+        backbone_orm::org_scope::OrgScope::for_company_unit(Uuid::new_v4()),
+        f,
+    )
+    .await
+    .expect("bind org request scope")
+}
+
 use backbone_banking::application::service::banking_events::{BankingEvent, BankingEventSink};
 use backbone_banking::application::service::banking_gl::{
     AccountingPostEnvelope as BankEnv, GlPostAck as BankAck, GlPostRejected as BankRej,
@@ -272,6 +286,8 @@ async fn pool() -> PgPool {
 /// A/R + clearing + bank chart. `clearing_reconcilable` flags the clearing account for the graph
 /// (guard G3) — the happy paths set it true; the fail-closed probe seeds it false.
 async fn seed(pool: &PgPool, clearing_reconcilable: bool) -> (Uuid, HashMap<&'static str, Uuid>) {
+    // Payment (not yet on the ADR-0029 tenant-free footing) still keys its documents by company;
+    // this mint exists only to fill that legacy field.
     let company = Uuid::new_v4();
     let coa: &[(&str, &str, &str, &str, &str, bool)] = &[
         (
@@ -303,9 +319,9 @@ async fn seed(pool: &PgPool, clearing_reconcilable: bool) -> (Uuid, HashMap<&'st
     let mut m = HashMap::new();
     for (code, name, at, st, nb, rec) in coa {
         let id = Uuid::new_v4();
-        sqlx::query(r#"INSERT INTO accounting.accounts (id, company_id, account_number, account_code, name, account_type, account_subtype, normal_balance, is_header, is_detail, is_reconcilable, status)
-            VALUES ($1,$2,$3,$4,$5,$6::account_type,$7::account_subtype,$8::normal_balance,false,true,$9,'active'::account_status)"#)
-            .bind(id).bind(company).bind(code).bind(code).bind(name).bind(at).bind(st).bind(nb).bind(rec)
+        sqlx::query(r#"INSERT INTO accounting.accounts (id, account_number, account_code, name, account_type, account_subtype, normal_balance, is_header, is_detail, is_reconcilable, status)
+            VALUES ($1,$2,$2,$3,$4::account_type,$5::account_subtype,$6::normal_balance,false,true,$7,'active'::account_status)"#)
+            .bind(id).bind(code).bind(name).bind(at).bind(st).bind(nb).bind(rec)
             .execute(pool).await.expect("seed acct");
         m.insert(*code, id);
     }
@@ -321,37 +337,55 @@ async fn balance(pool: &PgPool, account: Uuid) -> Decimal {
 
 // --- reconciliation-graph reads (the ledger-side proof of every clearing) ---------------------
 
-/// Σ clearing edges + their count for the company.
-async fn clearing_edges(pool: &PgPool, company: Uuid) -> (Decimal, i64) {
-    sqlx::query_as("SELECT COALESCE(SUM(amount),0), COUNT(*) FROM accounting.partial_reconciles WHERE company_id=$1 AND origin='clearing'")
-        .bind(company).fetch_one(pool).await.unwrap()
+/// The seeded chart as an account-id list — each test seeds fresh accounts, so the ids
+/// themselves are the per-test scope for graph reads (the graph tables carry no tenant
+/// column, ADR-0029).
+fn chart(coa: &HashMap<&'static str, Uuid>) -> Vec<Uuid> {
+    vec![coa["1200"], coa["1190"], coa["1110"]]
+}
+
+/// Σ clearing edges + their count within one seeded chart.
+async fn clearing_edges(pool: &PgPool, accounts: &[Uuid]) -> (Decimal, i64) {
+    // EXISTS (not a JOIN): a clearing edge pairs TWO lines on the SAME clearing account, so a
+    // join on the moves would count each edge — and its amount — twice.
+    sqlx::query_as(
+        "SELECT COALESCE(SUM(p.amount),0), COUNT(*) FROM accounting.partial_reconciles p \
+         WHERE p.origin='clearing' \
+           AND EXISTS (SELECT 1 FROM accounting.journal_lines jl \
+                        WHERE jl.id IN (p.debit_move_id, p.credit_move_id) \
+                          AND jl.account_id = ANY($1))",
+    )
+    .bind(accounts)
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 /// A clearing-account line's residual — its signed amount minus every partial touching it. The
 /// account pin matters: a source posts SEVERAL lines (the clearance posts Bank + Clearing), all
-/// stamped with the same source identity; only the clearing leg carries the edge.
-async fn residual(
-    pool: &PgPool,
-    company: Uuid,
-    source_type: &str,
-    source_id: Uuid,
-    account: Uuid,
-) -> Decimal {
+/// stamped with the same source identity; only the clearing leg carries the edge. The source id
+/// is minted per test, so it pins the row without a tenant column (ADR-0029).
+async fn residual(pool: &PgPool, source_type: &str, source_id: Uuid, account: Uuid) -> Decimal {
     sqlx::query_scalar(
         r#"SELECT (CASE WHEN base_debit_amount > 0 THEN base_debit_amount ELSE base_credit_amount END)
                  - COALESCE((SELECT SUM(p.amount) FROM accounting.partial_reconciles p WHERE p.debit_move_id=jl.id),0)
                  - COALESCE((SELECT SUM(p.amount) FROM accounting.partial_reconciles p WHERE p.credit_move_id=jl.id),0)
              FROM accounting.journal_lines jl
-            WHERE jl.company_id=$1 AND jl.source_type=$2 AND jl.source_id=$3 AND jl.account_id=$4 AND jl.is_posted"#,
+            WHERE jl.source_type=$1 AND jl.source_id=$2 AND jl.account_id=$3 AND jl.is_posted"#,
     )
-    .bind(company).bind(source_type).bind(source_id).bind(account)
+    .bind(source_type).bind(source_id).bind(account)
     .fetch_one(pool).await.unwrap()
 }
-async fn full_groups(pool: &PgPool, company: Uuid) -> i64 {
-    sqlx::query_scalar("SELECT COUNT(*) FROM accounting.full_reconciles WHERE company_id=$1")
-        .bind(company)
-        .fetch_one(pool)
-        .await
-        .unwrap()
+async fn full_groups(pool: &PgPool, accounts: &[Uuid]) -> i64 {
+    sqlx::query_scalar(
+        "SELECT COUNT(DISTINCT f.id) FROM accounting.full_reconciles f \
+         JOIN accounting.partial_reconciles p ON p.full_reconcile_id=f.id \
+         JOIN accounting.journal_lines jl ON jl.id IN (p.debit_move_id, p.credit_move_id) \
+         WHERE jl.account_id = ANY($1)",
+    )
+    .bind(accounts)
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 /// CLSEAM-1: undeposited-funds clearing across payment, banking, and the real ledger.
@@ -374,7 +408,6 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
     let pay = payment
         .create_payment(NewPayment {
             payment_number: uq("PE"),
-            company_id: company,
             branch_id: None,
             payment_type: "receive".into(),
             party_type: Some("customer".into()),
@@ -395,7 +428,7 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
         })
         .await
         .unwrap();
-    let pp = payment.post_payment(pay, &gl).await.unwrap();
+    let pp = in_org_scope(&pool, payment.post_payment(pay, &gl)).await.unwrap();
     assert_eq!(
         journal_totals(&pool, pp.journal_id).await,
         (d("750000"), d("750000"))
@@ -409,7 +442,6 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
     // 2) banking: bank + account (real Bank + Clearing), import the statement showing the deposit landed.
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("BCA"),
             swift_bic: Some("CENAIDJA".into()),
             country: None,
@@ -418,7 +450,6 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
         .unwrap();
     let acct = banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -432,7 +463,6 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
         .unwrap();
     let import_id = banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: Some("csv".into()),
             period_start: day(1),
@@ -513,22 +543,22 @@ async fn clearing_nets_undeposited_funds_across_three_modules() {
     // 6) the graph proves it: one clearing edge pairing the payment's Dr Clearing leg with the
     //    clearance's Cr Clearing leg; both residuals consumed; a full group stamps the pair.
     assert_eq!(
-        clearing_edges(&pool, company).await,
+        clearing_edges(&pool, &chart(&coa)).await,
         (d("750000.00"), 1),
         "one clearing edge of the matched amount"
     );
     assert_eq!(
-        residual(&pool, company, "payment", pay, coa["1190"]).await,
+        residual(&pool, "payment", pay, coa["1190"]).await,
         Decimal::ZERO,
         "payment leg consumed"
     );
     assert_eq!(
-        residual(&pool, company, "settlement", out.clearance_id, coa["1190"]).await,
+        residual(&pool, "settlement", out.clearance_id, coa["1190"]).await,
         Decimal::ZERO,
         "clearance leg consumed"
     );
     assert_eq!(
-        full_groups(&pool, company).await,
+        full_groups(&pool, &chart(&coa)).await,
         1,
         "the clearing pair closes into a full group"
     );
@@ -549,13 +579,11 @@ async fn journal_totals(pool: &PgPool, jid: Uuid) -> (Decimal, Decimal) {
 
 async fn bank_account(
     banking: &BankingWriteService,
-    company: Uuid,
     bank_gl: Uuid,
     clearing: Uuid,
 ) -> Uuid {
     let bank = banking
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -564,7 +592,6 @@ async fn bank_account(
         .unwrap();
     banking
         .create_bank_account(NewBankAccount {
-            company_id: company,
             branch_id: None,
             bank_id: bank,
             account_name: "Ops".into(),
@@ -580,7 +607,6 @@ async fn bank_account(
 async fn two_lines(
     pool: &PgPool,
     banking: &BankingWriteService,
-    company: Uuid,
     acct: Uuid,
     a: &str,
     b: &str,
@@ -588,7 +614,6 @@ async fn two_lines(
 ) -> (Uuid, Uuid) {
     let import_id = banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -645,7 +670,6 @@ async fn a_settlement_cannot_be_cleared_twice() {
     let pay = payment
         .create_payment(NewPayment {
             payment_number: uq("PE"),
-            company_id: company,
             branch_id: None,
             payment_type: "receive".into(),
             party_type: Some("customer".into()),
@@ -666,11 +690,11 @@ async fn a_settlement_cannot_be_cleared_twice() {
         })
         .await
         .unwrap();
-    payment.post_payment(pay, &gl).await.unwrap();
+    in_org_scope(&pool, payment.post_payment(pay, &gl)).await.unwrap();
 
-    let acct = bank_account(&banking, company, coa["1110"], coa["1190"]).await;
+    let acct = bank_account(&banking, coa["1110"], coa["1190"]).await;
     let (l1, l2) = two_lines(
-        &pool, &banking, company, acct, "500000", "500000", "1000000",
+        &pool, &banking, acct, "500000", "500000", "1000000",
     )
     .await;
 
@@ -721,7 +745,7 @@ async fn a_settlement_cannot_be_cleared_twice() {
         "bank GL not overstated"
     );
     // The refused clear never touched the graph: exactly one clearing edge for the FIRST clear.
-    assert_eq!(clearing_edges(&pool, company).await, (d("500000.00"), 1));
+    assert_eq!(clearing_edges(&pool, &chart(&coa)).await, (d("500000.00"), 1));
 }
 
 /// CLSEAM-3 (council 2026-07-05): the discriminator that proves the amount-bound is right, not a
@@ -743,7 +767,6 @@ async fn one_settlement_splits_across_two_lines() {
     let pay = payment
         .create_payment(NewPayment {
             payment_number: uq("PE"),
-            company_id: company,
             branch_id: None,
             payment_type: "receive".into(),
             party_type: Some("customer".into()),
@@ -764,10 +787,10 @@ async fn one_settlement_splits_across_two_lines() {
         })
         .await
         .unwrap();
-    payment.post_payment(pay, &gl).await.unwrap();
+    in_org_scope(&pool, payment.post_payment(pay, &gl)).await.unwrap();
 
-    let acct = bank_account(&banking, company, coa["1110"], coa["1190"]).await;
-    let (l1, l2) = two_lines(&pool, &banking, company, acct, "500000", "250000", "750000").await;
+    let acct = bank_account(&banking, coa["1110"], coa["1190"]).await;
+    let (l1, l2) = two_lines(&pool, &banking, acct, "500000", "250000", "750000").await;
 
     let c1 = banking
         .clear_transaction(
@@ -814,26 +837,26 @@ async fn one_settlement_splits_across_two_lines() {
     );
     // The graph splits with the bank bookkeeping: one edge per deposit, each of its own matched
     // amount; the payment's leg is consumed by BOTH; the connected trio closes into one group.
-    let (sum, n) = clearing_edges(&pool, company).await;
+    let (sum, n) = clearing_edges(&pool, &chart(&coa)).await;
     assert_eq!(
         (sum, n),
         (d("750000.00"), 2),
         "one clearing edge per deposit, totalling the payment"
     );
     assert_eq!(
-        residual(&pool, company, "payment", pay, coa["1190"]).await,
+        residual(&pool, "payment", pay, coa["1190"]).await,
         Decimal::ZERO
     );
     assert_eq!(
-        residual(&pool, company, "settlement", c1.clearance_id, coa["1190"]).await,
+        residual(&pool, "settlement", c1.clearance_id, coa["1190"]).await,
         Decimal::ZERO
     );
     assert_eq!(
-        residual(&pool, company, "settlement", c2.clearance_id, coa["1190"]).await,
+        residual(&pool, "settlement", c2.clearance_id, coa["1190"]).await,
         Decimal::ZERO
     );
     assert_eq!(
-        full_groups(&pool, company).await,
+        full_groups(&pool, &chart(&coa)).await,
         1,
         "the split trio closes into one group"
     );
@@ -861,7 +884,6 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
     let pay = payment
         .create_payment(NewPayment {
             payment_number: uq("PE"),
-            company_id: company,
             branch_id: None,
             payment_type: "receive".into(),
             party_type: Some("customer".into()),
@@ -882,10 +904,10 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
         })
         .await
         .unwrap();
-    payment.post_payment(pay, &gl).await.unwrap();
+    in_org_scope(&pool, payment.post_payment(pay, &gl)).await.unwrap();
 
-    let acct = bank_account(&banking, company, coa["1110"], coa["1190"]).await;
-    let (l1, _l2) = two_lines(&pool, &banking, company, acct, "400000", "100000", "500000").await;
+    let acct = bank_account(&banking, coa["1110"], coa["1190"]).await;
+    let (l1, _l2) = two_lines(&pool, &banking, acct, "400000", "100000", "500000").await;
 
     let e = banking
         .clear_transaction(
@@ -909,12 +931,15 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
     );
 
     // The clear rolled back: no clearance row, the line's allocation never advanced.
-    let cleared: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
-            .bind(company)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let cleared: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM banking.bank_clearances c \
+         JOIN banking.bank_transactions t ON t.id=c.bank_transaction_id \
+         WHERE t.bank_account_id=$1",
+    )
+    .bind(acct)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(cleared, 0, "no clearance row committed");
     let (alloc, status): (Decimal, String) = sqlx::query_as(
         "SELECT allocated_amount, status::text FROM banking.bank_transactions WHERE id=$1",
@@ -926,8 +951,8 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
     assert_eq!(alloc, Decimal::ZERO, "allocation not advanced");
     assert_eq!(status, "unreconciled");
     // No graph state was written either.
-    assert_eq!(clearing_edges(&pool, company).await, (Decimal::ZERO, 0));
-    assert_eq!(full_groups(&pool, company).await, 0);
+    assert_eq!(clearing_edges(&pool, &chart(&coa)).await, (Decimal::ZERO, 0));
+    assert_eq!(full_groups(&pool, &chart(&coa)).await, 0);
 
     // The operator fixes the CoA flag and retries. The retry derives the SAME deterministic
     // clearance identity and posting key (the refused attempt contributed nothing to the fenced
@@ -957,18 +982,21 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
     assert!(out.fully_reconciled);
     let journals: i64 = sqlx::query_scalar(
         "SELECT COUNT(DISTINCT j.id) FROM accounting.journals j JOIN accounting.journal_lines jl ON jl.journal_id=j.id \
-         WHERE j.company_id=$1 AND jl.source_type='settlement' AND jl.source_id=$2")
-        .bind(company).bind(out.clearance_id).fetch_one(&pool).await.unwrap();
+         WHERE jl.source_type='settlement' AND jl.source_id=$1")
+        .bind(out.clearance_id).fetch_one(&pool).await.unwrap();
     assert_eq!(
         journals, 1,
         "the retry reused the stranded post — no second clearing journal"
     );
-    let cleared: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM banking.bank_clearances WHERE company_id=$1")
-            .bind(company)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let cleared: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM banking.bank_clearances c \
+         JOIN banking.bank_transactions t ON t.id=c.bank_transaction_id \
+         WHERE t.bank_account_id=$1",
+    )
+    .bind(acct)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(cleared, 1, "exactly one clearance row after the retry");
     assert_eq!(
         balance(&pool, coa["1110"]).await,
@@ -980,8 +1008,8 @@ async fn a_refused_clearing_edge_rolls_the_clear_back() {
         d("0.00"),
         "clearing nets to zero — the strand is healed"
     );
-    assert_eq!(clearing_edges(&pool, company).await, (d("400000.00"), 1));
-    assert_eq!(full_groups(&pool, company).await, 1);
+    assert_eq!(clearing_edges(&pool, &chart(&coa)).await, (d("400000.00"), 1));
+    assert_eq!(full_groups(&pool, &chart(&coa)).await, 1);
 }
 
 /// CLSEAM-5 (direction): the paid-out flow posts the mirror — `Dr A/P · Cr Clearing` on the payment,
@@ -1004,7 +1032,6 @@ async fn paid_out_clearing_edges_the_mirror_direction() {
     let pay = payment
         .create_payment(NewPayment {
             payment_number: uq("PE"),
-            company_id: company,
             branch_id: None,
             payment_type: "pay".into(),
             party_type: Some("supplier".into()),
@@ -1025,17 +1052,16 @@ async fn paid_out_clearing_edges_the_mirror_direction() {
         })
         .await
         .unwrap();
-    payment.post_payment(pay, &gl).await.unwrap();
+    in_org_scope(&pool, payment.post_payment(pay, &gl)).await.unwrap();
     assert_eq!(
         balance(&pool, coa["1190"]).await,
         d("-300000.00"),
         "clearing holds the undeposited outflow"
     );
 
-    let acct = bank_account(&banking, company, coa["1110"], coa["1190"]).await;
+    let acct = bank_account(&banking, coa["1110"], coa["1190"]).await;
     let import_id = banking
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -1091,16 +1117,16 @@ async fn paid_out_clearing_edges_the_mirror_direction() {
     );
     // The graph edge landed with the MIRROR direction: debit = the clearance's leg (it debits
     // clearing), credit = the payment's (it credited clearing) — both consumed, one group.
-    assert_eq!(clearing_edges(&pool, company).await, (d("300000.00"), 1));
+    assert_eq!(clearing_edges(&pool, &chart(&coa)).await, (d("300000.00"), 1));
     assert_eq!(
-        residual(&pool, company, "payment", pay, coa["1190"]).await,
+        residual(&pool, "payment", pay, coa["1190"]).await,
         Decimal::ZERO,
         "payment's credit leg consumed"
     );
     assert_eq!(
-        residual(&pool, company, "settlement", out.clearance_id, coa["1190"]).await,
+        residual(&pool, "settlement", out.clearance_id, coa["1190"]).await,
         Decimal::ZERO,
         "clearance's debit leg consumed"
     );
-    assert_eq!(full_groups(&pool, company).await, 1);
+    assert_eq!(full_groups(&pool, &chart(&coa)).await, 1);
 }

@@ -44,7 +44,6 @@ pub struct FxGainLossPaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct FxGainLossFilter {
-    pub company_id: Option<Uuid>,
     pub bank_clearance_id: Option<Uuid>,
     pub matched_source_id: Option<Uuid>,
     pub currency: Option<String>,
@@ -55,7 +54,7 @@ pub struct FxGainLossFilter {
 impl FxGainLossFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
+        self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
     }
 }
 

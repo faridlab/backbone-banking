@@ -13,7 +13,7 @@ use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use crate::domain::entity::BankReconciliation;
 
@@ -50,7 +50,6 @@ impl BankReconciliationRepository {
 /// close decision stays audit-reconstructable.
 pub struct NewReconciliationRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub from_date: chrono::NaiveDate,
     pub to_date: chrono::NaiveDate,
@@ -67,25 +66,24 @@ pub struct NewReconciliationRow<'a> {
 impl BankReconciliationRepository {
     /// Record a reconciliation session in its decided state.
     ///
-    /// A write outside any transaction: takes the pool and runs `execute_scoped` so the RLS fence
-    /// (ADR-0008) applies. The caller wraps this — and the exception count that decided `status` — in
-    /// one `with_company_scope(Some(company))`. The explicit `company_id` bind stays as
-    /// defense-in-depth.
+    /// A write outside any transaction: takes the pool and runs `org_scope::execute_scoped` so the
+    /// statement rides the request-dedicated connection carrying the composing service's org scope
+    /// — the same ambient-scope discipline as the exception count that decided `status`
+    /// (ADR-0029). Undecorated deployments execute plainly on the pool.
     pub async fn insert_reconciliation(
         &self,
         pool: &PgPool,
         r: &NewReconciliationRow<'_>,
     ) -> Result<(), sqlx::Error> {
-        company_scope::execute_scoped(
+        org_scope::execute_scoped(
             pool,
             sqlx::query(
                 r#"INSERT INTO banking.bank_reconciliations
-                    (id, company_id, bank_account_id, from_date, to_date, statement_closing_balance,
+                    (id, bank_account_id, from_date, to_date, statement_closing_balance,
                      ledger_balance, computed_difference, unreconciled_count, status)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::recon_status)"#,
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::recon_status)"#,
             )
             .bind(r.id)
-            .bind(r.company_id)
             .bind(r.bank_account_id)
             .bind(r.from_date)
             .bind(r.to_date)

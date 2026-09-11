@@ -6,7 +6,6 @@
 
 -- INSERT INTO banking.bank_accounts (
 --     id,
---     company_id,
 --     branch_id,
 --     bank_id,
 --     account_name,

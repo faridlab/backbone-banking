@@ -34,9 +34,6 @@ use crate::domain::entity::FxDirection;
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
     pub bank_clearance_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
@@ -70,9 +67,6 @@ pub struct CreateFxGainLossDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(alias = "company_id")]
-    pub company_id: Uuid,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
     pub bank_clearance_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
@@ -106,9 +100,6 @@ pub struct UpdateFxGainLossDto {
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchFxGainLossDto {
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    #[serde(skip_serializing_if = "Option::is_none", alias = "company_id")]
-    pub company_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
     pub bank_clearance_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
@@ -134,7 +125,7 @@ pub struct PatchFxGainLossDto {
 impl PatchFxGainLossDto {
     /// Check if any field is set
     pub fn has_changes(&self) -> bool {
-        self.company_id.is_some() || self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.original_rate.is_some() || self.realised_rate.is_some() || self.base_amount_delta.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
+        self.bank_clearance_id.is_some() || self.matched_source_id.is_some() || self.currency.is_some() || self.original_rate.is_some() || self.realised_rate.is_some() || self.base_amount_delta.is_some() || self.direction.is_some() || self.fx_account_id.is_some()
     }
 }
 
@@ -152,8 +143,6 @@ impl PatchFxGainLossDto {
 pub struct FxGainLossResponseDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub matched_source_id: Uuid,
@@ -222,9 +211,9 @@ impl FxGainLossListResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct FxGainLossSummaryDto {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_clearance_id: Option<Uuid>,
     pub matched_source_id: Uuid,
+    pub currency: String,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -236,7 +225,6 @@ impl From<FxGainLoss> for FxGainLossResponseDto {
     fn from(entity: FxGainLoss) -> Self {
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_clearance_id: entity.bank_clearance_id,
             matched_source_id: entity.matched_source_id,
             currency: entity.currency,
@@ -255,9 +243,9 @@ impl From<FxGainLoss> for FxGainLossSummaryDto {
         let created_at = backbone_core::PersistentEntity::created_at(&entity);
         Self {
             id: entity.id,
-            company_id: entity.company_id,
             bank_clearance_id: entity.bank_clearance_id,
             matched_source_id: entity.matched_source_id,
+            currency: entity.currency,
             created_at,
         }
     }
@@ -267,7 +255,6 @@ impl From<CreateFxGainLossDto> for FxGainLoss {
     fn from(dto: CreateFxGainLossDto) -> Self {
         Self {
             id: Uuid::new_v4(),
-            company_id: dto.company_id,
             bank_clearance_id: dto.bank_clearance_id,
             matched_source_id: dto.matched_source_id,
             currency: dto.currency,
@@ -285,7 +272,6 @@ impl From<&FxGainLoss> for FxGainLossResponseDto {
     fn from(entity: &FxGainLoss) -> Self {
         Self {
             id: entity.id.clone(),
-            company_id: entity.company_id.clone(),
             bank_clearance_id: entity.bank_clearance_id.clone(),
             matched_source_id: entity.matched_source_id.clone(),
             currency: entity.currency.clone(),
@@ -307,7 +293,6 @@ impl backbone_core::FromCreateDto<CreateFxGainLossDto> for FxGainLoss {
 
 impl backbone_core::ApplyUpdateDto<UpdateFxGainLossDto> for FxGainLoss {
     fn apply_update(mut self, dto: UpdateFxGainLossDto) -> backbone_core::ServiceResult<Self> {
-        self.company_id = dto.company_id;
         self.bank_clearance_id = dto.bank_clearance_id;
         self.matched_source_id = dto.matched_source_id;
         self.currency = dto.currency;

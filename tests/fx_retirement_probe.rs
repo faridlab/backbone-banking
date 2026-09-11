@@ -8,9 +8,10 @@
 //!   the retirement — `fx_direction` backs the surviving table, while `currency_status` +
 //!   `rate_type` stay in the public namespace because corporate's guarded `CREATE TYPE`s adopt
 //!   them in a shared database (the rollover contract: types outlive banking's ownership).
-//! - FXP-3: the HTTP surface exposes NO currency/exchange-rate route — a fully authenticated GET
-//!   matches no route (404), while a control route on the same router answers non-404. Retirement
-//!   that left CRUD mounted would keep dragging writes through a dead fence.
+//! - FXP-3: the HTTP surface exposes NO currency/exchange-rate route — a GET on the retired bases
+//!   matches no route (404), while a guarded control route on the same router + token engages the
+//!   org guard and answers an auth outcome (non-404). Retirement that left CRUD mounted would keep
+//!   dragging writes through a dead fence.
 //!
 //! Requires DATABASE_URL (:5433/backbone_banking with banking migrated, incl. the retirement).
 
@@ -37,14 +38,12 @@ async fn pool() -> PgPool {
 #[tokio::test]
 async fn realised_gain_loss_survives_the_rate_table_retirement() {
     let pool = pool().await;
-    let company = Uuid::new_v4();
     let svc = FxService::new(pool.clone());
     let fx_acct = Uuid::new_v4();
 
     // Original 15,700, realised 15,800, foreign 100 USD → delta = 100 × 100 = 10,000 IDR (gain).
     let gain = svc
         .compute_fx_gain_loss(
-            company,
             None,
             Uuid::new_v4(),
             "USD",
@@ -61,7 +60,6 @@ async fn realised_gain_loss_survives_the_rate_table_retirement() {
     // Mirror: original 15,800, realised 15,700 → −10,000 IDR (loss).
     let loss = svc
         .compute_fx_gain_loss(
-            company,
             None,
             Uuid::new_v4(),
             "USD",
@@ -125,8 +123,10 @@ async fn retired_tables_are_gone_and_shared_enum_types_survive() {
 }
 
 /// FXP-3 — no currency/exchange-rate route survives on the guarded surface. The probe mints a real
-/// HS256 token so the discriminator cannot be "unauthenticated": the control POST answers non-404
-/// through the same router + token, while the retired bases match no route at all.
+/// HS256 org token (naming a unit no tree in this database holds, so the guard refuses the session
+/// fail-closed) and attaches the tenant-database extension `org_auth` requires: the control POST
+/// engages the guard and answers an auth outcome — non-404, proving the route EXISTS and is
+/// guarded — while the retired bases match no route at all.
 #[tokio::test]
 #[expect(clippy::expect_used, reason = "test harness: a panic here names the setup failure precisely")]
 async fn no_http_route_survives_for_the_retired_catalogue() {
@@ -135,26 +135,27 @@ async fn no_http_route_survives_for_the_retired_catalogue() {
     use tower::ServiceExt;
 
     let pool = pool().await;
-    let company = Uuid::new_v4();
     let m = backbone_banking::BankingModule::builder()
         .with_database(pool.clone())
         .build()
         .expect("module");
     let secret = b"fxp-probe-secret";
-    let verifier = backbone_auth::company::CompanyVerifier::hs256(secret);
+    let verifier = backbone_auth::org::OrgVerifier::hs256(secret);
 
     #[derive(serde::Serialize)]
     struct Claims {
         sub: String,
         exp: usize,
-        company_id: Uuid,
+        org_unit_id: Uuid,
     }
     let token = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &Claims {
             sub: "probe".into(),
             exp: (chrono::Utc::now().timestamp() + 600) as usize,
-            company_id: company,
+            // A unit this probe's database has no organization tree for: the guard's fail-closed
+            // refusal is the discriminator's "route exists" side, not a route miss.
+            org_unit_id: Uuid::new_v4(),
         },
         &jsonwebtoken::EncodingKey::from_secret(secret),
     )
@@ -166,22 +167,23 @@ async fn no_http_route_survives_for_the_retired_catalogue() {
         verifier,
     );
 
-    // Control: a mounted route answers non-404 with this token (an empty import body fails
-    // validation, proving routing + auth both pass — it is NOT "no route").
-    let resp = router
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/bank-statements/import")
-                .header("authorization", format!("Bearer {token}"))
-                .header("content-type", "application/json")
-                .body(Body::from("{}"))
-                .unwrap(),
-        )
-        .await
+    // Control: the mounted route's guard engages and answers an auth outcome (401/403/500 — the
+    // probe's unit resolves in no tree here), never "no route". The tenant-database extension the
+    // guard reads must be on the request, mirroring the composing service's tenant router.
+    let mut control_req = Request::builder()
+        .method("POST")
+        .uri("/bank-statements/import")
+        .header("authorization", format!("Bearer {token}"))
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
         .unwrap();
-    let control = resp.status();
+    control_req.extensions_mut().insert(pool.clone());
+    let control = router
+        .clone()
+        .oneshot(control_req)
+        .await
+        .unwrap()
+        .status();
     assert_ne!(
         control,
         StatusCode::NOT_FOUND,

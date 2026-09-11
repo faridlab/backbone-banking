@@ -103,7 +103,6 @@ impl ReconcileSink for NoEdgeSink {
 async fn account(w: &BankingWriteService, company: Uuid, bank_gl: Uuid, clearing: Uuid) -> Uuid {
     let bank = w
         .create_bank(NewBank {
-            company_id: company,
             name: uq("Bank"),
             swift_bic: None,
             country: None,
@@ -111,7 +110,6 @@ async fn account(w: &BankingWriteService, company: Uuid, bank_gl: Uuid, clearing
         .await
         .unwrap();
     w.create_bank_account(NewBankAccount {
-        company_id: company,
         branch_id: None,
         bank_id: bank,
         account_name: "Ops".into(),
@@ -145,7 +143,6 @@ async fn import_balance_continuity() {
     let acct = account(&w, company, Uuid::new_v4(), Uuid::new_v4()).await;
 
     let ok = NewStatementImport {
-        company_id: company,
         bank_account_id: acct,
         source_format: None,
         period_start: day(1),
@@ -174,7 +171,6 @@ async fn import_balance_continuity() {
 
     // wrong closing → balance_mismatch
     let bad = NewStatementImport {
-        company_id: company,
         bank_account_id: acct,
         source_format: None,
         period_start: day(1),
@@ -190,7 +186,6 @@ async fn import_balance_continuity() {
     ));
     // empty statement
     let empty = NewStatementImport {
-        company_id: company,
         bank_account_id: acct,
         source_format: None,
         period_start: day(1),
@@ -215,7 +210,6 @@ async fn propose_match_amount_and_reference() {
     let acct = account(&w, company, Uuid::new_v4(), Uuid::new_v4()).await;
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -278,7 +272,6 @@ async fn clear_deposit_posts_bank_over_clearing() {
     let acct = account(&w, company, bank_gl, clearing).await;
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -355,7 +348,6 @@ async fn clear_withdrawal_and_partial() {
     let acct = account(&w, company, bank_gl, clearing).await;
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -448,7 +440,6 @@ async fn bank_charge_posts_expense_over_bank() {
     let acct = account(&w, company, bank_gl, clearing).await;
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -508,7 +499,6 @@ async fn reconcile_closes_when_balanced() {
     // No lines imported for this fresh account → zero exceptions, so diff-0 → closed.
     let out = w
         .reconcile(NewReconciliation {
-            company_id: company,
             bank_account_id: acct,
             from_date: day(1),
             to_date: day(31),
@@ -529,7 +519,6 @@ async fn reconcile_closes_when_balanced() {
     // unbalanced stays open
     let out2 = w
         .reconcile(NewReconciliation {
-            company_id: company,
             bank_account_id: acct,
             from_date: day(1),
             to_date: day(31),
@@ -557,7 +546,6 @@ async fn reconcile_with_open_lines_stays_balanced_not_closed() {
     // import a statement with one deposit line, left unreconciled.
     let import_id = w
         .import_statement(NewStatementImport {
-            company_id: company,
             bank_account_id: acct,
             source_format: None,
             period_start: day(1),
@@ -579,7 +567,6 @@ async fn reconcile_with_open_lines_stays_balanced_not_closed() {
     // diff 0 but one line still unreconciled → balanced, NOT closed, no event, count 1.
     let out = w
         .reconcile(NewReconciliation {
-            company_id: company,
             bank_account_id: acct,
             from_date: day(1),
             to_date: day(31),
@@ -631,7 +618,6 @@ async fn reconcile_with_open_lines_stays_balanced_not_closed() {
     .unwrap();
     let out2 = w
         .reconcile(NewReconciliation {
-            company_id: company,
             bank_account_id: acct,
             from_date: day(1),
             to_date: day(31),

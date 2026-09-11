@@ -44,7 +44,6 @@ pub struct BankClearancePaginatedResult {
 /// Filter parameters for list queries
 #[derive(Debug, Clone, Default)]
 pub struct BankClearanceFilter {
-    pub company_id: Option<Uuid>,
     pub bank_transaction_id: Option<Uuid>,
     pub matched_source_type: Option<MatchedSourceType>,
     pub matched_source_id: Option<Uuid>,
@@ -56,7 +55,7 @@ pub struct BankClearanceFilter {
 impl BankClearanceFilter {
     /// Check if any filter is set
     pub fn has_filters(&self) -> bool {
-        self.company_id.is_some() || self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.match_method.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
+        self.bank_transaction_id.is_some() || self.matched_source_type.is_some() || self.matched_source_id.is_some() || self.match_method.is_some() || self.accounting_post_id.is_some() || self.journal_id.is_some()
     }
 }
 

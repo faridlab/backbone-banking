@@ -18,8 +18,11 @@
 //!   `recognize_bank_charge`, both bounded by the line and (for clear) the settlement.
 //! - [`super::banking_reconciliation`] — the reconciliation session open/close with the
 //!   line-completeness close-gate.
+//!
+//! Tenancy: none, by design (ADR-0029). Every statement rides the ambient request org scope the
+//! composing service bound (its decorator installs the row-level fences); an undecorated
+//! deployment is unfenced by design. No verb takes or binds a tenant key.
 
-use backbone_orm::company_scope;
 use rust_decimal::{Decimal, RoundingStrategy};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -41,7 +44,6 @@ pub(super) fn money(v: Decimal) -> Decimal {
 
 #[derive(Debug, Clone)]
 pub struct NewBank {
-    pub company_id: Uuid,
     pub name: String,
     pub swift_bic: Option<String>,
     pub country: Option<String>,
@@ -49,7 +51,6 @@ pub struct NewBank {
 
 #[derive(Debug, Clone)]
 pub struct NewBankAccount {
-    pub company_id: Uuid,
     pub branch_id: Option<Uuid>,
     pub bank_id: Uuid,
     pub account_name: String,
@@ -71,7 +72,6 @@ pub struct NewStatementLine {
 
 #[derive(Debug, Clone)]
 pub struct NewStatementImport {
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub source_format: Option<String>,
     pub period_start: chrono::NaiveDate,
@@ -115,7 +115,6 @@ pub struct NewCharge {
 
 #[derive(Debug, Clone)]
 pub struct NewReconciliation {
-    pub company_id: Uuid,
     pub bank_account_id: Uuid,
     pub from_date: chrono::NaiveDate,
     pub to_date: chrono::NaiveDate,
@@ -337,76 +336,67 @@ impl BankingWriteService {
     // ---- masters ------------------------------------------------------------
 
     pub async fn create_bank(&self, b: NewBank) -> Result<Uuid, BankingError> {
-        // RLS scope (ADR-0008): company is on the DTO — bind it so the insert's WITH CHECK passes
-        // under the non-superuser app role.
-        let company = b.company_id;
-        company_scope::with_company_scope(Some(company), async move {
-            let id = Uuid::new_v4();
-            let country = b.country.unwrap_or_else(|| "ID".into());
-            self.repos
-                .banks
-                .insert_bank(
-                    &self.db_pool,
-                    &NewBankRow {
-                        id,
-                        company_id: b.company_id,
-                        name: &b.name,
-                        swift_bic: b.swift_bic.as_deref(),
-                        country: &country,
-                    },
-                )
-                .await?;
-            Ok(id)
-        })
-        .await
+        // Tenancy (ADR-0029): the module carries none. The insert rides the ambient request
+        // org scope when the composing service bound one (the composing decorator's row-level
+        // fence decides the WITH CHECK), and runs unfenced on a bare deployment.
+        let id = Uuid::new_v4();
+        let country = b.country.unwrap_or_else(|| "ID".into());
+        self.repos
+            .banks
+            .insert_bank(
+                &self.db_pool,
+                &NewBankRow {
+                    id,
+                    name: &b.name,
+                    swift_bic: b.swift_bic.as_deref(),
+                    country: &country,
+                },
+            )
+            .await?;
+        Ok(id)
     }
 
     pub async fn create_bank_account(&self, a: NewBankAccount) -> Result<Uuid, BankingError> {
-        // RLS scope (ADR-0008): company is on the DTO — same pattern as `create_bank`.
-        let company = a.company_id;
-        company_scope::with_company_scope(Some(company), async move {
-            // IBAN validation, fail-closed: a value that CLAIMS to be an IBAN (two letters
-            // + two digits) must carry a registered country, the right length/structure,
-            // and a valid mod-97 checksum. Unknown countries are refused with the distinct
-            // `iban_unknown_country` code (loudly logged; escape-able via the named config).
-            // Non-IBAN-shaped values are LOCAL account numbers (the field's pre-existing
-            // contract — Indonesian accounts are not IBAN-based) and pass through unchanged.
-            let account_number = if is_iban_shaped(&normalize_iban(&a.account_number)) {
-                match validate_iban_with(&self.iban_policy, &a.account_number) {
-                    Ok(canonical) => canonical,
-                    Err(IbanError::UnknownCountry(country)) => {
-                        return Err(BankingError::IbanUnknownCountry(country));
-                    }
-                    Err(e) => {
-                        return Err(BankingError::InvalidIban(format!("{} ({e})", a.account_number)));
-                    }
+        // IBAN validation, fail-closed: a value that CLAIMS to be an IBAN (two letters
+        // + two digits) must carry a registered country, the right length/structure,
+        // and a valid mod-97 checksum. Unknown countries are refused with the distinct
+        // `iban_unknown_country` code (loudly logged; escape-able via the named config).
+        // Non-IBAN-shaped values are LOCAL account numbers (the field's pre-existing
+        // contract — Indonesian accounts are not IBAN-based) and pass through unchanged.
+        let account_number = if is_iban_shaped(&normalize_iban(&a.account_number)) {
+            match validate_iban_with(&self.iban_policy, &a.account_number) {
+                Ok(canonical) => canonical,
+                Err(IbanError::UnknownCountry(country)) => {
+                    return Err(BankingError::IbanUnknownCountry(country));
                 }
-            } else {
-                a.account_number.clone()
-            };
-            let id = Uuid::new_v4();
-            let currency = a.currency.unwrap_or_else(|| "IDR".into());
-            let account_type = a.account_type.unwrap_or_else(|| "checking".into());
-            self.repos
-                .bank_accounts
-                .insert_bank_account(
-                    &self.db_pool,
-                    &NewBankAccountRow {
-                        id,
-                        company_id: a.company_id,
-                        branch_id: a.branch_id,
-                        bank_id: a.bank_id,
-                        account_name: &a.account_name,
-                        account_number: &account_number,
-                        gl_account_id: a.gl_account_id,
-                        clearing_account_id: a.clearing_account_id,
-                        currency: &currency,
-                        account_type: &account_type,
-                    },
-                )
-                .await?;
-            Ok(id)
-        })
-        .await
+                Err(e) => {
+                    return Err(BankingError::InvalidIban(format!("{} ({e})", a.account_number)));
+                }
+            }
+        } else {
+            a.account_number.clone()
+        };
+        // Tenancy: none of the module's own (ADR-0029) — see `create_bank`.
+        let id = Uuid::new_v4();
+        let currency = a.currency.unwrap_or_else(|| "IDR".into());
+        let account_type = a.account_type.unwrap_or_else(|| "checking".into());
+        self.repos
+            .bank_accounts
+            .insert_bank_account(
+                &self.db_pool,
+                &NewBankAccountRow {
+                    id,
+                    branch_id: a.branch_id,
+                    bank_id: a.bank_id,
+                    account_name: &a.account_name,
+                    account_number: &account_number,
+                    gl_account_id: a.gl_account_id,
+                    clearing_account_id: a.clearing_account_id,
+                    currency: &currency,
+                    account_type: &account_type,
+                },
+            )
+            .await?;
+        Ok(id)
     }
 }

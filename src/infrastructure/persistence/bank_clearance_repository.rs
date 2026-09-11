@@ -13,7 +13,7 @@ use rust_decimal::Decimal;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use backbone_orm::company_scope;
+use backbone_orm::org_scope;
 
 use crate::domain::entity::BankClearance;
 
@@ -45,13 +45,12 @@ impl BankClearanceRepository {
 /// The exact row a clearance writes.
 ///
 /// Mirrors the raw column shape rather than the `BankClearance` entity: `matched_source_type` and
-/// `match_method` bind as `&str` and are cast at the DB (`$4::matched_source_type`,
-/// `$7::match_method`), so a bad value fails as a DB error rather than a deserialize panic.
+/// `match_method` bind as `&str` and are cast at the DB (`$3::matched_source_type`,
+/// `$6::match_method`), so a bad value fails as a DB error rather than a deserialize panic.
 /// `match_method` is already defaulted by the caller, so it is not optional here. The post/journal ids
 /// come from the GL's ack — a clearance is only ever written against an accepted posting.
 pub struct NewClearanceRow<'a> {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_transaction_id: Uuid,
     pub matched_source_type: &'a str,
     pub matched_source_id: Uuid,
@@ -69,7 +68,6 @@ pub struct NewClearanceRow<'a> {
 /// CHARGE ACCOUNT rather than a settled document.
 pub struct NewChargeClearanceRow {
     pub id: Uuid,
-    pub company_id: Uuid,
     pub bank_transaction_id: Uuid,
     /// The expense account the charge is booked to — a charge settles no document.
     pub charge_account_id: Uuid,
@@ -87,34 +85,38 @@ impl BankClearanceRepository {
     /// Sum of cleared amounts per payment, over a candidate set — the reconcile-preset ordering's
     /// open-amount input. Reads banking's OWN clearance table (the same amounts the clear verb's
     /// settlement bound counts), so ordering and clearing can never disagree about what is open.
-    /// Pool-based scoped read; an empty id list returns an empty map.
+    /// Pool-based read; an empty id list returns an empty map.
+    ///
+    /// Tenancy (ADR-0029): when the request carries an ambient org scope it is relayed onto a short
+    /// read transaction (`bind_org_scope_on`), so the composing service's row-level fence applies —
+    /// an unscoped read under a live fence would return an empty cleared-map and let candidate
+    /// ordering present fully-open amounts for payments already cleared. Unfenced deployments read
+    /// the pool plain. (backbone_orm's org scope offers no fetch-all helper, so the scoped path is a
+    /// short read-only transaction here.)
     pub async fn sums_cleared_for_payments(
         &self,
         pool: &PgPool,
-        company_id: Uuid,
         payment_ids: &[Uuid],
     ) -> Result<std::collections::HashMap<Uuid, Decimal>, sqlx::Error> {
         if payment_ids.is_empty() {
             return Ok(std::collections::HashMap::new());
         }
-        // Scoped helper, not a raw pool fetch: the fence on bank_clearances would silently filter
-        // every row without the `app.company_id` bind, returning an empty cleared-map and letting
-        // candidate ordering present fully-open amounts for payments already cleared.
-        let rows = company_scope::with_company_scope(
-            Some(company_id),
-            company_scope::fetch_all_rows_scoped(
-                pool,
-                sqlx::query(
-                    r#"SELECT matched_source_id, SUM(matched_amount) AS cleared
-                   FROM banking.bank_clearances
-                   WHERE company_id=$1 AND matched_source_type='payment' AND matched_source_id = ANY($2)
-                   GROUP BY matched_source_id"#,
-                )
-                .bind(company_id)
-                .bind(payment_ids),
-            ),
+        let query = sqlx::query(
+            r#"SELECT matched_source_id, SUM(matched_amount) AS cleared
+               FROM banking.bank_clearances
+               WHERE matched_source_type='payment' AND matched_source_id = ANY($1)
+               GROUP BY matched_source_id"#,
         )
-        .await?;
+        .bind(payment_ids);
+        let rows = if let Some(scope) = org_scope::current_org_scope() {
+            let mut tx = pool.begin().await?;
+            org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+            let rows = query.fetch_all(&mut *tx).await?;
+            tx.commit().await?; // read-only: nothing but the relayed scope to close out
+            rows
+        } else {
+            query.fetch_all(pool).await?
+        };
         Ok(rows
             .into_iter()
             .map(|r| {
@@ -130,23 +132,18 @@ impl BankClearanceRepository {
     /// Takes the CALLER'S connection: an xact lock is released at commit, so it MUST be taken on the
     /// same transaction that runs the SUM and writes the clearance.
     ///
-    /// `company_id` is folded into the lock key (ADR-0010 defense-in-depth) so the lock is
-    /// tenant-isolated: two operators in different companies clearing the same settlement id cannot
-    /// serialize against each other (a settlement id is unique per tenant, but this survives a
-    /// misconfigured/disabled RLS fence and any future cross-tenant id reuse).
+    /// The lock keys on the settlement id alone: a settlement id is a globally unique UUID, so two
+    /// operators — in any unit — clearing the same settlement serialize against each other. The org
+    /// fence itself is the composing service's tenancy decorator (ADR-0029), not this lock.
     pub async fn lock_settlement(
         &self,
         conn: &mut sqlx::PgConnection,
-        company_id: Uuid,
         matched_source_id: Uuid,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 0))",
-        )
-        .bind(company_id)
-        .bind(matched_source_id)
-        .execute(conn)
-        .await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")
+            .bind(matched_source_id)
+            .execute(conn)
+            .await?;
         Ok(())
     }
 
@@ -155,24 +152,23 @@ impl BankClearanceRepository {
     /// operators).
     ///
     /// Takes the CALLER'S connection: it must read under the same transaction (and the same
-    /// [`Self::lock_settlement`] lock) as the clearance it guards. The caller MUST have bound the
-    /// company on that tx first, so this SUM sees the tenant's clearances via RLS.
+    /// [`Self::lock_settlement`] lock) as the clearance it guards. The caller relays the ambient org
+    /// scope onto that tx first, so a decorated deployment's row-level fence decides which
+    /// clearances the SUM sees.
     ///
-    /// The explicit `company_id=$1` filter is ADR-0010 defense-in-depth: the bound must hold even if
-    /// the RLS fence is misconfigured/disabled or this connection is invoked from an unscoped path
-    /// (jobs, replays). Without it, an unscoped SUM reads all tenants' clearances and the bound
-    /// silently over-tightens for the wrong tenant.
+    /// The settlement grain needs no extra filter: a settlement id is a globally unique UUID, so
+    /// `(matched_source_type, matched_source_id)` already selects exactly one settlement's
+    /// clearances, wherever they were written.
     pub async fn sum_cleared_against_settlement(
         &self,
         conn: &mut sqlx::PgConnection,
-        company_id: Uuid,
         matched_source_type: &str,
         matched_source_id: Uuid,
     ) -> Result<Decimal, sqlx::Error> {
         sqlx::query_scalar(
-            "SELECT COALESCE(SUM(matched_amount),0) FROM banking.bank_clearances WHERE company_id=$1 AND matched_source_type=$2::matched_source_type AND matched_source_id=$3 AND (metadata->>'deleted_at') IS NULL",
+            "SELECT COALESCE(SUM(matched_amount),0) FROM banking.bank_clearances WHERE matched_source_type=$1::matched_source_type AND matched_source_id=$2 AND (metadata->>'deleted_at') IS NULL",
         )
-        .bind(company_id).bind(matched_source_type).bind(matched_source_id)
+        .bind(matched_source_type).bind(matched_source_id)
         .fetch_one(conn)
         .await
     }
@@ -180,8 +176,8 @@ impl BankClearanceRepository {
     /// Record a clearance against a settled document.
     ///
     /// Takes the CALLER'S connection so the clearance and the line's allocation watermark commit as
-    /// one unit — and so the bound check above stays in the same transaction as this write. The caller
-    /// has already bound the company on it — don't re-bind here.
+    /// one unit — and so the bound check above stays in the same transaction as this write. The
+    /// caller relays the ambient org scope onto it — don't re-bind here.
     pub async fn insert_clearance(
         &self,
         conn: &mut sqlx::PgConnection,
@@ -189,12 +185,11 @@ impl BankClearanceRepository {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO banking.bank_clearances
-                (id, company_id, bank_transaction_id, matched_source_type, matched_source_id,
+                (id, bank_transaction_id, matched_source_type, matched_source_id,
                  matched_amount, match_method, clearance_date, accounting_post_id, journal_id)
-               VALUES ($1,$2,$3,$4::matched_source_type,$5,$6,$7::match_method,$8,$9,$10)"#,
+               VALUES ($1,$2,$3::matched_source_type,$4,$5,$6::match_method,$7,$8,$9)"#,
         )
         .bind(c.id)
-        .bind(c.company_id)
         .bind(c.bank_transaction_id)
         .bind(c.matched_source_type)
         .bind(c.matched_source_id)
@@ -217,11 +212,11 @@ impl BankClearanceRepository {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO banking.bank_clearances
-                (id, company_id, bank_transaction_id, matched_source_type, matched_source_id,
+                (id, bank_transaction_id, matched_source_type, matched_source_id,
                  matched_amount, match_method, clearance_date, accounting_post_id, journal_id)
-               VALUES ($1,$2,$3,'charge'::matched_source_type,$4,$5,'manual'::match_method,$6,$7,$8)"#,
+               VALUES ($1,$2,'charge'::matched_source_type,$3,$4,'manual'::match_method,$5,$6,$7)"#,
         )
-        .bind(c.id).bind(c.company_id).bind(c.bank_transaction_id).bind(c.charge_account_id)
+        .bind(c.id).bind(c.bank_transaction_id).bind(c.charge_account_id)
         .bind(c.matched_amount).bind(c.clearance_date).bind(c.accounting_post_id).bind(c.journal_id)
         .execute(conn)
         .await?;
