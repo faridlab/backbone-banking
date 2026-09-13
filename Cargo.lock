@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "backbone-accounting"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -243,7 +243,7 @@ dependencies = [
 [[package]]
 name = "backbone-auth"
 version = "2.0.0"
-source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.17#1aa250dba799be723ddf0d9cfadc044487b1d7fd"
+source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.19#f9edb85b2ffdcc4de44b819d1ff35c47fb720e19"
 dependencies = [
  "anyhow",
  "argon2",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "backbone-banking"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -313,7 +313,7 @@ dependencies = [
 [[package]]
 name = "backbone-core"
 version = "2.0.0"
-source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.17#1aa250dba799be723ddf0d9cfadc044487b1d7fd"
+source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.19#f9edb85b2ffdcc4de44b819d1ff35c47fb720e19"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -352,7 +352,7 @@ dependencies = [
 [[package]]
 name = "backbone-messaging"
 version = "2.0.0"
-source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.17#1aa250dba799be723ddf0d9cfadc044487b1d7fd"
+source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.19#f9edb85b2ffdcc4de44b819d1ff35c47fb720e19"
 dependencies = [
  "async-trait",
  "chrono",
@@ -367,7 +367,7 @@ dependencies = [
 [[package]]
 name = "backbone-orm"
 version = "2.0.0"
-source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.17#1aa250dba799be723ddf0d9cfadc044487b1d7fd"
+source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.19#f9edb85b2ffdcc4de44b819d1ff35c47fb720e19"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -386,7 +386,7 @@ dependencies = [
 [[package]]
 name = "backbone-outbox"
 version = "0.2.0"
-source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.17#1aa250dba799be723ddf0d9cfadc044487b1d7fd"
+source = "git+https://github.com/faridlab/backbone-framework?tag=v2.7.19#f9edb85b2ffdcc4de44b819d1ff35c47fb720e19"
 dependencies = [
  "chrono",
  "serde",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "backbone-payment"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "async-trait",
