@@ -53,6 +53,7 @@ impl BankingWriteService {
         let mut tx = self.db_pool.begin().await?;
         if let Some(scope) = org_scope::current_org_scope() {
             org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+            backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
         }
         self.repos
             .imports

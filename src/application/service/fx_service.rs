@@ -112,6 +112,7 @@ impl FxService {
         let mut tx = self.db_pool.begin().await?;
         if let Some(scope) = backbone_orm::org_scope::current_org_scope() {
             backbone_orm::org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+            backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
         }
         let id = Uuid::new_v4();
         let gain_losses = FxGainLossRepository::new(self.db_pool.clone());

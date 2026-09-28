@@ -110,6 +110,7 @@ impl CandidatePoolPort for PaymentPoolRead {
             org_scope::bind_org_scope_on(&mut tx, &scope)
                 .await
                 .map_err(BankingError::Db)?;
+            backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
         }
         let rows = sqlx::query(
             r#"SELECT id, payment_number, paid_amount, posting_date, reference_no

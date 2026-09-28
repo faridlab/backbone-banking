@@ -111,6 +111,7 @@ impl BankClearanceRepository {
         let rows = if let Some(scope) = org_scope::current_org_scope() {
             let mut tx = pool.begin().await?;
             org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+            backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
             let rows = query.fetch_all(&mut *tx).await?;
             tx.commit().await?; // read-only: nothing but the relayed scope to close out
             rows

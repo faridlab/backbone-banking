@@ -119,6 +119,7 @@ impl BankingWriteService {
         // and skips this entirely (unfenced by design).
         if let Some(scope) = org_scope::current_org_scope() {
             org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+            backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
         }
         self.repos
             .clearances
@@ -389,6 +390,7 @@ impl BankingWriteService {
                 // Tenancy (ADR-0029): relay the AMBIENT request org scope — see `clear_transaction`.
                 if let Some(scope) = org_scope::current_org_scope() {
                     org_scope::bind_org_scope_on(&mut tx, &scope).await?;
+                    backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
                 }
                 self.repos
                     .clearances
