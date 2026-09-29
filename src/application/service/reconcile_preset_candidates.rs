@@ -156,7 +156,7 @@ impl BankingWriteService {
         // another unit's preset is indistinguishable from absence, which maps to the 404 a missing
         // preset owes the caller (not the 500 a RowNotFound would surface).
         let preset = org_scope::fetch_optional_row_scoped(
-            &self.db_pool,
+            &self.rpool(),
             sqlx::query(
                 r#"SELECT name, match_on::text AS mo, tolerance_percent, days_window, status::text AS st
                    FROM banking.reconcile_presets WHERE id=$1 AND (metadata->>'deleted_at') IS NULL"#,
@@ -179,7 +179,7 @@ impl BankingWriteService {
         let row = self
             .repos
             .transactions
-            .fetch_candidate_basis(&self.db_pool, line_id)
+            .fetch_candidate_basis(&self.rpool(), line_id)
             .await?
             .ok_or(BankingError::TransactionNotFound(line_id))?;
         let line = CandidateLineBasis {
@@ -193,13 +193,13 @@ impl BankingWriteService {
         // Pool + per-candidate already-cleared (banking's own table — same sum the clear verb uses).
         let pool_rows = self
             .candidates
-            .open_candidates(&self.db_pool, line.bank_account_id)
+            .open_candidates(&self.rpool(), line.bank_account_id)
             .await?;
         let ids: Vec<Uuid> = pool_rows.iter().map(|c| c.payment_id).collect();
         let cleared = self
             .repos
             .clearances
-            .sums_cleared_for_payments(&self.db_pool, &ids)
+            .sums_cleared_for_payments(&self.rpool(), &ids)
             .await?;
 
         let line_amount = if line.deposit > Decimal::ZERO {

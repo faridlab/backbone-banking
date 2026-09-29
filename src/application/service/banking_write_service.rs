@@ -295,6 +295,12 @@ pub struct BankingWriteService {
 }
 
 impl BankingWriteService {
+    /// The database this verb runs on: the composer's request pool when the
+    /// tenant router installed one, else the composed pool (ADR-0029).
+    pub(super) fn rpool(&self) -> PgPool {
+        crate::request_pool::current().unwrap_or_else(|| self.db_pool.clone())
+    }
+
     pub fn new(db_pool: PgPool) -> Self {
         Self::with_sink(db_pool, Arc::new(LoggingSink))
     }
@@ -344,7 +350,7 @@ impl BankingWriteService {
         self.repos
             .banks
             .insert_bank(
-                &self.db_pool,
+                &self.rpool(),
                 &NewBankRow {
                     id,
                     name: &b.name,
@@ -383,7 +389,7 @@ impl BankingWriteService {
         self.repos
             .bank_accounts
             .insert_bank_account(
-                &self.db_pool,
+                &self.rpool(),
                 &NewBankAccountRow {
                     id,
                     branch_id: a.branch_id,

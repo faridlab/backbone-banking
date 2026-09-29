@@ -50,7 +50,7 @@ impl BankingWriteService {
         // composing service bound one, so the import header and every line insert evaluate under
         // the decorator's row-level fences. An undecorated deployment has no ambient scope and
         // skips this entirely (unfenced by design).
-        let mut tx = self.db_pool.begin().await?;
+        let mut tx = self.rpool().begin().await?;
         if let Some(scope) = org_scope::current_org_scope() {
             org_scope::bind_org_scope_on(&mut tx, &scope).await?;
             backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
@@ -113,7 +113,7 @@ impl BankingWriteService {
         let row = self
             .repos
             .transactions
-            .fetch_match_basis(&self.db_pool, bank_transaction_id)
+            .fetch_match_basis(&self.rpool(), bank_transaction_id)
             .await?
             .ok_or(BankingError::TransactionNotFound(bank_transaction_id))?;
         let net = row.deposit + row.withdrawal;

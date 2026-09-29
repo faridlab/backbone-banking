@@ -44,7 +44,7 @@ impl BankingWriteService {
         let unreconciled: i64 = self
             .repos
             .transactions
-            .count_open_in_period(&self.db_pool, r.bank_account_id, r.from_date, r.to_date)
+            .count_open_in_period(&self.rpool(), r.bank_account_id, r.from_date, r.to_date)
             .await?;
         let status = if !diff.is_zero() {
             "open"
@@ -56,7 +56,7 @@ impl BankingWriteService {
         self.repos
             .reconciliations
             .insert_reconciliation(
-                &self.db_pool,
+                &self.rpool(),
                 &NewReconciliationRow {
                     id,
                     bank_account_id: r.bank_account_id,

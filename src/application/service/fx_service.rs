@@ -80,6 +80,12 @@ pub struct FxResult {
 }
 
 impl FxService {
+    /// The database this verb runs on: the composer's request pool when the
+    /// tenant router installed one, else the composed pool (ADR-0029).
+    fn rpool(&self) -> sqlx::PgPool {
+        crate::request_pool::current().unwrap_or_else(|| self.db_pool.clone())
+    }
+
     pub fn new(db_pool: PgPool) -> Self {
         Self { db_pool }
     }
@@ -109,13 +115,13 @@ impl FxService {
 
         // Tenancy (ADR-0029): relay the AMBIENT request org scope onto this transaction when the
         // composing service bound one; an undecorated deployment skips this (unfenced by design).
-        let mut tx = self.db_pool.begin().await?;
+        let mut tx = self.rpool().begin().await?;
         if let Some(scope) = backbone_orm::org_scope::current_org_scope() {
             backbone_orm::org_scope::bind_org_scope_on(&mut tx, &scope).await?;
             backbone_orm::audit_context::relay_ambient_audit_on(&mut tx).await?;
         }
         let id = Uuid::new_v4();
-        let gain_losses = FxGainLossRepository::new(self.db_pool.clone());
+        let gain_losses = FxGainLossRepository::new(self.rpool().clone());
         gain_losses
             .insert_gain_loss(
                 &mut *tx,

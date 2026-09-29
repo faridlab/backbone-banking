@@ -83,7 +83,7 @@ impl BankingWriteService {
         let row = self
             .repos
             .transactions
-            .fetch_clearing_line(&self.db_pool, c.bank_transaction_id)
+            .fetch_clearing_line(&self.rpool(), c.bank_transaction_id)
             .await?
             .ok_or(BankingError::TransactionNotFound(c.bank_transaction_id))?;
         let currency: String = row.currency;
@@ -112,7 +112,7 @@ impl BankingWriteService {
         // LINE; without this, two lines each matching one payment both pass and strand the clearing
         // account. Serialize per settlement with an advisory lock so concurrent first-clears can't race
         // the phantom-insert, and hold the tx across the post so the check + write are one unit.
-        let mut tx = self.db_pool.begin().await?;
+        let mut tx = self.rpool().begin().await?;
         // Tenancy (ADR-0029): relay the AMBIENT request org scope onto this transaction when the
         // composing service bound one, so the already-cleared SUM and the clearance insert evaluate
         // under the decorator's row-level fences. An undecorated deployment has no ambient scope
@@ -344,7 +344,7 @@ impl BankingWriteService {
         let row = self
             .repos
             .transactions
-            .fetch_charge_line(&self.db_pool, ch.bank_transaction_id)
+            .fetch_charge_line(&self.rpool(), ch.bank_transaction_id)
             .await?
             .ok_or(BankingError::TransactionNotFound(ch.bank_transaction_id))?;
         let currency: String = row.currency;
@@ -386,7 +386,7 @@ impl BankingWriteService {
         }
         match sink.post(&env).await {
             Ok(ack) => {
-                let mut tx = self.db_pool.begin().await?;
+                let mut tx = self.rpool().begin().await?;
                 // Tenancy (ADR-0029): relay the AMBIENT request org scope — see `clear_transaction`.
                 if let Some(scope) = org_scope::current_org_scope() {
                     org_scope::bind_org_scope_on(&mut tx, &scope).await?;
