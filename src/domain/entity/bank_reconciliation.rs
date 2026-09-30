@@ -246,6 +246,8 @@ impl backbone_orm::EntityRepoMeta for BankReconciliation {
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("preset_id".to_string(), "uuid".to_string());
         m.insert("status".to_string(), "recon_status".to_string());
+        m.insert("from_date".to_string(), "date".to_string());
+        m.insert("to_date".to_string(), "date".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {

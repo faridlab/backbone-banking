@@ -247,6 +247,8 @@ impl backbone_orm::EntityRepoMeta for BankStatementImport {
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("source_format".to_string(), "source_format".to_string());
         m.insert("status".to_string(), "import_status".to_string());
+        m.insert("statement_period_start".to_string(), "date".to_string());
+        m.insert("statement_period_end".to_string(), "date".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {

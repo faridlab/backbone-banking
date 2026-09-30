@@ -246,6 +246,7 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
         m.insert("journal_id".to_string(), "uuid".to_string());
         m.insert("matched_source_type".to_string(), "matched_source_type".to_string());
         m.insert("match_method".to_string(), "match_method".to_string());
+        m.insert("clearance_date".to_string(), "date".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {
