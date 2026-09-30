@@ -268,6 +268,8 @@ impl backbone_orm::EntityRepoMeta for BankTransaction {
         m.insert("bank_account_id".to_string(), "uuid".to_string());
         m.insert("import_id".to_string(), "uuid".to_string());
         m.insert("status".to_string(), "txn_status".to_string());
+        m.insert("txn_date".to_string(), "date".to_string());
+        m.insert("value_date".to_string(), "date".to_string());
         m
     }
     fn search_fields() -> &'static [&'static str] {
