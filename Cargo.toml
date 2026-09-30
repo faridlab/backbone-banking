@@ -3,6 +3,7 @@ name = "backbone-banking"
 version = "0.6.19"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
+license = "MIT OR Apache-2.0"
 
 [lib]
 path = "src/lib.rs"
