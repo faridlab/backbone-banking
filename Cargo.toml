@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.6.21"
+version = "0.6.22"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 license = "MIT OR Apache-2.0"
