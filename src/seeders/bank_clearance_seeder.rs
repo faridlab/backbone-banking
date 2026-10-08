@@ -36,7 +36,7 @@ impl Seeder for SeedBankClearanceSeeder {
     }
 
     fn order(&self) -> i32 {
-        3
+        6
     }
 
     async fn should_run(&self, pool: &PgPool) -> Result<bool> {

@@ -155,6 +155,8 @@ impl BankingModule {
 /// Builder for BankingModule
 pub struct BankingModuleBuilder {
     db_pool: Option<PgPool>,
+    // <<< CUSTOM BUILDER FIELDS
+    // END CUSTOM
 }
 
 impl BankingModuleBuilder {
@@ -162,6 +164,8 @@ impl BankingModuleBuilder {
     pub fn new() -> Self {
         Self {
             db_pool: None,
+            // <<< CUSTOM BUILDER DEFAULTS
+            // END CUSTOM
         }
     }
 

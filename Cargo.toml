@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.6.23"
+version = "0.7.0"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 license = "MIT OR Apache-2.0"
@@ -20,20 +20,20 @@ path = "src/lib.rs"
 # or `rev = "<commit-sha>"`. Cargo dedupes the git fetch — the repo is only
 # cloned once even though four crates reference it.
 # -----------------------------------------------------------------------------
-backbone-core = { version = "2.7.35", features = ["postgres"] }
-backbone-orm = { version = "2.7.35" }
-backbone-auth = { version = "2.7.35", features = ["axum"] }
-backbone-messaging = { version = "2.7.35" }
+backbone-core = { version = "3.0.0", features = ["postgres"] }
+backbone-orm = { version = "3.0.0" }
+backbone-auth = { version = "3.0.0", features = ["axum"] }
+backbone-messaging = { version = "3.0.0" }
 # The reconciliation contract (ReconcileSink port + wire types) — shared across every producer.
 # Pin discipline: a git dep on an unpushed tag fails cargo resolution even with the local .cargo
 # patch in place, so between a contract change's commit and its pushed tag this rides the
 # last-existing tag, with the patch redirecting local builds to the framework checkout. Flip to
 # the new tag in the same push that announces the framework release.
-backbone-gl-posting = { version = "2.7.35" }
+backbone-gl-posting = { version = "3.0.0" }
 # Durable event emission: a payment-matched clear stages `BankClearanceRecorded` into the module
 # outbox inside the clearance transaction (crash-safe — payment's bank-confirmation drift consumes
 # it). multi_tenant (the company-RLS fence + relay bypass, ADR-0011).
-backbone-outbox = { version = "2.7.35", features = ["multi_tenant"] }
+backbone-outbox = { version = "3.0.0", features = ["multi_tenant"] }
 
 # Core async runtime and serialization
 tokio = { version = "1.0", features = ["full"] }
@@ -107,5 +107,5 @@ rand = "0.8"
 # through in-test ACL adapters (payment settles to a clearing account; banking clears it into the bank
 # account). Dev-dependencies ONLY — the shipped banking library has ZERO normal edges (verify:
 # `cargo tree -e normal -i backbone-payment` / `-i backbone-accounting` are empty).
-backbone-accounting = { version = "0.9.27" }
-backbone-payment = { version = "0.11.29" }
+backbone-accounting = { version = "0.10.0" }
+backbone-payment = { version = "0.12.0" }
