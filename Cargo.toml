@@ -1,6 +1,6 @@
 [package]
 name = "backbone-banking"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 description = "Cash & bank — bank/account master, statement import, reconciliation, and clearing postings (5th GL producer)"
 license = "MIT OR Apache-2.0"
@@ -107,5 +107,5 @@ rand = "0.8"
 # through in-test ACL adapters (payment settles to a clearing account; banking clears it into the bank
 # account). Dev-dependencies ONLY — the shipped banking library has ZERO normal edges (verify:
 # `cargo tree -e normal -i backbone-payment` / `-i backbone-accounting` are empty).
-backbone-accounting = { version = "0.10.0" }
+backbone-accounting = { version = "0.11.0" }
 backbone-payment = { version = "0.12.0" }
