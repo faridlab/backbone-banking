@@ -96,7 +96,6 @@ impl BankReconcilablePort for AlwaysReconcilable {
     async fn bank_reconcilable(
         &self,
         _pool: &PgPool,
-        _company_id: Uuid,
         _account_id: Uuid,
     ) -> Result<bool, PaymentError> {
         Ok(true)

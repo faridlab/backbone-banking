@@ -221,7 +221,6 @@ impl ReconcileSink for AccountingReconcileSink {
             .reconcile_pair_on(
                 conn,
                 &PairRequest {
-                    company_id: req.company_id,
                     debit: to_loc(&req.debit),
                     credit: to_loc(&req.credit),
                     amount: req.amount,
@@ -256,7 +255,6 @@ impl ReconcileSink for AccountingReconcileSink {
         self.svc
             .unreconcile_pair_on(
                 conn,
-                req.company_id,
                 &to_loc(&req.debit),
                 &to_loc(&req.credit),
             )
