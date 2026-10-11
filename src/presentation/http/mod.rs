@@ -15,7 +15,6 @@ pub mod fx_gain_loss_handler;
 pub mod reconcile_preset_handler;
 
 // <<< CUSTOM
-pub mod guarded_routes;
 // END CUSTOM
 
 // Re-exports
@@ -28,5 +27,7 @@ pub use bank_transaction_handler::{create_bank_transaction_routes, create_bank_t
 pub use fx_gain_loss_handler::{create_fx_gain_loss_routes, create_fx_gain_loss_read_routes, create_fx_gain_loss_write_routes};
 pub use reconcile_preset_handler::{create_reconcile_preset_routes, create_reconcile_preset_read_routes, create_reconcile_preset_write_routes};
 // <<< CUSTOM
-pub use guarded_routes::create_guarded_banking_routes;
 // END CUSTOM
+
+// This directory's extension (hand-written; ADR-0031).
+include!("mod.ext.rs");
