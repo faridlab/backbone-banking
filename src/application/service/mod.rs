@@ -16,8 +16,6 @@ pub mod bank_transaction_service;
 pub mod fx_gain_loss_service;
 pub mod reconcile_preset_service;
 
-// <<< CUSTOM
-// END CUSTOM
 
 pub use bank_service::BankService;
 pub use bank_account_service::BankAccountService;
@@ -27,8 +25,6 @@ pub use bank_statement_import_service::BankStatementImportService;
 pub use bank_transaction_service::BankTransactionService;
 pub use fx_gain_loss_service::FxGainLossService;
 pub use reconcile_preset_service::ReconcilePresetService;
-// <<< CUSTOM
-// END CUSTOM
 
 // This directory's extension (hand-written; ADR-0031).
 include!("mod.ext.rs");

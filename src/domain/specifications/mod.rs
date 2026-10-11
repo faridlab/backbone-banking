@@ -15,5 +15,3 @@ pub mod bank_transaction_specification;
 pub mod fx_gain_loss_specification;
 pub mod reconcile_preset_specification;
 
-// <<< CUSTOM
-// END CUSTOM

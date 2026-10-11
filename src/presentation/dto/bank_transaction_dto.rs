@@ -348,7 +348,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankTransactionDto> for BankTransaction
 // Custom DTOs
 // =============================================================================
 
-// <<< CUSTOM DTOs
 // Add custom DTOs specific to BankTransaction here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
+

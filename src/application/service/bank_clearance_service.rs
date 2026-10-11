@@ -32,5 +32,3 @@ pub type BankClearanceService = GenericCrudService<
     BankClearanceRepository,
 >;
 
-// <<< CUSTOM
-// END CUSTOM

@@ -36,5 +36,3 @@ pub use fx_gain_loss_event_handlers::FxGainLossEventHandler;
 pub use reconcile_preset_events::{ReconcilePresetEvent, ReconcilePresetEventPublisher, NoopReconcilePresetEventPublisher};
 pub use reconcile_preset_event_handlers::ReconcilePresetEventHandler;
 
-// <<< CUSTOM
-// END CUSTOM

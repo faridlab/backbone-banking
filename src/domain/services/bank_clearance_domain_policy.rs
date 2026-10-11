@@ -18,5 +18,3 @@ use crate::domain::entity::BankClearance;
 /// service. `PermitAllPolicy` is the safe default until then.
 pub type BankClearanceDomainPolicy = PermitAllPolicy<BankClearance>;
 
-// <<< CUSTOM
-// END CUSTOM

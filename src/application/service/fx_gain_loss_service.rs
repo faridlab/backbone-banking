@@ -32,5 +32,3 @@ pub type FxGainLossService = GenericCrudService<
     FxGainLossRepository,
 >;
 
-// <<< CUSTOM
-// END CUSTOM

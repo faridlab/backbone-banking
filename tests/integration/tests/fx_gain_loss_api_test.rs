@@ -111,6 +111,4 @@ mod tests {
 // CUSTOM TESTS
 // ============================================================================
 
-// <<< CUSTOM TESTS START >>>
 // Add FxGainLoss specific tests here
-// <<< CUSTOM TESTS END >>>

@@ -18,9 +18,5 @@ pub fn bank_validator() -> BankValidator {
         .rule(RequiredString::new("name", |e: &Bank| &e.name))
         .rule(OptionalNotBlank::new("swift_bic", |e: &Bank| e.swift_bic.as_deref()))
         .rule(RequiredString::new("country", |e: &Bank| &e.country))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

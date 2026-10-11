@@ -309,7 +309,7 @@ impl backbone_core::ApplyUpdateDto<UpdateFxGainLossDto> for FxGainLoss {
 // Custom DTOs
 // =============================================================================
 
-// <<< CUSTOM DTOs
 // Add custom DTOs specific to FxGainLoss here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
+

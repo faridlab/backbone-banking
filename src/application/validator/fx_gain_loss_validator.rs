@@ -16,9 +16,5 @@ pub type FxGainLossValidator = EntityValidator<FxGainLoss>;
 pub fn fx_gain_loss_validator() -> FxGainLossValidator {
     EntityValidator::new()
         .rule(RequiredString::new("currency", |e: &FxGainLoss| &e.currency))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

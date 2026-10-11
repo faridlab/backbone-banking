@@ -18,9 +18,5 @@ pub fn bank_account_validator() -> BankAccountValidator {
         .rule(RequiredString::new("account_name", |e: &BankAccount| &e.account_name))
         .rule(RequiredString::new("account_number", |e: &BankAccount| &e.account_number))
         .rule(RequiredString::new("currency", |e: &BankAccount| &e.currency))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

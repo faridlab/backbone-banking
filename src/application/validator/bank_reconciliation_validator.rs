@@ -14,10 +14,6 @@ pub type BankReconciliationValidator = EntityValidator<BankReconciliation>;
 /// Build a validator for BankReconciliation with all schema-defined field rules.
 pub fn bank_reconciliation_validator() -> BankReconciliationValidator {
     EntityValidator::new()
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
         // No schema-derived rules — add custom rules above.
 }
 
-// <<< CUSTOM
-// END CUSTOM

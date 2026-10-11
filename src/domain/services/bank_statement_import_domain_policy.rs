@@ -18,5 +18,3 @@ use crate::domain::entity::BankStatementImport;
 /// service. `PermitAllPolicy` is the safe default until then.
 pub type BankStatementImportDomainPolicy = PermitAllPolicy<BankStatementImport>;
 
-// <<< CUSTOM
-// END CUSTOM

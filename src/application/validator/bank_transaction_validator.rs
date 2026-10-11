@@ -18,9 +18,5 @@ pub fn bank_transaction_validator() -> BankTransactionValidator {
         .rule(OptionalNotBlank::new("description", |e: &BankTransaction| e.description.as_deref()))
         .rule(OptionalNotBlank::new("reference_no", |e: &BankTransaction| e.reference_no.as_deref()))
         .rule(RequiredString::new("currency", |e: &BankTransaction| &e.currency))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

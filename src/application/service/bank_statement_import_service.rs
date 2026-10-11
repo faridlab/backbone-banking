@@ -32,5 +32,3 @@ pub type BankStatementImportService = GenericCrudService<
     BankStatementImportRepository,
 >;
 
-// <<< CUSTOM
-// END CUSTOM

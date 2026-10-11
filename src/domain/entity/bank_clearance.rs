@@ -191,8 +191,6 @@ impl BankClearance {
         }
     }
 
-    // <<< CUSTOM METHODS START >>>
-    // <<< CUSTOM METHODS END >>>
 }
 
 impl super::Entity for BankClearance {

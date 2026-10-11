@@ -323,7 +323,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankReconciliationDto> for BankReconcil
 // Custom DTOs
 // =============================================================================
 
-// <<< CUSTOM DTOs
 // Add custom DTOs specific to BankReconciliation here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
+

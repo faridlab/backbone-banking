@@ -311,7 +311,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankClearanceDto> for BankClearance {
 // Custom DTOs
 // =============================================================================
 
-// <<< CUSTOM DTOs
 // Add custom DTOs specific to BankClearance here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
+

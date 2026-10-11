@@ -24,8 +24,6 @@ pub mod application;
 pub mod presentation;
 pub mod seeders;
 pub mod exports;
-// <<< CUSTOM MODULES
-// END CUSTOM
 
 // Re-exports for convenience - Domain entities
 pub use domain::entity::*;
@@ -71,8 +69,6 @@ pub struct BankingModule {
     pub(crate) bank_transaction_service: Arc<BankTransactionService>,
     pub(crate) fx_gain_loss_service: Arc<FxGainLossService>,
     pub(crate) reconcile_preset_service: Arc<ReconcilePresetService>,
-    // <<< CUSTOM FIELDS
-    // END CUSTOM
 }
 
 impl BankingModule {
@@ -147,15 +143,11 @@ impl BankingModule {
             .merge(create_reconcile_preset_read_routes(self.reconcile_preset_service.clone()))
     }
 
-    // <<< CUSTOM METHODS
-    // END CUSTOM
 }
 
 /// Builder for BankingModule
 pub struct BankingModuleBuilder {
     db_pool: Option<PgPool>,
-    // <<< CUSTOM BUILDER FIELDS
-    // END CUSTOM
 }
 
 impl BankingModuleBuilder {
@@ -163,8 +155,6 @@ impl BankingModuleBuilder {
     pub fn new() -> Self {
         Self {
             db_pool: None,
-            // <<< CUSTOM BUILDER DEFAULTS
-            // END CUSTOM
         }
     }
 
@@ -174,8 +164,6 @@ impl BankingModuleBuilder {
         self
     }
 
-    // <<< CUSTOM - custom builder methods
-    // END CUSTOM
 
     /// Build the module with configured dependencies
     pub fn build(self) -> anyhow::Result<BankingModule> {
@@ -214,8 +202,6 @@ impl BankingModuleBuilder {
         let reconcile_preset_repository = Arc::new(ReconcilePresetRepository::new(db_pool.clone()));
         let reconcile_preset_service = Arc::new(ReconcilePresetService::with_repository(reconcile_preset_repository.clone()));
 
-        // <<< CUSTOM
-        // END CUSTOM
 
         Ok(BankingModule {
             bank_service,
@@ -226,8 +212,6 @@ impl BankingModuleBuilder {
             bank_transaction_service,
             fx_gain_loss_service,
             reconcile_preset_service,
-            // <<< CUSTOM
-            // END CUSTOM
         })
     }
 }

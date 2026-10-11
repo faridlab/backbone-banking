@@ -327,7 +327,7 @@ impl backbone_core::ApplyUpdateDto<UpdateBankStatementImportDto> for BankStateme
 // Custom DTOs
 // =============================================================================
 
-// <<< CUSTOM DTOs
 // Add custom DTOs specific to BankStatementImport here.
 // This section will be preserved during regeneration.
 // >>> END CUSTOM DTOs
+

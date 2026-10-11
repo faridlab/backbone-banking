@@ -18,5 +18,3 @@ use crate::domain::entity::BankReconciliation;
 /// service. `PermitAllPolicy` is the safe default until then.
 pub type BankReconciliationDomainPolicy = PermitAllPolicy<BankReconciliation>;
 
-// <<< CUSTOM
-// END CUSTOM

@@ -11,8 +11,6 @@ use crate::domain::entity::FxGainLoss;
 /// enum containing a `Crud(CrudEvent<FxGainLoss>)` variant.
 pub type FxGainLossEvent = CrudEvent<FxGainLoss>;
 
-// <<< CUSTOM
-// END CUSTOM
 
 use backbone_messaging::{CrudEventPublisher, NoOpCrudEventPublisher};
 use std::sync::Arc;

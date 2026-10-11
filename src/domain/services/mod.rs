@@ -20,5 +20,3 @@ pub use bank_transaction_domain_policy::BankTransactionDomainPolicy;
 pub use fx_gain_loss_domain_policy::FxGainLossDomainPolicy;
 pub use reconcile_preset_domain_policy::ReconcilePresetDomainPolicy;
 
-// <<< CUSTOM
-// END CUSTOM

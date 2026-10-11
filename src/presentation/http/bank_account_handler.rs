@@ -186,3 +186,4 @@ pub fn create_protected_bank_account_routes<A: AuthMiddleware + Send + Sync + 's
             }
         }))
 }
+

@@ -14,8 +14,6 @@ pub mod bank_transaction_handler;
 pub mod fx_gain_loss_handler;
 pub mod reconcile_preset_handler;
 
-// <<< CUSTOM
-// END CUSTOM
 
 // Re-exports
 pub use bank_handler::{create_bank_routes, create_bank_read_routes, create_bank_write_routes};
@@ -26,8 +24,6 @@ pub use bank_statement_import_handler::{create_bank_statement_import_routes, cre
 pub use bank_transaction_handler::{create_bank_transaction_routes, create_bank_transaction_read_routes, create_bank_transaction_write_routes};
 pub use fx_gain_loss_handler::{create_fx_gain_loss_routes, create_fx_gain_loss_read_routes, create_fx_gain_loss_write_routes};
 pub use reconcile_preset_handler::{create_reconcile_preset_routes, create_reconcile_preset_read_routes, create_reconcile_preset_write_routes};
-// <<< CUSTOM
-// END CUSTOM
 
 // This directory's extension (hand-written; ADR-0031).
 include!("mod.ext.rs");

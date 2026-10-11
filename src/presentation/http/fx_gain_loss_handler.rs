@@ -187,3 +187,4 @@ pub fn create_protected_fx_gain_loss_routes<A: AuthMiddleware + Send + Sync + 's
             }
         }))
 }
+

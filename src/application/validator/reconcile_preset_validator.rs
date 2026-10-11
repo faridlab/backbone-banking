@@ -17,9 +17,5 @@ pub fn reconcile_preset_validator() -> ReconcilePresetValidator {
     EntityValidator::new()
         .rule(RequiredString::new("name", |e: &ReconcilePreset| &e.name))
         .rule(OptionalNotBlank::new("note", |e: &ReconcilePreset| e.note.as_deref()))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

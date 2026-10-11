@@ -23,5 +23,3 @@ pub use bank_transaction_validator::{BankTransactionValidator, bank_transaction_
 pub use fx_gain_loss_validator::{FxGainLossValidator, fx_gain_loss_validator};
 pub use reconcile_preset_validator::{ReconcilePresetValidator, reconcile_preset_validator};
 
-// <<< CUSTOM
-// END CUSTOM

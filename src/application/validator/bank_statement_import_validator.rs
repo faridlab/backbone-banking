@@ -16,9 +16,5 @@ pub type BankStatementImportValidator = EntityValidator<BankStatementImport>;
 pub fn bank_statement_import_validator() -> BankStatementImportValidator {
     EntityValidator::new()
         .rule(OptionalNotBlank::new("file_ref", |e: &BankStatementImport| e.file_ref.as_deref()))
-    // <<< CUSTOM RULES
-    // END CUSTOM RULES
 }
 
-// <<< CUSTOM
-// END CUSTOM

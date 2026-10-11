@@ -32,5 +32,3 @@ pub type BankReconciliationService = GenericCrudService<
     BankReconciliationRepository,
 >;
 
-// <<< CUSTOM
-// END CUSTOM
