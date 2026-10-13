@@ -41,9 +41,6 @@ pub use application::service::BankTransactionService;
 pub use application::service::FxGainLossService;
 pub use application::service::ReconcilePresetService;
 
-// Re-exports - Workflows
-pub use application::workflows::*;
-
 use std::sync::Arc;
 use axum::Router;
 use sqlx::PgPool;
