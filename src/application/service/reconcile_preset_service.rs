@@ -56,7 +56,7 @@ impl backbone_core::write_guard::WriteGuard<ReconcilePreset> for ReconcilePreset
         };
         let row = &row;
         let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
-        let mut shadow = Vec::new();
+        let shadow = Vec::new();
         let mut refuse = Vec::new();
         // `name_required` (@required on ReconcilePreset.name)
         if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "name")), r::not(r::is_empty(r::trim(r::field(row, "name")))))) {
@@ -64,19 +64,19 @@ impl backbone_core::write_guard::WriteGuard<ReconcilePreset> for ReconcilePreset
         }
         // `name_max_length` (@max(80) on ReconcilePreset.name)
         if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::le(r::length(r::field(row, "name")), r::Val::Num(80.0_f64))) {
-            shadow.push(Violation::new("name", "max_length", "name must be at most 80 characters").with_param("max", 80_i64));
+            refuse.push(Violation::new("name", "max_length", "name must be at most 80 characters").with_param("max", 80_i64));
         }
         // `note_max_length` (@max(255) on ReconcilePreset.note)
         if (create || (update && r::changed(old.as_ref(), row, &["note"]))) && !r::holds(&r::le(r::length(r::field(row, "note")), r::Val::Num(255.0_f64))) {
-            shadow.push(Violation::new("note", "max_length", "note must be at most 255 characters").with_param("max", 255_i64));
+            refuse.push(Violation::new("note", "max_length", "note must be at most 255 characters").with_param("max", 255_i64));
         }
         // `tolerance_percent_non_negative` (@non_negative on ReconcilePreset.tolerance_percent)
         if (create || (update && r::changed(old.as_ref(), row, &["tolerance_percent"]))) && !r::holds(&r::ge(r::field(row, "tolerance_percent"), r::Val::Num(0.0_f64))) {
-            shadow.push(Violation::new("tolerance_percent", "non_negative", "tolerance_percent must not be negative"));
+            refuse.push(Violation::new("tolerance_percent", "non_negative", "tolerance_percent must not be negative"));
         }
         // `days_window_non_negative` (@non_negative on ReconcilePreset.days_window)
         if (create || (update && r::changed(old.as_ref(), row, &["days_window"]))) && !r::holds(&r::ge(r::field(row, "days_window"), r::Val::Num(0.0_f64))) {
-            shadow.push(Violation::new("days_window", "non_negative", "days_window must not be negative"));
+            refuse.push(Violation::new("days_window", "non_negative", "days_window must not be negative"));
         }
         GuardOutcome { refuse, shadow }
     }

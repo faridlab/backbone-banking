@@ -56,7 +56,7 @@ impl backbone_core::write_guard::WriteGuard<BankStatementImport> for BankStateme
         };
         let row = &row;
         let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
-        let mut shadow = Vec::new();
+        let shadow = Vec::new();
         let mut refuse = Vec::new();
         // `bank_account_id_required` (@required on BankStatementImport.bank_account_id)
         if (create || (update && r::changed(old.as_ref(), row, &["bank_account_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_account_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_account_id")))))) {
@@ -64,7 +64,7 @@ impl backbone_core::write_guard::WriteGuard<BankStatementImport> for BankStateme
         }
         // `file_ref_max_length` (@max(300) on BankStatementImport.file_ref)
         if (create || (update && r::changed(old.as_ref(), row, &["file_ref"]))) && !r::holds(&r::le(r::length(r::field(row, "file_ref")), r::Val::Num(300.0_f64))) {
-            shadow.push(Violation::new("file_ref", "max_length", "file_ref must be at most 300 characters").with_param("max", 300_i64));
+            refuse.push(Violation::new("file_ref", "max_length", "file_ref must be at most 300 characters").with_param("max", 300_i64));
         }
         GuardOutcome { refuse, shadow }
     }

@@ -56,7 +56,7 @@ impl backbone_core::write_guard::WriteGuard<BankClearance> for BankClearanceRowR
         };
         let row = &row;
         let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
-        let mut shadow = Vec::new();
+        let shadow = Vec::new();
         let mut refuse = Vec::new();
         // `bank_transaction_id_required` (@required on BankClearance.bank_transaction_id)
         if (create || (update && r::changed(old.as_ref(), row, &["bank_transaction_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_transaction_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_transaction_id")))))) {
@@ -68,7 +68,7 @@ impl backbone_core::write_guard::WriteGuard<BankClearance> for BankClearanceRowR
         }
         // `matched_amount_non_negative` (@non_negative on BankClearance.matched_amount)
         if (create || (update && r::changed(old.as_ref(), row, &["matched_amount"]))) && !r::holds(&r::ge(r::field(row, "matched_amount"), r::Val::Num(0.0_f64))) {
-            shadow.push(Violation::new("matched_amount", "non_negative", "matched_amount must not be negative"));
+            refuse.push(Violation::new("matched_amount", "non_negative", "matched_amount must not be negative"));
         }
         GuardOutcome { refuse, shadow }
     }

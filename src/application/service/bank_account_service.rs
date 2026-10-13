@@ -56,7 +56,7 @@ impl backbone_core::write_guard::WriteGuard<BankAccount> for BankAccountRowRules
         };
         let row = &row;
         let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
-        let mut shadow = Vec::new();
+        let shadow = Vec::new();
         let mut refuse = Vec::new();
         // `bank_id_required` (@required on BankAccount.bank_id)
         if (create || (update && r::changed(old.as_ref(), row, &["bank_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_id")))))) {
@@ -68,7 +68,7 @@ impl backbone_core::write_guard::WriteGuard<BankAccount> for BankAccountRowRules
         }
         // `account_name_max_length` (@max(140) on BankAccount.account_name)
         if (create || (update && r::changed(old.as_ref(), row, &["account_name"]))) && !r::holds(&r::le(r::length(r::field(row, "account_name")), r::Val::Num(140.0_f64))) {
-            shadow.push(Violation::new("account_name", "max_length", "account_name must be at most 140 characters").with_param("max", 140_i64));
+            refuse.push(Violation::new("account_name", "max_length", "account_name must be at most 140 characters").with_param("max", 140_i64));
         }
         // `account_number_required` (@required on BankAccount.account_number)
         if (create || (update && r::changed(old.as_ref(), row, &["account_number"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "account_number")), r::not(r::is_empty(r::trim(r::field(row, "account_number")))))) {
@@ -76,7 +76,7 @@ impl backbone_core::write_guard::WriteGuard<BankAccount> for BankAccountRowRules
         }
         // `account_number_max_length` (@max(60) on BankAccount.account_number)
         if (create || (update && r::changed(old.as_ref(), row, &["account_number"]))) && !r::holds(&r::le(r::length(r::field(row, "account_number")), r::Val::Num(60.0_f64))) {
-            shadow.push(Violation::new("account_number", "max_length", "account_number must be at most 60 characters").with_param("max", 60_i64));
+            refuse.push(Violation::new("account_number", "max_length", "account_number must be at most 60 characters").with_param("max", 60_i64));
         }
         // `gl_account_id_required` (@required on BankAccount.gl_account_id)
         if (create || (update && r::changed(old.as_ref(), row, &["gl_account_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "gl_account_id")), r::not(r::is_empty(r::trim(r::field(row, "gl_account_id")))))) {
@@ -88,7 +88,7 @@ impl backbone_core::write_guard::WriteGuard<BankAccount> for BankAccountRowRules
         }
         // `currency_max_length` (@max(3) on BankAccount.currency)
         if (create || (update && r::changed(old.as_ref(), row, &["currency"]))) && !r::holds(&r::le(r::length(r::field(row, "currency")), r::Val::Num(3.0_f64))) {
-            shadow.push(Violation::new("currency", "max_length", "currency must be at most 3 characters").with_param("max", 3_i64));
+            refuse.push(Violation::new("currency", "max_length", "currency must be at most 3 characters").with_param("max", 3_i64));
         }
         GuardOutcome { refuse, shadow }
     }

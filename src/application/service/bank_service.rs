@@ -56,7 +56,7 @@ impl backbone_core::write_guard::WriteGuard<Bank> for BankRowRules {
         };
         let row = &row;
         let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
-        let mut shadow = Vec::new();
+        let shadow = Vec::new();
         let mut refuse = Vec::new();
         // `name_required` (@required on Bank.name)
         if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "name")), r::not(r::is_empty(r::trim(r::field(row, "name")))))) {
@@ -64,15 +64,15 @@ impl backbone_core::write_guard::WriteGuard<Bank> for BankRowRules {
         }
         // `name_max_length` (@max(140) on Bank.name)
         if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::le(r::length(r::field(row, "name")), r::Val::Num(140.0_f64))) {
-            shadow.push(Violation::new("name", "max_length", "name must be at most 140 characters").with_param("max", 140_i64));
+            refuse.push(Violation::new("name", "max_length", "name must be at most 140 characters").with_param("max", 140_i64));
         }
         // `swift_bic_max_length` (@max(11) on Bank.swift_bic)
         if (create || (update && r::changed(old.as_ref(), row, &["swift_bic"]))) && !r::holds(&r::le(r::length(r::field(row, "swift_bic")), r::Val::Num(11.0_f64))) {
-            shadow.push(Violation::new("swift_bic", "max_length", "swift_bic must be at most 11 characters").with_param("max", 11_i64));
+            refuse.push(Violation::new("swift_bic", "max_length", "swift_bic must be at most 11 characters").with_param("max", 11_i64));
         }
         // `country_max_length` (@max(2) on Bank.country)
         if (create || (update && r::changed(old.as_ref(), row, &["country"]))) && !r::holds(&r::le(r::length(r::field(row, "country")), r::Val::Num(2.0_f64))) {
-            shadow.push(Violation::new("country", "max_length", "country must be at most 2 characters").with_param("max", 2_i64));
+            refuse.push(Violation::new("country", "max_length", "country must be at most 2 characters").with_param("max", 2_i64));
         }
         GuardOutcome { refuse, shadow }
     }
