@@ -250,6 +250,9 @@ impl backbone_orm::EntityRepoMeta for BankClearance {
     fn search_fields() -> &'static [&'static str] {
         &[]
     }
+    fn relations() -> &'static [(&'static str, &'static str, &'static str)] {
+        &[("bankTransaction", "bank_transactions", "bankTransactionId")]
+    }
 }
 
 /// Builder for BankClearance entity

@@ -252,6 +252,9 @@ impl backbone_orm::EntityRepoMeta for BankStatementImport {
     fn search_fields() -> &'static [&'static str] {
         &[]
     }
+    fn relations() -> &'static [(&'static str, &'static str, &'static str)] {
+        &[("bankAccount", "bank_accounts", "bankAccountId")]
+    }
 }
 
 /// Builder for BankStatementImport entity
