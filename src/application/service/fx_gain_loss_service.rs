@@ -32,3 +32,57 @@ pub type FxGainLossService = GenericCrudService<
     FxGainLossRepository,
 >;
 
+/// The rules the schema declares for FxGainLoss, checked against the row a create or update
+/// would store. The generated build attaches it to [`FxGainLossService`]. A refusing rule's
+/// break answers 422; a rule in shadow is logged under `backbone::write_guard` and the
+/// write goes ahead.
+pub struct FxGainLossRowRules;
+
+#[async_trait::async_trait]
+impl backbone_core::write_guard::WriteGuard<FxGainLoss> for FxGainLossRowRules {
+    async fn check(
+        &self,
+        ctx: &backbone_core::write_guard::WriteCtx<'_, FxGainLoss>,
+    ) -> backbone_core::write_guard::GuardOutcome {
+        use backbone_core::row_rule as r;
+        use backbone_core::violation::Violation;
+        use backbone_core::write_guard::{GuardOutcome, WriteKind};
+        let (create, update) = (ctx.kind == WriteKind::Create, ctx.kind == WriteKind::Update);
+        let Some(after) = ctx.after.filter(|_| create || update) else {
+            return GuardOutcome::allow();
+        };
+        let Ok(row) = serde_json::to_value(after) else {
+            return GuardOutcome::allow();
+        };
+        let row = &row;
+        let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
+        let mut shadow = Vec::new();
+        let mut refuse = Vec::new();
+        // `matched_source_id_required` (@required on FxGainLoss.matched_source_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["matched_source_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "matched_source_id")), r::not(r::is_empty(r::trim(r::field(row, "matched_source_id")))))) {
+            refuse.push(Violation::new("matched_source_id", "required", "matched_source_id is required"));
+        }
+        // `currency_required` (@required on FxGainLoss.currency)
+        if (create || (update && r::changed(old.as_ref(), row, &["currency"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "currency")), r::not(r::is_empty(r::trim(r::field(row, "currency")))))) {
+            refuse.push(Violation::new("currency", "required", "currency is required"));
+        }
+        // `currency_max_length` (@max(3) on FxGainLoss.currency)
+        if (create || (update && r::changed(old.as_ref(), row, &["currency"]))) && !r::holds(&r::le(r::length(r::field(row, "currency")), r::Val::Num(3.0_f64))) {
+            shadow.push(Violation::new("currency", "max_length", "currency must be at most 3 characters").with_param("max", 3_i64));
+        }
+        // `original_rate_positive` (@positive on FxGainLoss.original_rate)
+        if (create || (update && r::changed(old.as_ref(), row, &["original_rate"]))) && !r::holds(&r::gt(r::field(row, "original_rate"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("original_rate", "positive", "original_rate must be positive"));
+        }
+        // `realised_rate_positive` (@positive on FxGainLoss.realised_rate)
+        if (create || (update && r::changed(old.as_ref(), row, &["realised_rate"]))) && !r::holds(&r::gt(r::field(row, "realised_rate"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("realised_rate", "positive", "realised_rate must be positive"));
+        }
+        // `fx_account_id_required` (@required on FxGainLoss.fx_account_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["fx_account_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "fx_account_id")), r::not(r::is_empty(r::trim(r::field(row, "fx_account_id")))))) {
+            refuse.push(Violation::new("fx_account_id", "required", "fx_account_id is required"));
+        }
+        GuardOutcome { refuse, shadow }
+    }
+}
+

@@ -32,3 +32,65 @@ pub type BankTransactionService = GenericCrudService<
     BankTransactionRepository,
 >;
 
+/// The rules the schema declares for BankTransaction, checked against the row a create or update
+/// would store. The generated build attaches it to [`BankTransactionService`]. A refusing rule's
+/// break answers 422; a rule in shadow is logged under `backbone::write_guard` and the
+/// write goes ahead.
+pub struct BankTransactionRowRules;
+
+#[async_trait::async_trait]
+impl backbone_core::write_guard::WriteGuard<BankTransaction> for BankTransactionRowRules {
+    async fn check(
+        &self,
+        ctx: &backbone_core::write_guard::WriteCtx<'_, BankTransaction>,
+    ) -> backbone_core::write_guard::GuardOutcome {
+        use backbone_core::row_rule as r;
+        use backbone_core::violation::Violation;
+        use backbone_core::write_guard::{GuardOutcome, WriteKind};
+        let (create, update) = (ctx.kind == WriteKind::Create, ctx.kind == WriteKind::Update);
+        let Some(after) = ctx.after.filter(|_| create || update) else {
+            return GuardOutcome::allow();
+        };
+        let Ok(row) = serde_json::to_value(after) else {
+            return GuardOutcome::allow();
+        };
+        let row = &row;
+        let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
+        let mut shadow = Vec::new();
+        let mut refuse = Vec::new();
+        // `bank_account_id_required` (@required on BankTransaction.bank_account_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["bank_account_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_account_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_account_id")))))) {
+            refuse.push(Violation::new("bank_account_id", "required", "bank_account_id is required"));
+        }
+        // `import_id_required` (@required on BankTransaction.import_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["import_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "import_id")), r::not(r::is_empty(r::trim(r::field(row, "import_id")))))) {
+            refuse.push(Violation::new("import_id", "required", "import_id is required"));
+        }
+        // `description_max_length` (@max(300) on BankTransaction.description)
+        if (create || (update && r::changed(old.as_ref(), row, &["description"]))) && !r::holds(&r::le(r::length(r::field(row, "description")), r::Val::Num(300.0_f64))) {
+            shadow.push(Violation::new("description", "max_length", "description must be at most 300 characters").with_param("max", 300_i64));
+        }
+        // `reference_no_max_length` (@max(140) on BankTransaction.reference_no)
+        if (create || (update && r::changed(old.as_ref(), row, &["reference_no"]))) && !r::holds(&r::le(r::length(r::field(row, "reference_no")), r::Val::Num(140.0_f64))) {
+            shadow.push(Violation::new("reference_no", "max_length", "reference_no must be at most 140 characters").with_param("max", 140_i64));
+        }
+        // `deposit_non_negative` (@non_negative on BankTransaction.deposit)
+        if (create || (update && r::changed(old.as_ref(), row, &["deposit"]))) && !r::holds(&r::ge(r::field(row, "deposit"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("deposit", "non_negative", "deposit must not be negative"));
+        }
+        // `withdrawal_non_negative` (@non_negative on BankTransaction.withdrawal)
+        if (create || (update && r::changed(old.as_ref(), row, &["withdrawal"]))) && !r::holds(&r::ge(r::field(row, "withdrawal"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("withdrawal", "non_negative", "withdrawal must not be negative"));
+        }
+        // `currency_max_length` (@max(3) on BankTransaction.currency)
+        if (create || (update && r::changed(old.as_ref(), row, &["currency"]))) && !r::holds(&r::le(r::length(r::field(row, "currency")), r::Val::Num(3.0_f64))) {
+            shadow.push(Violation::new("currency", "max_length", "currency must be at most 3 characters").with_param("max", 3_i64));
+        }
+        // `allocated_amount_non_negative` (@non_negative on BankTransaction.allocated_amount)
+        if (create || (update && r::changed(old.as_ref(), row, &["allocated_amount"]))) && !r::holds(&r::ge(r::field(row, "allocated_amount"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("allocated_amount", "non_negative", "allocated_amount must not be negative"));
+        }
+        GuardOutcome { refuse, shadow }
+    }
+}
+

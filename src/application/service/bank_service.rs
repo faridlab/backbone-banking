@@ -32,3 +32,49 @@ pub type BankService = GenericCrudService<
     BankRepository,
 >;
 
+/// The rules the schema declares for Bank, checked against the row a create or update
+/// would store. The generated build attaches it to [`BankService`]. A refusing rule's
+/// break answers 422; a rule in shadow is logged under `backbone::write_guard` and the
+/// write goes ahead.
+pub struct BankRowRules;
+
+#[async_trait::async_trait]
+impl backbone_core::write_guard::WriteGuard<Bank> for BankRowRules {
+    async fn check(
+        &self,
+        ctx: &backbone_core::write_guard::WriteCtx<'_, Bank>,
+    ) -> backbone_core::write_guard::GuardOutcome {
+        use backbone_core::row_rule as r;
+        use backbone_core::violation::Violation;
+        use backbone_core::write_guard::{GuardOutcome, WriteKind};
+        let (create, update) = (ctx.kind == WriteKind::Create, ctx.kind == WriteKind::Update);
+        let Some(after) = ctx.after.filter(|_| create || update) else {
+            return GuardOutcome::allow();
+        };
+        let Ok(row) = serde_json::to_value(after) else {
+            return GuardOutcome::allow();
+        };
+        let row = &row;
+        let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
+        let mut shadow = Vec::new();
+        let mut refuse = Vec::new();
+        // `name_required` (@required on Bank.name)
+        if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "name")), r::not(r::is_empty(r::trim(r::field(row, "name")))))) {
+            refuse.push(Violation::new("name", "required", "name is required"));
+        }
+        // `name_max_length` (@max(140) on Bank.name)
+        if (create || (update && r::changed(old.as_ref(), row, &["name"]))) && !r::holds(&r::le(r::length(r::field(row, "name")), r::Val::Num(140.0_f64))) {
+            shadow.push(Violation::new("name", "max_length", "name must be at most 140 characters").with_param("max", 140_i64));
+        }
+        // `swift_bic_max_length` (@max(11) on Bank.swift_bic)
+        if (create || (update && r::changed(old.as_ref(), row, &["swift_bic"]))) && !r::holds(&r::le(r::length(r::field(row, "swift_bic")), r::Val::Num(11.0_f64))) {
+            shadow.push(Violation::new("swift_bic", "max_length", "swift_bic must be at most 11 characters").with_param("max", 11_i64));
+        }
+        // `country_max_length` (@max(2) on Bank.country)
+        if (create || (update && r::changed(old.as_ref(), row, &["country"]))) && !r::holds(&r::le(r::length(r::field(row, "country")), r::Val::Num(2.0_f64))) {
+            shadow.push(Violation::new("country", "max_length", "country must be at most 2 characters").with_param("max", 2_i64));
+        }
+        GuardOutcome { refuse, shadow }
+    }
+}
+

@@ -32,3 +32,45 @@ pub type BankClearanceService = GenericCrudService<
     BankClearanceRepository,
 >;
 
+/// The rules the schema declares for BankClearance, checked against the row a create or update
+/// would store. The generated build attaches it to [`BankClearanceService`]. A refusing rule's
+/// break answers 422; a rule in shadow is logged under `backbone::write_guard` and the
+/// write goes ahead.
+pub struct BankClearanceRowRules;
+
+#[async_trait::async_trait]
+impl backbone_core::write_guard::WriteGuard<BankClearance> for BankClearanceRowRules {
+    async fn check(
+        &self,
+        ctx: &backbone_core::write_guard::WriteCtx<'_, BankClearance>,
+    ) -> backbone_core::write_guard::GuardOutcome {
+        use backbone_core::row_rule as r;
+        use backbone_core::violation::Violation;
+        use backbone_core::write_guard::{GuardOutcome, WriteKind};
+        let (create, update) = (ctx.kind == WriteKind::Create, ctx.kind == WriteKind::Update);
+        let Some(after) = ctx.after.filter(|_| create || update) else {
+            return GuardOutcome::allow();
+        };
+        let Ok(row) = serde_json::to_value(after) else {
+            return GuardOutcome::allow();
+        };
+        let row = &row;
+        let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
+        let mut shadow = Vec::new();
+        let mut refuse = Vec::new();
+        // `bank_transaction_id_required` (@required on BankClearance.bank_transaction_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["bank_transaction_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_transaction_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_transaction_id")))))) {
+            refuse.push(Violation::new("bank_transaction_id", "required", "bank_transaction_id is required"));
+        }
+        // `matched_source_id_required` (@required on BankClearance.matched_source_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["matched_source_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "matched_source_id")), r::not(r::is_empty(r::trim(r::field(row, "matched_source_id")))))) {
+            refuse.push(Violation::new("matched_source_id", "required", "matched_source_id is required"));
+        }
+        // `matched_amount_non_negative` (@non_negative on BankClearance.matched_amount)
+        if (create || (update && r::changed(old.as_ref(), row, &["matched_amount"]))) && !r::holds(&r::ge(r::field(row, "matched_amount"), r::Val::Num(0.0_f64))) {
+            shadow.push(Violation::new("matched_amount", "non_negative", "matched_amount must not be negative"));
+        }
+        GuardOutcome { refuse, shadow }
+    }
+}
+

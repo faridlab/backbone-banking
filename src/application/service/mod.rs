@@ -25,6 +25,14 @@ pub use bank_statement_import_service::BankStatementImportService;
 pub use bank_transaction_service::BankTransactionService;
 pub use fx_gain_loss_service::FxGainLossService;
 pub use reconcile_preset_service::ReconcilePresetService;
+pub use bank_service::BankRowRules;
+pub use bank_account_service::BankAccountRowRules;
+pub use bank_clearance_service::BankClearanceRowRules;
+pub use bank_reconciliation_service::BankReconciliationRowRules;
+pub use bank_statement_import_service::BankStatementImportRowRules;
+pub use bank_transaction_service::BankTransactionRowRules;
+pub use fx_gain_loss_service::FxGainLossRowRules;
+pub use reconcile_preset_service::ReconcilePresetRowRules;
 
 // This directory's extension (hand-written; ADR-0031).
 include!("mod.ext.rs");

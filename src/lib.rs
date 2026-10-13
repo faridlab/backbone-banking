@@ -172,35 +172,35 @@ impl BankingModuleBuilder {
 
         // Bank service
         let bank_repository = Arc::new(BankRepository::new(db_pool.clone()));
-        let bank_service = Arc::new(BankService::with_repository(bank_repository.clone()));
+        let bank_service = Arc::new(BankService::with_repository(bank_repository.clone()).with_guard(Arc::new(crate::application::service::BankRowRules)));
 
         // BankAccount service
         let bank_account_repository = Arc::new(BankAccountRepository::new(db_pool.clone()));
-        let bank_account_service = Arc::new(BankAccountService::with_repository(bank_account_repository.clone()));
+        let bank_account_service = Arc::new(BankAccountService::with_repository(bank_account_repository.clone()).with_guard(Arc::new(crate::application::service::BankAccountRowRules)));
 
         // BankClearance service
         let bank_clearance_repository = Arc::new(BankClearanceRepository::new(db_pool.clone()));
-        let bank_clearance_service = Arc::new(BankClearanceService::with_repository(bank_clearance_repository.clone()));
+        let bank_clearance_service = Arc::new(BankClearanceService::with_repository(bank_clearance_repository.clone()).with_guard(Arc::new(crate::application::service::BankClearanceRowRules)));
 
         // BankReconciliation service
         let bank_reconciliation_repository = Arc::new(BankReconciliationRepository::new(db_pool.clone()));
-        let bank_reconciliation_service = Arc::new(BankReconciliationService::with_repository(bank_reconciliation_repository.clone()));
+        let bank_reconciliation_service = Arc::new(BankReconciliationService::with_repository(bank_reconciliation_repository.clone()).with_guard(Arc::new(crate::application::service::BankReconciliationRowRules)));
 
         // BankStatementImport service
         let bank_statement_import_repository = Arc::new(BankStatementImportRepository::new(db_pool.clone()));
-        let bank_statement_import_service = Arc::new(BankStatementImportService::with_repository(bank_statement_import_repository.clone()));
+        let bank_statement_import_service = Arc::new(BankStatementImportService::with_repository(bank_statement_import_repository.clone()).with_guard(Arc::new(crate::application::service::BankStatementImportRowRules)));
 
         // BankTransaction service
         let bank_transaction_repository = Arc::new(BankTransactionRepository::new(db_pool.clone()));
-        let bank_transaction_service = Arc::new(BankTransactionService::with_repository(bank_transaction_repository.clone()));
+        let bank_transaction_service = Arc::new(BankTransactionService::with_repository(bank_transaction_repository.clone()).with_guard(Arc::new(crate::application::service::BankTransactionRowRules)));
 
         // FxGainLoss service
         let fx_gain_loss_repository = Arc::new(FxGainLossRepository::new(db_pool.clone()));
-        let fx_gain_loss_service = Arc::new(FxGainLossService::with_repository(fx_gain_loss_repository.clone()));
+        let fx_gain_loss_service = Arc::new(FxGainLossService::with_repository(fx_gain_loss_repository.clone()).with_guard(Arc::new(crate::application::service::FxGainLossRowRules)));
 
         // ReconcilePreset service
         let reconcile_preset_repository = Arc::new(ReconcilePresetRepository::new(db_pool.clone()));
-        let reconcile_preset_service = Arc::new(ReconcilePresetService::with_repository(reconcile_preset_repository.clone()));
+        let reconcile_preset_service = Arc::new(ReconcilePresetService::with_repository(reconcile_preset_repository.clone()).with_guard(Arc::new(crate::application::service::ReconcilePresetRowRules)));
 
 
         Ok(BankingModule {

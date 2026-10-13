@@ -32,3 +32,41 @@ pub type BankStatementImportService = GenericCrudService<
     BankStatementImportRepository,
 >;
 
+/// The rules the schema declares for BankStatementImport, checked against the row a create or update
+/// would store. The generated build attaches it to [`BankStatementImportService`]. A refusing rule's
+/// break answers 422; a rule in shadow is logged under `backbone::write_guard` and the
+/// write goes ahead.
+pub struct BankStatementImportRowRules;
+
+#[async_trait::async_trait]
+impl backbone_core::write_guard::WriteGuard<BankStatementImport> for BankStatementImportRowRules {
+    async fn check(
+        &self,
+        ctx: &backbone_core::write_guard::WriteCtx<'_, BankStatementImport>,
+    ) -> backbone_core::write_guard::GuardOutcome {
+        use backbone_core::row_rule as r;
+        use backbone_core::violation::Violation;
+        use backbone_core::write_guard::{GuardOutcome, WriteKind};
+        let (create, update) = (ctx.kind == WriteKind::Create, ctx.kind == WriteKind::Update);
+        let Some(after) = ctx.after.filter(|_| create || update) else {
+            return GuardOutcome::allow();
+        };
+        let Ok(row) = serde_json::to_value(after) else {
+            return GuardOutcome::allow();
+        };
+        let row = &row;
+        let old = ctx.before.and_then(|b| serde_json::to_value(b).ok());
+        let mut shadow = Vec::new();
+        let mut refuse = Vec::new();
+        // `bank_account_id_required` (@required on BankStatementImport.bank_account_id)
+        if (create || (update && r::changed(old.as_ref(), row, &["bank_account_id"]))) && !r::holds(&r::and(r::is_not_null(r::field(row, "bank_account_id")), r::not(r::is_empty(r::trim(r::field(row, "bank_account_id")))))) {
+            refuse.push(Violation::new("bank_account_id", "required", "bank_account_id is required"));
+        }
+        // `file_ref_max_length` (@max(300) on BankStatementImport.file_ref)
+        if (create || (update && r::changed(old.as_ref(), row, &["file_ref"]))) && !r::holds(&r::le(r::length(r::field(row, "file_ref")), r::Val::Num(300.0_f64))) {
+            shadow.push(Violation::new("file_ref", "max_length", "file_ref must be at most 300 characters").with_param("max", 300_i64));
+        }
+        GuardOutcome { refuse, shadow }
+    }
+}
+
