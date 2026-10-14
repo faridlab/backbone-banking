@@ -34,5 +34,69 @@ pub use bank_transaction_service::BankTransactionRowRules;
 pub use fx_gain_loss_service::FxGainLossRowRules;
 pub use reconcile_preset_service::ReconcilePresetRowRules;
 
+/// A `BankService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankRepository>,
+) -> BankService {
+    BankService::with_repository(repository).with_guard(std::sync::Arc::new(BankRowRules))
+}
+
+/// A `BankAccountService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_account_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankAccountRepository>,
+) -> BankAccountService {
+    BankAccountService::with_repository(repository).with_guard(std::sync::Arc::new(BankAccountRowRules))
+}
+
+/// A `BankClearanceService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_clearance_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankClearanceRepository>,
+) -> BankClearanceService {
+    BankClearanceService::with_repository(repository).with_guard(std::sync::Arc::new(BankClearanceRowRules))
+}
+
+/// A `BankReconciliationService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_reconciliation_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankReconciliationRepository>,
+) -> BankReconciliationService {
+    BankReconciliationService::with_repository(repository).with_guard(std::sync::Arc::new(BankReconciliationRowRules))
+}
+
+/// A `BankStatementImportService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_statement_import_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankStatementImportRepository>,
+) -> BankStatementImportService {
+    BankStatementImportService::with_repository(repository).with_guard(std::sync::Arc::new(BankStatementImportRowRules))
+}
+
+/// A `BankTransactionService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_bank_transaction_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::BankTransactionRepository>,
+) -> BankTransactionService {
+    BankTransactionService::with_repository(repository).with_guard(std::sync::Arc::new(BankTransactionRowRules))
+}
+
+/// A `FxGainLossService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_fx_gain_loss_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::FxGainLossRepository>,
+) -> FxGainLossService {
+    FxGainLossService::with_repository(repository).with_guard(std::sync::Arc::new(FxGainLossRowRules))
+}
+
+/// A `ReconcilePresetService` over `repository` with its write guard attached: the way to build it, so its writes are
+/// served only with the rules the schema declares.
+pub fn build_reconcile_preset_service(
+    repository: std::sync::Arc<crate::infrastructure::persistence::ReconcilePresetRepository>,
+) -> ReconcilePresetService {
+    ReconcilePresetService::with_repository(repository).with_guard(std::sync::Arc::new(ReconcilePresetRowRules))
+}
+
 // This directory's extension (hand-written; ADR-0031).
 include!("mod.ext.rs");
