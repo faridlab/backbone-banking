@@ -45,13 +45,25 @@ pub struct CreateBankTransactionDto {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "reference_no")]
     pub reference_no: Option<String>,
+    #[serde(default)]
     pub deposit: Decimal,
+    #[serde(default)]
     pub withdrawal: Decimal,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
+    #[serde(default = "default_create_bank_transaction_currency")]
     pub currency: String,
+    #[serde(default = "default_create_bank_transaction_status")]
     pub status: TxnStatus,
-    #[serde(alias = "allocated_amount")]
+    #[serde(default, alias = "allocated_amount")]
     pub allocated_amount: Decimal,
+}
+
+fn default_create_bank_transaction_currency() -> String {
+    "IDR".to_string()
+}
+
+fn default_create_bank_transaction_status() -> TxnStatus {
+    TxnStatus::Unreconciled
 }
 
 // =============================================================================
@@ -111,12 +123,12 @@ pub struct PatchBankTransactionDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "txn_date")]
     pub txn_date: Option<NaiveDate>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "value_date")]
-    pub value_date: Option<NaiveDate>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "reference_no")]
-    pub reference_no: Option<String>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "value_date")]
+    pub value_date: Option<Option<NaiveDate>>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option")]
+    pub description: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "reference_no")]
+    pub reference_no: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deposit: Option<Decimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -328,12 +340,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankTransactionDto> for BankTransaction
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to BankTransaction here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

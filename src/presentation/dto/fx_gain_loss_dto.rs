@@ -92,8 +92,8 @@ pub struct UpdateFxGainLossDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchFxGainLossDto {
-    #[serde(skip_serializing_if = "Option::is_none", alias = "bank_clearance_id")]
-    pub bank_clearance_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "bank_clearance_id")]
+    pub bank_clearance_id: Option<Option<Uuid>>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "matched_source_id")]
     pub matched_source_id: Option<Uuid>,
@@ -295,12 +295,4 @@ impl backbone_core::ApplyUpdateDto<UpdateFxGainLossDto> for FxGainLoss {
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to FxGainLoss here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

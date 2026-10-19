@@ -3003,9 +3003,6 @@ components:
       type: object
       required:
         - name
-        - country
-        - status
-        - metadata
       properties:
         name:
           type: string
@@ -3019,8 +3016,6 @@ components:
           maxLength: 2
         status:
           type: string
-        metadata:
-          type: object
 
     UpdateBankRequest:
       type: object
@@ -3028,7 +3023,6 @@ components:
         - name
         - country
         - status
-        - metadata
       properties:
         name:
           type: string
@@ -3042,8 +3036,6 @@ components:
           maxLength: 2
         status:
           type: string
-        metadata:
-          type: object
 
     PatchBankRequest:
       type: object
@@ -3060,8 +3052,6 @@ components:
           maxLength: 2
         status:
           type: string
-        metadata:
-          type: object
 
     BankList:
       type: object
@@ -3143,11 +3133,6 @@ components:
         - account_number
         - gl_account_id
         - clearing_account_id
-        - currency
-        - account_type
-        - is_default
-        - status
-        - metadata
       properties:
         branch_id:
           nullable: true
@@ -3177,8 +3162,6 @@ components:
           type: boolean
         status:
           type: string
-        metadata:
-          type: object
 
     UpdateBankAccountRequest:
       type: object
@@ -3192,7 +3175,6 @@ components:
         - account_type
         - is_default
         - status
-        - metadata
       properties:
         branch_id:
           nullable: true
@@ -3222,8 +3204,6 @@ components:
           type: boolean
         status:
           type: string
-        metadata:
-          type: object
 
     PatchBankAccountRequest:
       type: object
@@ -3256,8 +3236,6 @@ components:
           type: boolean
         status:
           type: string
-        metadata:
-          type: object
 
     BankAccountList:
       type: object
@@ -3330,9 +3308,7 @@ components:
         - matched_source_type
         - matched_source_id
         - matched_amount
-        - match_method
         - clearance_date
-        - metadata
       properties:
         bank_transaction_id:
           type: string
@@ -3357,8 +3333,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     UpdateBankClearanceRequest:
       type: object
@@ -3369,7 +3343,6 @@ components:
         - matched_amount
         - match_method
         - clearance_date
-        - metadata
       properties:
         bank_transaction_id:
           type: string
@@ -3394,8 +3367,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     PatchBankClearanceRequest:
       type: object
@@ -3423,8 +3394,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     BankClearanceList:
       type: object
@@ -3499,12 +3468,6 @@ components:
         - bank_account_id
         - from_date
         - to_date
-        - statement_closing_balance
-        - ledger_balance
-        - computed_difference
-        - unreconciled_count
-        - status
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3530,8 +3493,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     UpdateBankReconciliationRequest:
       type: object
@@ -3544,7 +3505,6 @@ components:
         - computed_difference
         - unreconciled_count
         - status
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3570,8 +3530,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     PatchBankReconciliationRequest:
       type: object
@@ -3600,8 +3558,6 @@ components:
           nullable: true
           type: string
           format: uuid
-        metadata:
-          type: object
 
     BankReconciliationList:
       type: object
@@ -3674,14 +3630,8 @@ components:
       type: object
       required:
         - bank_account_id
-        - source_format
         - statement_period_start
         - statement_period_end
-        - opening_balance
-        - closing_balance
-        - status
-        - row_count
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3707,8 +3657,6 @@ components:
         row_count:
           type: integer
           format: int32
-        metadata:
-          type: object
 
     UpdateBankStatementImportRequest:
       type: object
@@ -3721,7 +3669,6 @@ components:
         - closing_balance
         - status
         - row_count
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3747,8 +3694,6 @@ components:
         row_count:
           type: integer
           format: int32
-        metadata:
-          type: object
 
     PatchBankStatementImportRequest:
       type: object
@@ -3777,8 +3722,6 @@ components:
         row_count:
           type: integer
           format: int32
-        metadata:
-          type: object
 
     BankStatementImportList:
       type: object
@@ -3861,12 +3804,6 @@ components:
         - bank_account_id
         - import_id
         - txn_date
-        - deposit
-        - withdrawal
-        - currency
-        - status
-        - allocated_amount
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3900,8 +3837,6 @@ components:
           type: string
         allocated_amount:
           type: string
-        metadata:
-          type: object
 
     UpdateBankTransactionRequest:
       type: object
@@ -3914,7 +3849,6 @@ components:
         - currency
         - status
         - allocated_amount
-        - metadata
       properties:
         bank_account_id:
           type: string
@@ -3948,8 +3882,6 @@ components:
           type: string
         allocated_amount:
           type: string
-        metadata:
-          type: object
 
     PatchBankTransactionRequest:
       type: object
@@ -3986,8 +3918,6 @@ components:
           type: string
         allocated_amount:
           type: string
-        metadata:
-          type: object
 
     BankTransactionList:
       type: object
@@ -4062,7 +3992,6 @@ components:
         - base_amount_delta
         - direction
         - fx_account_id
-        - metadata
       properties:
         bank_clearance_id:
           nullable: true
@@ -4085,8 +4014,6 @@ components:
         fx_account_id:
           type: string
           format: uuid
-        metadata:
-          type: object
 
     UpdateFxGainLossRequest:
       type: object
@@ -4098,7 +4025,6 @@ components:
         - base_amount_delta
         - direction
         - fx_account_id
-        - metadata
       properties:
         bank_clearance_id:
           nullable: true
@@ -4121,8 +4047,6 @@ components:
         fx_account_id:
           type: string
           format: uuid
-        metadata:
-          type: object
 
     PatchFxGainLossRequest:
       type: object
@@ -4148,8 +4072,6 @@ components:
         fx_account_id:
           type: string
           format: uuid
-        metadata:
-          type: object
 
     FxGainLossList:
       type: object
@@ -4215,10 +4137,7 @@ components:
       type: object
       required:
         - name
-        - priority
         - match_on
-        - status
-        - metadata
       properties:
         name:
           type: string
@@ -4241,8 +4160,6 @@ components:
           format: int32
         status:
           type: string
-        metadata:
-          type: object
 
     UpdateReconcilePresetRequest:
       type: object
@@ -4251,7 +4168,6 @@ components:
         - priority
         - match_on
         - status
-        - metadata
       properties:
         name:
           type: string
@@ -4274,8 +4190,6 @@ components:
           format: int32
         status:
           type: string
-        metadata:
-          type: object
 
     PatchReconcilePresetRequest:
       type: object
@@ -4301,8 +4215,6 @@ components:
           format: int32
         status:
           type: string
-        metadata:
-          type: object
 
     ReconcilePresetList:
       type: object

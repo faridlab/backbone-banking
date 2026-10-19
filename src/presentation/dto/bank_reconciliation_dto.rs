@@ -39,18 +39,23 @@ pub struct CreateBankReconciliationDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "to_date")]
     pub to_date: NaiveDate,
-    #[serde(alias = "statement_closing_balance")]
+    #[serde(default, alias = "statement_closing_balance")]
     pub statement_closing_balance: Decimal,
-    #[serde(alias = "ledger_balance")]
+    #[serde(default, alias = "ledger_balance")]
     pub ledger_balance: Decimal,
-    #[serde(alias = "computed_difference")]
+    #[serde(default, alias = "computed_difference")]
     pub computed_difference: Decimal,
     #[cfg_attr(feature = "openapi", schema(example = 42))]
-    #[serde(alias = "unreconciled_count")]
+    #[serde(default, alias = "unreconciled_count")]
     pub unreconciled_count: i32,
+    #[serde(default = "default_create_bank_reconciliation_status")]
     pub status: ReconStatus,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "preset_id")]
     pub preset_id: Option<Uuid>,
+}
+
+fn default_create_bank_reconciliation_status() -> ReconStatus {
+    ReconStatus::Open
 }
 
 // =============================================================================
@@ -120,8 +125,8 @@ pub struct PatchBankReconciliationDto {
     pub unreconciled_count: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<ReconStatus>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "preset_id")]
-    pub preset_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "preset_id")]
+    pub preset_id: Option<Option<Uuid>>,
 }
 
 impl PatchBankReconciliationDto {
@@ -312,12 +317,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankReconciliationDto> for BankReconcil
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to BankReconciliation here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

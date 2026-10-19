@@ -34,8 +34,18 @@ pub struct CreateBankDto {
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "swift_bic")]
     pub swift_bic: Option<String>,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
+    #[serde(default = "default_create_bank_country")]
     pub country: String,
+    #[serde(default = "default_create_bank_status")]
     pub status: BankStatus,
+}
+
+fn default_create_bank_country() -> String {
+    "ID".to_string()
+}
+
+fn default_create_bank_status() -> BankStatus {
+    BankStatus::Active
 }
 
 // =============================================================================
@@ -74,8 +84,8 @@ pub struct PatchBankDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "swift_bic")]
-    pub swift_bic: Option<String>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "swift_bic")]
+    pub swift_bic: Option<Option<String>>,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
@@ -244,12 +254,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankDto> for Bank {
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to Bank here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

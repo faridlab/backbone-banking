@@ -34,7 +34,7 @@ pub struct CreateBankStatementImportDto {
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(alias = "bank_account_id")]
     pub bank_account_id: Uuid,
-    #[serde(alias = "source_format")]
+    #[serde(default = "default_create_bank_statement_import_source_format", alias = "source_format")]
     pub source_format: SourceFormat,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "statement_period_start")]
@@ -42,16 +42,25 @@ pub struct CreateBankStatementImportDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "statement_period_end")]
     pub statement_period_end: NaiveDate,
-    #[serde(alias = "opening_balance")]
+    #[serde(default, alias = "opening_balance")]
     pub opening_balance: Decimal,
-    #[serde(alias = "closing_balance")]
+    #[serde(default, alias = "closing_balance")]
     pub closing_balance: Decimal,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "file_ref")]
     pub file_ref: Option<String>,
+    #[serde(default = "default_create_bank_statement_import_status")]
     pub status: ImportStatus,
     #[cfg_attr(feature = "openapi", schema(example = 42))]
-    #[serde(alias = "row_count")]
+    #[serde(default, alias = "row_count")]
     pub row_count: i32,
+}
+
+fn default_create_bank_statement_import_source_format() -> SourceFormat {
+    SourceFormat::Manual
+}
+
+fn default_create_bank_statement_import_status() -> ImportStatus {
+    ImportStatus::Draft
 }
 
 // =============================================================================
@@ -116,8 +125,8 @@ pub struct PatchBankStatementImportDto {
     pub opening_balance: Option<Decimal>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "closing_balance")]
     pub closing_balance: Option<Decimal>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "file_ref")]
-    pub file_ref: Option<String>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "file_ref")]
+    pub file_ref: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<ImportStatus>,
     #[cfg_attr(feature = "openapi", schema(example = 42))]
@@ -313,12 +322,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankStatementImportDto> for BankStateme
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to BankStatementImport here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

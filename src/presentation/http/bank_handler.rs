@@ -80,6 +80,13 @@ impl axum::response::IntoResponse for BankError {
 // Route Configuration
 // =============================================================================
 
+/// The permissions this entity's generic routes require: `bank:<action>` for `read`, `create`,
+/// `update`, `delete`, `restore` and `purge`, with any rename the schema's `requires:` declares.
+pub fn bank_permissions() -> backbone_core::http::CrudPermissions {
+    backbone_core::http::CrudPermissions::new("bank")
+        .in_module("banking")
+}
+
 /// Create Axum router with all 16 Backbone endpoints for Bank.
 ///
 /// # Routes
@@ -109,21 +116,23 @@ impl axum::response::IntoResponse for BankError {
 /// let router = create_bank_routes(service);
 /// ```
 pub fn create_bank_routes(service: Arc<BankService>) -> Router {
-    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::routes(
+    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::routes_guarded(
         service,
         "/banks",
+        bank_permissions(),
     )
 }
 
 /// Create Axum router with only the read (GET) endpoints for Bank.
 ///
-/// Safe for public, unauthenticated exposure (e.g., reference data).
+/// Each route requires the entity's `read` permission, so it needs an authenticated caller.
 /// Mutations must be served separately via `create_bank_write_routes`,
 /// typically wrapped in an auth middleware layer.
 pub fn create_bank_read_routes(service: Arc<BankService>) -> Router {
-    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::read_routes(
+    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::read_routes_guarded(
         service,
         "/banks",
+        bank_permissions(),
     )
 }
 
@@ -139,9 +148,10 @@ pub fn create_bank_read_routes(service: Arc<BankService>) -> Router {
 /// service (e.g. a command router over its domain engine), serve THAT instead
 /// for any mutation that must respect domain rules.
 pub fn create_bank_write_routes(service: Arc<BankService>) -> Router {
-    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::write_routes(
+    BackboneCrudHandler::<BankService, Bank, CreateBankDto, UpdateBankDto, BankResponseDto>::write_routes_guarded(
         service,
         "/banks",
+        bank_permissions(),
     )
 }
 

@@ -41,7 +41,7 @@ pub struct CreateBankClearanceDto {
     pub matched_source_id: Uuid,
     #[serde(alias = "matched_amount")]
     pub matched_amount: Decimal,
-    #[serde(alias = "match_method")]
+    #[serde(default = "default_create_bank_clearance_match_method", alias = "match_method")]
     pub match_method: MatchMethod,
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(alias = "clearance_date")]
@@ -50,6 +50,10 @@ pub struct CreateBankClearanceDto {
     pub accounting_post_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "journal_id")]
     pub journal_id: Option<Uuid>,
+}
+
+fn default_create_bank_clearance_match_method() -> MatchMethod {
+    MatchMethod::Manual
 }
 
 // =============================================================================
@@ -112,10 +116,10 @@ pub struct PatchBankClearanceDto {
     #[cfg_attr(feature = "openapi", schema(example = "2024-01-01"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "clearance_date")]
     pub clearance_date: Option<NaiveDate>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "accounting_post_id")]
-    pub accounting_post_id: Option<Uuid>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "journal_id")]
-    pub journal_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "accounting_post_id")]
+    pub accounting_post_id: Option<Option<Uuid>>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "journal_id")]
+    pub journal_id: Option<Option<Uuid>>,
 }
 
 impl PatchBankClearanceDto {
@@ -300,12 +304,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankClearanceDto> for BankClearance {
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to BankClearance here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

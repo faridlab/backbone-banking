@@ -82,6 +82,13 @@ impl axum::response::IntoResponse for BankClearanceError {
 // Route Configuration
 // =============================================================================
 
+/// The permissions this entity's generic routes require: `bank_clearance:<action>` for `read`, `create`,
+/// `update`, `delete`, `restore` and `purge`, with any rename the schema's `requires:` declares.
+pub fn bank_clearance_permissions() -> backbone_core::http::CrudPermissions {
+    backbone_core::http::CrudPermissions::new("bank_clearance")
+        .in_module("banking")
+}
+
 /// Create Axum router with all 16 Backbone endpoints for BankClearance.
 ///
 /// # Routes
@@ -111,21 +118,23 @@ impl axum::response::IntoResponse for BankClearanceError {
 /// let router = create_bank_clearance_routes(service);
 /// ```
 pub fn create_bank_clearance_routes(service: Arc<BankClearanceService>) -> Router {
-    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::routes(
+    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::routes_guarded(
         service,
         "/bank_clearances",
+        bank_clearance_permissions(),
     )
 }
 
 /// Create Axum router with only the read (GET) endpoints for BankClearance.
 ///
-/// Safe for public, unauthenticated exposure (e.g., reference data).
+/// Each route requires the entity's `read` permission, so it needs an authenticated caller.
 /// Mutations must be served separately via `create_bank_clearance_write_routes`,
 /// typically wrapped in an auth middleware layer.
 pub fn create_bank_clearance_read_routes(service: Arc<BankClearanceService>) -> Router {
-    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::read_routes(
+    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::read_routes_guarded(
         service,
         "/bank_clearances",
+        bank_clearance_permissions(),
     )
 }
 
@@ -141,9 +150,10 @@ pub fn create_bank_clearance_read_routes(service: Arc<BankClearanceService>) -> 
 /// service (e.g. a command router over its domain engine), serve THAT instead
 /// for any mutation that must respect domain rules.
 pub fn create_bank_clearance_write_routes(service: Arc<BankClearanceService>) -> Router {
-    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::write_routes(
+    BackboneCrudHandler::<BankClearanceService, BankClearance, CreateBankClearanceDto, UpdateBankClearanceDto, BankClearanceResponseDto>::write_routes_guarded(
         service,
         "/bank_clearances",
+        bank_clearance_permissions(),
     )
 }
 

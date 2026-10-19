@@ -81,6 +81,13 @@ impl axum::response::IntoResponse for FxGainLossError {
 // Route Configuration
 // =============================================================================
 
+/// The permissions this entity's generic routes require: `fx_gain_loss:<action>` for `read`, `create`,
+/// `update`, `delete`, `restore` and `purge`, with any rename the schema's `requires:` declares.
+pub fn fx_gain_loss_permissions() -> backbone_core::http::CrudPermissions {
+    backbone_core::http::CrudPermissions::new("fx_gain_loss")
+        .in_module("banking")
+}
+
 /// Create Axum router with all 16 Backbone endpoints for FxGainLoss.
 ///
 /// # Routes
@@ -110,21 +117,23 @@ impl axum::response::IntoResponse for FxGainLossError {
 /// let router = create_fx_gain_loss_routes(service);
 /// ```
 pub fn create_fx_gain_loss_routes(service: Arc<FxGainLossService>) -> Router {
-    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::routes(
+    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::routes_guarded(
         service,
         "/fx_gain_losses",
+        fx_gain_loss_permissions(),
     )
 }
 
 /// Create Axum router with only the read (GET) endpoints for FxGainLoss.
 ///
-/// Safe for public, unauthenticated exposure (e.g., reference data).
+/// Each route requires the entity's `read` permission, so it needs an authenticated caller.
 /// Mutations must be served separately via `create_fx_gain_loss_write_routes`,
 /// typically wrapped in an auth middleware layer.
 pub fn create_fx_gain_loss_read_routes(service: Arc<FxGainLossService>) -> Router {
-    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::read_routes(
+    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::read_routes_guarded(
         service,
         "/fx_gain_losses",
+        fx_gain_loss_permissions(),
     )
 }
 
@@ -140,9 +149,10 @@ pub fn create_fx_gain_loss_read_routes(service: Arc<FxGainLossService>) -> Route
 /// service (e.g. a command router over its domain engine), serve THAT instead
 /// for any mutation that must respect domain rules.
 pub fn create_fx_gain_loss_write_routes(service: Arc<FxGainLossService>) -> Router {
-    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::write_routes(
+    BackboneCrudHandler::<FxGainLossService, FxGainLoss, CreateFxGainLossDto, UpdateFxGainLossDto, FxGainLossResponseDto>::write_routes_guarded(
         service,
         "/fx_gain_losses",
+        fx_gain_loss_permissions(),
     )
 }
 

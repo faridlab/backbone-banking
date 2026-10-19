@@ -48,13 +48,27 @@ pub struct CreateBankAccountDto {
     #[serde(alias = "clearing_account_id")]
     pub clearing_account_id: Uuid,
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
+    #[serde(default = "default_create_bank_account_currency")]
     pub currency: String,
-    #[serde(alias = "account_type")]
+    #[serde(default = "default_create_bank_account_account_type", alias = "account_type")]
     pub account_type: BankAccountType,
     #[cfg_attr(feature = "openapi", schema(example = true))]
-    #[serde(alias = "is_default")]
+    #[serde(default, alias = "is_default")]
     pub is_default: bool,
+    #[serde(default = "default_create_bank_account_status")]
     pub status: BankAccountStatus,
+}
+
+fn default_create_bank_account_currency() -> String {
+    "IDR".to_string()
+}
+
+fn default_create_bank_account_account_type() -> BankAccountType {
+    BankAccountType::Checking
+}
+
+fn default_create_bank_account_status() -> BankAccountStatus {
+    BankAccountStatus::Active
 }
 
 // =============================================================================
@@ -108,8 +122,8 @@ pub struct UpdateBankAccountDto {
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBankAccountDto {
-    #[serde(skip_serializing_if = "Option::is_none", alias = "branch_id")]
-    pub branch_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "branch_id")]
+    pub branch_id: Option<Option<Uuid>>,
     #[cfg_attr(feature = "openapi", schema(example = "550e8400-e29b-41d4-a716-446655440000"))]
     #[serde(skip_serializing_if = "Option::is_none", alias = "bank_id")]
     pub bank_id: Option<Uuid>,
@@ -333,12 +347,4 @@ impl backbone_core::ApplyUpdateDto<UpdateBankAccountDto> for BankAccount {
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to BankAccount here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 

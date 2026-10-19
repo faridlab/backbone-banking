@@ -206,6 +206,12 @@ impl super::Entity for BankClearance {
 }
 
 impl backbone_core::PersistentEntity for BankClearance {
+    fn references() -> &'static [backbone_core::Reference] {
+        const REFERENCES: &[backbone_core::Reference] = &[
+            backbone_core::Reference::new("bank_transaction_id", "banking.bank_transactions", "id"),
+        ];
+        REFERENCES
+    }
     fn entity_id(&self) -> String {
         self.id.to_string()
     }

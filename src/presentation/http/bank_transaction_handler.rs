@@ -82,6 +82,13 @@ impl axum::response::IntoResponse for BankTransactionError {
 // Route Configuration
 // =============================================================================
 
+/// The permissions this entity's generic routes require: `bank_transaction:<action>` for `read`, `create`,
+/// `update`, `delete`, `restore` and `purge`, with any rename the schema's `requires:` declares.
+pub fn bank_transaction_permissions() -> backbone_core::http::CrudPermissions {
+    backbone_core::http::CrudPermissions::new("bank_transaction")
+        .in_module("banking")
+}
+
 /// Create Axum router with all 16 Backbone endpoints for BankTransaction.
 ///
 /// # Routes
@@ -111,21 +118,23 @@ impl axum::response::IntoResponse for BankTransactionError {
 /// let router = create_bank_transaction_routes(service);
 /// ```
 pub fn create_bank_transaction_routes(service: Arc<BankTransactionService>) -> Router {
-    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::routes(
+    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::routes_guarded(
         service,
         "/bank_transactions",
+        bank_transaction_permissions(),
     )
 }
 
 /// Create Axum router with only the read (GET) endpoints for BankTransaction.
 ///
-/// Safe for public, unauthenticated exposure (e.g., reference data).
+/// Each route requires the entity's `read` permission, so it needs an authenticated caller.
 /// Mutations must be served separately via `create_bank_transaction_write_routes`,
 /// typically wrapped in an auth middleware layer.
 pub fn create_bank_transaction_read_routes(service: Arc<BankTransactionService>) -> Router {
-    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::read_routes(
+    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::read_routes_guarded(
         service,
         "/bank_transactions",
+        bank_transaction_permissions(),
     )
 }
 
@@ -141,9 +150,10 @@ pub fn create_bank_transaction_read_routes(service: Arc<BankTransactionService>)
 /// service (e.g. a command router over its domain engine), serve THAT instead
 /// for any mutation that must respect domain rules.
 pub fn create_bank_transaction_write_routes(service: Arc<BankTransactionService>) -> Router {
-    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::write_routes(
+    BackboneCrudHandler::<BankTransactionService, BankTransaction, CreateBankTransactionDto, UpdateBankTransactionDto, BankTransactionResponseDto>::write_routes_guarded(
         service,
         "/bank_transactions",
+        bank_transaction_permissions(),
     )
 }
 

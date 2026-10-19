@@ -36,6 +36,7 @@ pub struct CreateReconcilePresetDto {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     #[cfg_attr(feature = "openapi", schema(example = 42))]
+    #[serde(default = "default_create_reconcile_preset_priority")]
     pub priority: i32,
     #[serde(alias = "match_on")]
     pub match_on: MatchOn,
@@ -43,7 +44,16 @@ pub struct CreateReconcilePresetDto {
     pub tolerance_percent: Option<Decimal>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "days_window")]
     pub days_window: Option<i32>,
+    #[serde(default = "default_create_reconcile_preset_status")]
     pub status: PresetStatus,
+}
+
+fn default_create_reconcile_preset_priority() -> i32 {
+    100
+}
+
+fn default_create_reconcile_preset_status() -> PresetStatus {
+    PresetStatus::Active
 }
 
 // =============================================================================
@@ -88,17 +98,17 @@ pub struct PatchReconcilePresetDto {
     #[cfg_attr(feature = "openapi", schema(example = "example"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub note: Option<String>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option")]
+    pub note: Option<Option<String>>,
     #[cfg_attr(feature = "openapi", schema(example = 42))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", alias = "match_on")]
     pub match_on: Option<MatchOn>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "tolerance_percent")]
-    pub tolerance_percent: Option<Decimal>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "days_window")]
-    pub days_window: Option<i32>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "tolerance_percent")]
+    pub tolerance_percent: Option<Option<Decimal>>,
+    #[serde(default, deserialize_with = "crate::presentation::dto::double_option", alias = "days_window")]
+    pub days_window: Option<Option<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<PresetStatus>,
 }
@@ -279,12 +289,4 @@ impl backbone_core::ApplyUpdateDto<UpdateReconcilePresetDto> for ReconcilePreset
         Ok(self)
     }
 }
-
-// =============================================================================
-// Custom DTOs
-// =============================================================================
-
-// Add custom DTOs specific to ReconcilePreset here.
-// This section will be preserved during regeneration.
-// >>> END CUSTOM DTOs
 
